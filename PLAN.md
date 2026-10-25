@@ -86,7 +86,7 @@ The deck names four deliverables. Two are written, one is half-built, one has no
 | Landing page | built, fixed, and **published**: <https://thaisfreis.github.io/pinakion/web/index.html> | T-017, T-024, T-027, done |
 | MVP spec — the demo path, nothing more | written and proven: `docs/DEMO.md` | T-016 |
 | Video demo, 3 min | script written in `docs/DEMO.md`; **the recording is not made** | T-016 |
-| Submission data | the name and one line exist; track still unknown (Q-11) | T-009 done, Q-11 open |
+| Submission data | the name and one line exist; the path is **Genesis** with the **Stellar Unlocked** track, decided by the human on 25 Oct (DEC-013). Open: the portal still records `scale`, approved, and no public rule says a path may be changed — Q-17 | T-009 done |
 
 | Order | Task | Issue | State |
 |---|---|---|---|
@@ -97,7 +97,7 @@ The video's four parts, from the deck: `0:00` the problem · `0:30` live demo on
 
 The flow runs live on testnet in 11 seconds, measured on 2026-10-25. What is left is the recording itself, which is the human's to make.
 
-**This is the highest-value item with zero work done.** The deck's own line is *judges score demos, not ideas*.
+**This is the highest-value item with zero work done.** The deck's own line is *judges score demos, not ideas*, and the organiser's judging page agrees: the async review looks at the demo video, the pitch deck, the GitHub repo and the submission answers, in that order. Live pitching is for finalists only, on Wed 28 Oct. **There is no pitch deck.**
 
 ---
 
@@ -132,7 +132,8 @@ Full list in `docs/SPEC.md` §11. These are the ones with something waiting on t
 |---|---|---|
 | Q-02 | Is the milestone goal in §1 correct as written, and are the non-goals right? Still `[INFERRED]`, and the spec is now approved around it | — |
 | Q-06 | **Answered**: rustc 1.97.1 and Node 24.14.1, pinned. The Stellar CLI stays unpinned and §6 says why | — |
-| Q-11 | Which track and category is the submission? Genesis eligibility was never answered by the organisers | T-009's last step |
+| Q-11 | ~~Which track and category?~~ **Answered:** Genesis/Scale are paths; *Stellar Unlocked* and *Stellar Composed* are Genesis-only tracks. This submission is on **Scale**, which picks none | — |
+| Q-16 | Scale is judged first on milestone completion against the pre-event intake goals, and we have no record of what those were | the submission |
 | Q-13 | **Answered** by the civic direction, recorded with T-017. The implementation itself is still for human review | nothing |
 | Q-07 | Who publishes the first roster, and under what authority? Unresolved across three design documents | Phase 4 |
 | Q-08 | Documents are in Portuguese, root documents in English, code identifiers mixed. What is the convention? | nothing yet, but it gets worse with every file |

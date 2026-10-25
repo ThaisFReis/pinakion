@@ -9,7 +9,7 @@
 
 use soroban_sdk::{
     contract, contractimpl,
-    crypto::bls12_381::{G1Affine, G2Affine},
+    crypto::bls12_381::{Bls12381G1Affine, Bls12381G2Affine},
     vec, Bytes, BytesN, Env,
 };
 
@@ -54,11 +54,11 @@ impl BeaconVerifier {
         let dst = Bytes::from_slice(&env, DST);
         let h = bls.hash_to_g1(&msg, &dst);
 
-        let pk = G2Affine::from_bytes(BytesN::from_array(&env, &BEACON_PUBLIC_KEY));
-        let neg_g2 = G2Affine::from_bytes(BytesN::from_array(&env, &NEG_G2_GENERATOR));
+        let pk = Bls12381G2Affine::from_bytes(BytesN::from_array(&env, &BEACON_PUBLIC_KEY));
+        let neg_g2 = Bls12381G2Affine::from_bytes(BytesN::from_array(&env, &NEG_G2_GENERATOR));
 
         bls.pairing_check(
-            vec![&env, h, G1Affine::from_bytes(sig)],
+            vec![&env, h, Bls12381G1Affine::from_bytes(sig)],
             vec![&env, pk, neg_g2],
         )
     }

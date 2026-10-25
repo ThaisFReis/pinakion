@@ -82,6 +82,7 @@ The beacon key is pinned in the contract — there is no key to pass.
 
 ```
 THESIS.md      the root — the guarantee, who it is for, why Stellar
+PLAN.md        where the work stands and what happens next
 DESIGN.md      colours, type and the mark
 AGENTS.md      how to work here, short
 CLAUDE.md      how to work here, long

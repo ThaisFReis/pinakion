@@ -32,6 +32,8 @@ Every external fact this project relies on, and every piece of code copied in. A
 | 2026-10-25 | Jury no-show rates | Canada ≈ 1/5 · Philadelphia 36–42% · New Zealand ≈ 1/5 · Ireland 25,649 absences vs 20 fines in three years | — | CBC, Philadelphia Magazine, Otago Daily Times, Irish Daily Mail via PressReader |
 | 2026-10-25 | Kleros draws jurors randomly, weighted by PNK stake; runs on Arbitrum One | — | — | `docs.kleros.io` |
 | 2026-10-25 | Aragon Court drafted from an active pool weighted by stake; one 2023 paper reports under 50 disputes resolved | — | — | Aragon blog; Springer paper |
+| 2026-10-25 | drand signature must be decompressed off-chain for `verify` | 48 B compressed → 96 B `be(X)‖be(Y)` | py_ecc | `py_ecc.bls.point_compression.decompress_G1`; **verified** against round 33382274, whose decompressed signature verifies on testnet |
+| 2026-10-25 | Live demo path, end to end | round 33383146 verified on-chain (`true`), panel drawn and reproduced off-chain | — | **measured**, tx `bad41b10a5898ad6ace6a45228e42d4033309146f0ff5a6a2f3a4513ee4b48f4` |
 | 2026-10-25 | HackMeridian method: THESIS → SPEC → DESIGN, AGENTS.md for the how, public repo day 1, 3-minute demo in four parts | — | — | *Hackathon Speedrun SHIP*, Wlad Mendes, Stellar, 25 Oct 2026 |
 
 ## Checked and not found

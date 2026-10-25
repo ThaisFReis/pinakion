@@ -100,6 +100,7 @@ Not "because blockchain". Three specific things, each measured or read from sour
 ## What is not
 
 - The case lifecycle is designed (`docs/desenho-rol-sorteio-recusas.md`) and **not built**. Of the roster cycle, only enrol → lock → impede exists; renewal, contestation windows and the quorum arithmetic do not.
+- **The clerk can still exclude.** `impede` is discretionary after the lock; the substitute comes from the drawn order, but who is struck is the clerk's call. Each strike is a transaction with a name and a time — auditable, not prevented (`docs/avaliacao-genesis-unlocked.md`).
 - Nothing has been audited. Nothing has run on mainnet.
 - Below a roster of about sixteen the draw guarantees nothing, and the contract should refuse to operate rather than pretend (`docs/limite-inferior-do-rol.md`).
 

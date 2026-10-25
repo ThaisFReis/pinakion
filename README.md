@@ -122,5 +122,6 @@ The design is written down before it is built, and the documents say which is wh
 - [`docs/desenho-rol-sorteio-recusas.md`](docs/desenho-rol-sorteio-recusas.md) — the roster cycle, the quorum, the recusals, and the arithmetic of over-drawing
 - [`docs/desenho-sorteio-e-sigilo.md`](docs/desenho-sorteio-e-sigilo.md) — the draw and confidential case files
 - [`docs/limite-inferior-do-rol.md`](docs/limite-inferior-do-rol.md) — how small a community can be before sortition stops meaning anything
+- [`docs/avaliacao-genesis-unlocked.md`](docs/avaliacao-genesis-unlocked.md) — the project scored against the hackathon rubric, by its builder, with the objection a judge will raise
 
 Built for HackMeridian 2026.

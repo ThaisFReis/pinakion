@@ -110,7 +110,7 @@ Decided on 25 Oct, the clock set aside, so that the project fits *Stellar Unlock
 | 9 | T-029 `kleroterion`: enroll, lock, impede, draw_round over a classic asset | [#24](https://github.com/ThaisFReis/pinakion/pull/24) on `t-029-bilhete-como-ativo` | review — 22 tests written first |
 | 10 | T-030 the verifiers recompute the panel from the roster; fourth golden vector | [#25](https://github.com/ThaisFReis/pinakion/pull/25) on `t-030-verificadores-do-painel` | review |
 | 11 | T-031 the classic sequence on testnet, every hash in `docs/evidencia-testnet-bilhete.md` | [#26](https://github.com/ThaisFReis/pinakion/pull/26) on `t-031-sequencia-classica-na-testnet` | review — off-chain panel equals on-chain, address for address |
-| 12 | T-032 THESIS, README, DEMO, the page and this file say so | [#27](https://github.com/ThaisFReis/pinakion/pull/27) on `t-032-o-bilhete-em-todo-lugar` | review |
+| 12 | T-032 THESIS, README, DEMO, the page and this file say so; `docs/avaliacao-genesis-unlocked.md` scores the rubric and names the objection (Q-21) | [#27](https://github.com/ThaisFReis/pinakion/pull/27) on `t-032-o-bilhete-em-todo-lugar` | review |
 
 What it closes: INV-06's roster half (Q-15), INV-07, 08, 09; INV-11 and 12 are new. What it does not: the case lifecycle, roster renewal, `AUTH_IMMUTABLE`, costs of the new calls.
 

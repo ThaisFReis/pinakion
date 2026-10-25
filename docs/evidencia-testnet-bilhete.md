@@ -106,7 +106,10 @@ shuffles is the contract's enrolment list, not Horizon's.
 - One run, seven jurors, testnet. The roster minimum the design argues for
   is about sixteen (`docs/limite-inferior-do-rol.md`); seven is a demo size.
 - The jurors are identities on one machine. Nothing here shows a juror
-  refusing to sign, or a clerk acting against the roster's interest.
+  refusing to sign.
+- The clerk impeded one juror at will. Nothing stopped it, and nothing
+  would have stopped a second or a sixth: `impede` is discretionary, and
+  only the ledger record of each strike restrains it (Q-21).
 - `AUTH_IMMUTABLE` was not set, so the issuer's flags could in principle be
   changed — by an account that can no longer sign. Setting it would close
   even that door, and it is a one-line addition to step 1.

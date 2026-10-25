@@ -132,7 +132,7 @@ What to say while it runs, step by step:
 - **5 · master weight 0** — *the issuer just locked itself. Nobody can ever issue another ticket.* Open Horizon on the issuer: `master_weight: 0`.
 - **6 · enroll** — *the contract opens each juror's trustline itself and hands over the ticket.* Open `GET /accounts?asset=PINAKION:…`: the roster, readable by anyone.
 - **7 · lock** — *the roster is closed, and the first beacon round it may use is fixed from the ledger clock, not by us.*
-- **8 · impede** — *one juror is struck. The ticket stays, the seat does not.* Horizon shows `is_authorized: false`.
+- **8 · impede** — *one juror is struck. The ticket stays, the seat does not.* Horizon shows `is_authorized: false`. Then the sentence that pre-empts the objection: *the issuer cannot choose, the entropy cannot choose, the contract cannot choose; the clerk can still exclude — and every exclusion is a transaction with a name and a time.*
 - **9 · draw** — three addresses.
 - **10 · recompute** — the same three, from a script with no dependencies.
 

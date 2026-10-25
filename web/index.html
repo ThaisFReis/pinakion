@@ -1,0 +1,351 @@
+<meta charset="utf-8">
+<title>Sorteio a Portas Abertas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Public+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Documento de registro público: coluna única, três atos em sequência, números em grade tabular. */
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --fg: #16181d;
+    --muted: #5c6472;
+    --line: #d9dde4;
+    --accent: #1f4fa3;
+    --ok: #1a6b4a;
+    --bad: #9c2b2b;
+    --display: "Newsreader", Georgia, "Times New Roman", serif;
+    --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101216;
+      --surface: #171a20;
+      --fg: #e7e9ee;
+      --muted: #99a1b0;
+      --line: #2a2f38;
+      --accent: #7aa5f0;
+      --ok: #5fc394;
+      --bad: #e58a8a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101216;
+    --surface: #171a20;
+    --fg: #e7e9ee;
+    --muted: #99a1b0;
+    --line: #2a2f38;
+    --accent: #7aa5f0;
+    --ok: #5fc394;
+    --bad: #e58a8a;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 40px 64px;
+  }
+  .wrap { max-width: 68ch; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(2rem, 6vw, 2.9rem);
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lede { color: var(--muted); margin: 10px 0 0; max-width: 58ch; }
+  h2 {
+    font-family: var(--display);
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin: 0 0 4px;
+    text-wrap: balance;
+  }
+  .ato {
+    font-family: var(--body);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0;
+  }
+  p { margin: 0; }
+  .nota { color: var(--muted); font-size: 0.9rem; }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  section { display: flex; flex-direction: column; gap: 14px; }
+  .painel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .campos { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  label { display: flex; flex-direction: column; gap: 5px; font-size: 0.8rem; color: var(--muted); min-width: 0; }
+  input, textarea {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 8px 10px;
+    min-width: 0;
+  }
+  input[type="number"] { width: 7.5ch; }
+  #rodada { width: 13ch; }
+  textarea { width: 100%; resize: vertical; min-height: 64px; line-height: 1.5; }
+  button {
+    font-family: var(--body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    background: var(--accent);
+    color: #fff;
+    border: 0;
+    border-radius: 4px;
+    padding: 9px 16px;
+    cursor: pointer;
+  }
+  button.secundario { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  button:disabled { opacity: 0.5; cursor: progress; }
+
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; align-items: baseline; }
+  dt { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+  dd { margin: 0; font-family: var(--mono); font-size: 0.82rem; word-break: break-all; min-width: 0; }
+
+  .grade { display: flex; flex-wrap: wrap; gap: 6px; font-variant-numeric: tabular-nums; }
+  .grade span {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 3px 8px;
+  }
+  .grade.conferido span { border-color: var(--ok); color: var(--ok); }
+
+  .veredito { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-weight: 500; }
+  .selo {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    border: 1px solid currentColor; border-radius: 3px; padding: 2px 8px;
+  }
+  .ok { color: var(--ok); }
+  .bad { color: var(--bad); }
+
+  ol.receita { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 7px; font-size: 0.92rem; }
+  ol.receita code { font-family: var(--mono); font-size: 0.86em; }
+  footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.85rem; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+  footer a { word-break: break-all; }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Sorteio a portas abertas</h1>
+    <p class="lede">
+      O art. 433 do Código de Processo Penal manda sortear os jurados a portas abertas, para que
+      qualquer pessoa possa assistir. Esta página é a mesma coisa, depois do fato: ela recomputa,
+      no seu navegador, o painel que um contrato na Stellar sorteou — e você confere se bate.
+    </p>
+  </header>
+
+  <section>
+    <p class="ato">Ato um</p>
+    <h2>A rodada do beacon</h2>
+    <p class="nota">
+      A semente vem da drand, uma rede pública que publica um número imprevisível a cada três
+      segundos. Ninguém sabe o valor antes da hora — é isso que impede escolher o painel.
+    </p>
+    <div class="painel">
+      <div class="campos">
+        <label for="rodada">Rodada
+          <input id="rodada" type="text" inputmode="numeric" value="33380955">
+        </label>
+        <button id="buscar" type="button">Buscar na drand</button>
+        <button id="ultima" type="button" class="secundario">Usar a última</button>
+      </div>
+      <label for="assinatura">Assinatura (hex, 48 bytes) — cole aqui se preferir não usar a rede
+        <textarea id="assinatura" spellcheck="false">90543e0bd8b03bf6a8270c2d64b915c1f1734ad86e4b082ec7e4bd1366dcad6c9cb0fc12736d37b75979b91d76ed0df1</textarea>
+      </label>
+      <dl>
+        <dt>Semente</dt>
+        <dd id="semente">—</dd>
+      </dl>
+      <p class="nota" id="notaSemente">
+        A semente é o <code>sha256</code> da assinatura, calculado aqui no navegador. Não é preciso
+        confiar no que a API responde.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <p class="ato">Ato dois</p>
+    <h2>O sorteio</h2>
+    <p class="nota">
+      O rol de jurados é comprometido antes de a rodada existir. O painel sai do embaralhamento
+      daquele rol com a semente acima.
+    </p>
+    <div class="painel">
+      <div class="campos">
+        <label for="n">Tamanho do rol
+          <input id="n" type="number" min="2" max="5000" value="200">
+        </label>
+        <label for="k">Painel
+          <input id="k" type="number" min="1" max="200" value="25">
+        </label>
+        <button id="sortear" type="button">Recomputar o painel</button>
+      </div>
+      <div class="grade" id="painelSaida"></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="ato">Ato três</p>
+    <h2>A conferência</h2>
+    <p class="nota">
+      Cole o painel que saiu on-chain. Se os dois coincidirem, o sorteio foi honesto — e você
+      verificou sozinho, sem instalar nada.
+    </p>
+    <div class="painel">
+      <label for="esperado">Painel registrado on-chain
+        <textarea id="esperado" spellcheck="false">[146,187,57,172,113,46,106,152,12,124,56,193,101,99,88,169,63,167,108,135,18,197,148,97,73]</textarea>
+      </label>
+      <div class="veredito" id="veredito"></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="ato">Como funciona</p>
+    <h2>A receita, lida do host</h2>
+    <ol class="receita">
+      <li><code>chave = HMAC-SHA256(sal, semente)</code> — é o que <code>unbias_prng_seed</code> faz no Soroban.</li>
+      <li><code>ChaCha20Rng::from_seed(chave)</code>, do <code>rand_chacha</code> 0.3.1.</li>
+      <li>Fisher-Yates do <code>rand</code> 0.8.5, com índices por amostragem de Lemire com rejeição.</li>
+    </ol>
+    <p class="nota">
+      O sal é <code>sha256("Public Global Stellar Network ; September 2015")</code>. O comentário no
+      próprio código do Soroban diz que ele é parte do protocolo e precisa ser igual em todas as
+      implementações — por isso esta página consegue existir.
+    </p>
+  </section>
+
+  <footer>
+    <p>Exemplo em tela: rodada 33380955 da drand quicknet, sorteada pelo contrato
+      <code>CCLWP7WOESC46JLHKGASYQ5R7XKBHEBIJCKWT74R7GPO7P5ZW3N5PCGN</code> na testnet Stellar.</p>
+    <p><a href="https://stellar.expert/explorer/testnet/tx/dda87cc05c16beed6e2720f579990d15c79e46dd9dc9f920b24917e8e1d87d65">Transação do sorteio</a> ·
+       <a href="https://stellar.expert/explorer/testnet/tx/9de197478cd68e93a1f2d7a16c9b3f997580584239c0e5e83fddc0c322a2238d">Transação da verificação do beacon</a></p>
+  </footer>
+</div>
+
+<script type="module">
+  import { sortear, aleatoriedadeDaAssinatura } from "./sorteio.mjs";
+
+  const CHAIN = "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971";
+  const $ = (id) => document.getElementById(id);
+  let semente = null;
+
+  function parseEsperado(txt) {
+    const nums = txt.match(/\d+/g);
+    return nums ? nums.map(Number) : null;
+  }
+
+  async function atualizarSemente() {
+    const sig = $("assinatura").value.trim();
+    if (!/^[0-9a-fA-F]{96}$/.test(sig)) {
+      semente = null;
+      $("semente").textContent = "assinatura precisa ter 96 caracteres hex";
+      return false;
+    }
+    semente = await aleatoriedadeDaAssinatura(sig);
+    $("semente").textContent = semente;
+    return true;
+  }
+
+  async function recomputar() {
+    if (!(await atualizarSemente())) return;
+    const n = Math.max(2, Math.min(5000, Number($("n").value) || 2));
+    const k = Math.max(1, Math.min(n, Number($("k").value) || 1));
+    const painel = await sortear(semente, n, k);
+
+    const esperado = parseEsperado($("esperado").value);
+    const bate = esperado && esperado.length === painel.length &&
+                 esperado.every((v, i) => v === painel[i]);
+
+    const saida = $("painelSaida");
+    saida.textContent = "";
+    saida.className = "grade" + (bate ? " conferido" : "");
+    for (const v of painel) {
+      const el = document.createElement("span");
+      el.textContent = v;
+      saida.appendChild(el);
+    }
+
+    const ver = $("veredito");
+    ver.textContent = "";
+    if (!esperado || !esperado.length) {
+      ver.innerHTML = '<span class="nota">Cole um painel acima para conferir.</span>';
+      return;
+    }
+    const selo = document.createElement("span");
+    selo.className = "selo " + (bate ? "ok" : "bad");
+    selo.textContent = bate ? "confere" : "não confere";
+    const txt = document.createElement("span");
+    txt.className = bate ? "ok" : "bad";
+    txt.textContent = bate
+      ? "O painel recomputado é idêntico ao registrado on-chain."
+      : "Os painéis divergem. Verifique a rodada, o tamanho do rol e o painel colado.";
+    ver.append(selo, txt);
+  }
+
+  async function buscar(rodada) {
+    const btns = [$("buscar"), $("ultima")];
+    btns.forEach((b) => (b.disabled = true));
+    $("notaSemente").textContent = "Consultando a drand…";
+    try {
+      const url = `https://api.drand.sh/${CHAIN}/public/${rodada}`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error("rodada não encontrada");
+      const d = await r.json();
+      $("rodada").value = d.round;
+      $("assinatura").value = d.signature;
+      await recomputar();
+      const conferiu = semente === d.randomness;
+      $("notaSemente").textContent = conferiu
+        ? "A semente que calculei aqui bate com a que a drand publicou."
+        : "A semente calculada aqui NÃO bate com a publicada pela drand.";
+    } catch (e) {
+      $("notaSemente").textContent =
+        "Não consegui falar com a drand. Cole a assinatura da rodada no campo acima.";
+    } finally {
+      btns.forEach((b) => (b.disabled = false));
+    }
+  }
+
+  $("buscar").addEventListener("click", () => buscar($("rodada").value.trim() || "latest"));
+  $("ultima").addEventListener("click", () => buscar("latest"));
+  $("sortear").addEventListener("click", recomputar);
+  for (const id of ["assinatura", "n", "k", "esperado"]) {
+    $(id).addEventListener("input", recomputar);
+  }
+
+  recomputar();
+</script>

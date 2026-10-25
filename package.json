@@ -1,0 +1,10 @@
+{
+  "name": "pinakion",
+  "version": "0.1.0",
+  "description": "Verifiable jury selection for governance on Stellar.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"no JS test yet — see docs/SPEC.md T-006\" && exit 1"
+  }
+}

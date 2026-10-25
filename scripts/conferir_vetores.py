@@ -17,18 +17,22 @@ import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from verificar_sorteio import sortear  # noqa: E402
+from verificar_sorteio import painel, sortear  # noqa: E402
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 VETORES = RAIZ / "tests" / "vetores-de-ouro.json"
-TESTE_RUST = RAIZ / "contracts" / "beacon-verifier" / "src" / "test.rs"
+TESTES_RUST = [
+    RAIZ / "contracts" / "beacon-verifier" / "src" / "test.rs",
+    RAIZ / "contracts" / "kleroterion" / "src" / "test.rs",
+]
 
 
 def paineis_do_teste_rust(fonte):
-    """Every `let esperado_x: [u32; N] = [ ... ];` in the Rust test file."""
+    """Every `let esperado_x: [u32; N] = [ ... ];` in a Rust test file, plus
+    kleroterion's `const ORDEM_DE_OURO`, which is the small-roster vector."""
     achados = []
     for corpo in re.findall(
-        r"let esperado_\w+: \[u32; \d+\] = \[(.*?)\];", fonte, re.S
+        r"(?:let esperado_\w+|const ORDEM_DE_OURO): \[u32; \d+\] = \[(.*?)\];", fonte, re.S
     ):
         achados.append([int(n) for n in re.findall(r"\d+", corpo)])
     return achados
@@ -40,7 +44,10 @@ def main():
     falhas = 0
 
     for v in vetores:
-        obtido = sortear(v["semente"], v["n"], v["k"])
+        if "rol" in v:
+            obtido = painel(v["semente"], v["rol"], v["inelegiveis"], v["k"])
+        else:
+            obtido = sortear(v["semente"], v["n"], v["k"])
         if obtido == v["painel"]:
             print(f"  ok    {v['nome']}")
         else:
@@ -49,15 +56,27 @@ def main():
             print(f"        esperado {v['painel']}")
             print(f"        obtido   {obtido}")
 
-    esperados_rust = paineis_do_teste_rust(TESTE_RUST.read_text())
-    nossos = [v["painel"] for v in vetores]
-    if esperados_rust == nossos:
-        print(f"  ok    os mesmos {len(nossos)} painéis estão em test.rs")
-    else:
-        falhas += 1
-        print("  FALHA os vetores divergiram do test.rs")
-        print(f"        test.rs {esperados_rust}")
-        print(f"        json    {nossos}")
+    nossos = [v["painel"] for v in vetores if "rol" not in v]
+    enderecos = [v for v in vetores if "rol" in v]
+    for teste in TESTES_RUST:
+        fonte = teste.read_text()
+        esperados_rust = paineis_do_teste_rust(fonte)
+        nome = teste.relative_to(RAIZ)
+        if sorted(esperados_rust) == sorted(nossos):
+            print(f"  ok    os mesmos {len(nossos)} painéis estão em {nome}")
+        else:
+            falhas += 1
+            print(f"  FALHA os vetores divergiram de {nome}")
+            print(f"        rust {esperados_rust}")
+            print(f"        json {nossos}")
+        if "kleroterion" in str(teste):
+            for v in enderecos:
+                faltam = [a for a in v["rol"] + v["painel"] if a not in fonte]
+                if faltam:
+                    falhas += 1
+                    print(f"  FALHA enderecos do vetor ausentes de {nome}: {faltam}")
+                else:
+                    print(f"  ok    os enderecos do vetor estão em {nome}")
 
     if falhas:
         print(f"\n{falhas} falha(s).")

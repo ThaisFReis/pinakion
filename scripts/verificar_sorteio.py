@@ -72,5 +72,16 @@ def sortear(seed_hex, n, k):
     shuffle(roll, rng)
     return roll[:k]
 
+def painel(seed_hex, rol, inelegiveis, k):
+    """O painel do kleroterion: embaralha a ordem do rol inteiro e senta os `k`
+    primeiros que não estão em `inelegiveis` (impedidos ou sem bilhete).
+    Não há novo sorteio para substituir: o substituto é o próximo da ordem."""
+    fora = set(inelegiveis)
+    ordem = sortear(seed_hex, len(rol), len(rol))
+    sentados = [rol[i] for i in ordem if rol[i] not in fora]
+    if len(sentados) < k:
+        raise ValueError(f"so {len(sentados)} elegiveis para {k} assentos")
+    return sentados[:k]
+
 if __name__ == "__main__":
     print(sortear(sys.argv[1], int(sys.argv[2]), int(sys.argv[3])))

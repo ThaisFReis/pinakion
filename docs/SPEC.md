@@ -249,10 +249,12 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 | T-013 | Public repository | T-011, T-015 | §11 Q-04 | review | Live at [github.com/ThaisFReis/pinakion](https://github.com/ThaisFReis/pinakion), public, MIT, one clean commit on `main` |
 | T-014 | Spec tasks become issues | T-013 | §9 | review | Eight issues open, one per task still to do. Owners not yet assigned |
 | T-015 | Rewrite `README.md` | T-010 | §2 | review | Opens with the one-liner; how to run it; every claim traced to §2; limits stated before the instructions |
-| T-016 | Write the demo path and record the video ([#8](https://github.com/ThaisFReis/pinakion/issues/8)) | T-012, T-015 | §2 | todo | One flow, live on testnet, with the video as backup. 3 minutes in the deck's four parts |
+| T-016 | Write the demo path and record the video ([#8](https://github.com/ThaisFReis/pinakion/issues/8)) | T-012, T-015 | §2 | review | `docs/DEMO.md`: one live path, proven end to end on 2026-10-25, plus the 3-minute script in the deck's four parts and the limits to state out loud. **The recording itself is still to do.** |
 | T-018 | Write `PLAN.md`, the progress board | T-014 | §8, §9, §11 | review | Phases ordered by the clock; branch and PR state; what is out of scope before the ship date; §9 stays the authority on acceptance criteria (DEC-006) |
 
 | T-019 | Put the git record in English | T-018 | §0, §11 Q-08 | review | Commits not yet on `main` rewritten in English; PR titles and bodies in English; the convention recorded in §0 and DEC-007 |
+
+| T-020 | Make the live round reproducible | T-007 | §5, §7 | review | `scripts/rodada.py` fetches a round and decompresses its G1 signature to the `BytesN<96>` the contract takes; without it the headline demo cannot be reproduced from the repository |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
@@ -284,14 +286,6 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Alternatives:** A settable key behind an admin — rejected: it reintroduces the same party with an extra step. A set of accepted keys — rejected as unneeded complexity before a second beacon exists.
 **Consequences:** The contract trusts exactly one drand chain. A quicknet group-key rotation is a new chain with a new hash and requires a new contract; changing the key without changing the contract is precisely the power this pinning removes. Verification cost rose by 887 instructions, the constant being loaded rather than passed. INV-10 is now enforced; §7 and Q-05 updated. `beacon()` is a new public function and §5 declares no frozen interface yet.
 
-### DEC-006: A separate `PLAN.md` for order and state (2026-10-25, post-T-014)
-**Context:** §9 holds both the acceptance criteria and the status of every task, plus the event's deliverables. Reading it to answer "what is next, and what is waiting on whom" means reading three tables and two prose paragraphs, and the branch and PR state is not in it at all.
-**Decision:** `PLAN.md` at the root carries the order, the phases, the branch and PR state, and what is deliberately out of scope before the ship date. §9 keeps the acceptance criteria and remains the authority on them.
-**Alternatives:** Keeping everything in §9 — rejected: the file a human checks hourly during an event should not be the file that also defines correctness. Generating `PLAN.md` from §9 — rejected: no generator exists and writing one before the video is the wrong order.
-**Consequences:** Two files state task status, which can drift. `PLAN.md` states the rule for that: where the two disagree about criteria, the spec wins and `PLAN.md` is stale. Fixed the §0 table, which still listed `THESIS.md`, `DESIGN.md` and `AGENTS.md` as missing after T-010 to T-012 wrote them.
-
----
-
 ### DEC-005: Civic editorial identity for all governance audiences (2026-10-25, T-017)
 **Context:** The human requested a stronger design focused on what governance should convey, avoiding crypto clichés, and specified that all listed audiences matter.
 **Decision:** Use the stone/patina palette and serif/sans/data type roles in an editorial layout. Lead with procedure and people. Place the working comparison, its evidence and its limitations together. Put technical inputs behind native disclosure controls. A matching result describes agreement with the supplied data.
@@ -299,12 +293,25 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Consequences:** T-017 includes hierarchy and copy presentation as authorised in the conversation; general approval in §0 remains pending. No contract or independent algorithm change. The page is a local preview, not a public deployment. Empty signature input clears the previous result so an obsolete success state is not displayed.
 **Validation (observed 2026-10-25):** G1–G4 passed with their §8 commands, including 12 Rust tests. G5 fails as the placeholder `docs/SPEC.md` §8 declares, which T-006 replaces — an earlier note here said `npm` was absent from PATH; it is present (v24.14.1, via nvm) and the failure is the declared one, not a missing tool. Browser checks at 800px and 375px, light and dark: the documented panel recomputes and matches, a deliberately altered panel is refused, no console errors, no horizontal overflow. These checks do not replace T-006 or establish new contract guarantees.
 
+---
+
+### DEC-006: A separate `PLAN.md` for order and state (2026-10-25, post-T-014)
+**Context:** §9 holds both the acceptance criteria and the status of every task, plus the event's deliverables. Reading it to answer "what is next, and what is waiting on whom" means reading three tables and two prose paragraphs, and the branch and PR state is not in it at all.
+**Decision:** `PLAN.md` at the root carries the order, the phases, the branch and PR state, and what is deliberately out of scope before the ship date. §9 keeps the acceptance criteria and remains the authority on them.
+**Alternatives:** Keeping everything in §9 — rejected: the file a human checks hourly during an event should not be the file that also defines correctness. Generating `PLAN.md` from §9 — rejected: no generator exists and writing one before the video is the wrong order.
+**Consequences:** Two files state task status, which can drift. `PLAN.md` states the rule for that: where the two disagree about criteria, the spec wins and `PLAN.md` is stale. Fixed the §0 table, which still listed `THESIS.md`, `DESIGN.md` and `AGENTS.md` as missing after T-010 to T-012 wrote them.
+
 ### DEC-007: Git is written in English (2026-10-25, T-019)
 **Context:** The conversation runs in Portuguese and the commit messages followed it, as did two PR bodies. The repository is public and read by people who do not read Portuguese; the history and the PR record are part of what they see.
 **Decision:** Every commit message and every pull request title and body is written in English. The language of the conversation does not decide the language of the repository's git record.
 **Alternatives:** Bilingual messages — rejected as noise. Leaving it to each commit — rejected: that is how the inconsistency arose.
 **Consequences:** Five Portuguese commits that had not reached `main` were rewritten in English on a fresh branch, giving the same tree in three commits instead of seven. Two Portuguese commits are already on `main` (`ca738dc`, `f0048e2`) and are left alone, because rewriting published history on a public default branch is the human's call, not the agent's. The merged PR bodies of #11 and #12 are part of the public record and were rewritten in place. Q-08 is now partly answered; the prose documents remain mixed.
 
+### DEC-008: A second script, with a dependency (2026-10-25, T-020)
+**Context:** `verify` takes the signature as `BytesN<96>` — the G1 point uncompressed. drand publishes 48 compressed bytes. The decompression existed only as throwaway code in a conversation and as hard-coded arrays in the test file, so the project's headline claim — *a live drand round verifies on Stellar* — could not be reproduced by anyone reading the repository.
+**Decision:** Add `scripts/rodada.py`, which fetches a round and prints the uncompressed signature ready for the CLI. It depends on `py_ecc`.
+**Alternatives:** Implementing BLS12-381 decompression by hand to keep the zero-dependency rule — rejected for now: it is a square root in F_p with a sign rule, and getting it subtly wrong would produce a point that simply fails the pairing, which looks like a broken demo rather than a broken script. Worth doing later. Decompressing in the contract — rejected: it would spend CPU on something that is safe to do outside, since a wrong point fails the pairing anyway.
+**Consequences:** `scripts/verificar_sorteio.py` keeps its zero-dependency promise and is still the one that matters for the guarantee; `rodada.py` is a convenience for the demo and says so. The repository now has an optional Python dependency, declared in `docs/DEMO.md` and §6.
 ### DEC-009: One file of golden vectors, three implementations (2026-10-25, T-005/T-006)
 **Context:** INV-04 says the contract and the off-chain recomputations agree. Until now that was asserted only from the Rust side, with the numbers hard-coded in `test.rs`; the Python verifier was checked by hand and the JavaScript one was validated outside the repository.
 **Decision:** `tests/vetores-de-ouro.json` is the one set of numbers. G6 runs the Python verifier against it, `npm test` runs the JavaScript one, and G6 additionally parses `test.rs` and fails if its asserted panels and the JSON have diverged.

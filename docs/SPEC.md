@@ -50,6 +50,7 @@ The guarantee, in one sentence: *nobody chooses who judges you.*
 - Not a DAO, not a governance application, not a wallet. It is a module an existing governance calls.
 - Does not decide who may be on the roster, what the panel decides, or what follows from the decision.
 - Does not provide due process over asset clawback. That was the withdrawn generation.
+- Does not count votes, run a ballot or deliberate (that is the author's earlier module, Tessera, which Pinakion feeds — DEC-019); does not model a case, a reviewer or a verdict. Plan B (DEC-015) adds *who sits is sealed until the verdict and public afterwards*; it never adds *how the panel votes*.
 
 ---
 
@@ -65,8 +66,12 @@ A claim appears in a document, README or UI only if it is listed here with its e
 | One beacon verification costs 26,719,483 CPU instructions and 161,818 memory bytes | measured via `env.cost_estimate().budget()` in `contracts/beacon-verifier/src/test.rs`; test-host figure, **not** a figure from a testnet transaction |
 | The draw is recomputable off-chain by an independent implementation | `scripts/verificar_sorteio.py` and `web/sorteio.mjs` reproduce the on-chain panel; locked by golden vectors in `bate_com_a_recomputacao_fora_da_cadeia` |
 | `randomness = sha256(signature)` for drand quicknet | verified against live rounds; test `aleatoriedade_e_sha256_da_assinatura` |
+| The roster is a classic asset frozen by a locked issuer; the contract created each trustline through SAC `trust` | txs `b104d57e…` (flags), `7f9279a7…` (admin to the contract), `77808909…` (master weight 0), seven `enroll` txs; `docs/evidencia-testnet-bilhete.md` |
+| `lock()` fixes the minimum beacon round from the ledger clock, not from the caller | tx `8a98bcf6…` → `rodada_minima 33385833` from `tempo 1792960862`; tests `rodada_minima_vem_do_fechamento`, `sorteio_com_rodada_anterior_ao_fechamento_e_recusado` |
+| An impeded juror is skipped and the next in the drawn order sits; the off-chain panel equals the on-chain one, address for address | txs `c1a2f592…`, `fc4a5f93…`; `scripts/verificar_painel.py`; golden vector 4 |
+| Verifying a drand round on Soroban was done before this project | `AshFrancis/splicers`, `NibrasD/Stellar-VRF` — stated wherever the beacon is claimed |
 
-**Must not claim** (no evidence today): secure, audited, production-ready, trustless, unbiasable. The entropy source is trusted (§7), the contract is unaudited, and nothing has run on mainnet.
+**Must not claim** (no evidence today): secure, audited, production-ready, trustless, unbiasable. Under Plan B (DEC-015), also never *anonymous* — the word is *indistinguishable within the panel of k* — and never *full recomputation*: the panel is recomputable **among those who revealed**, and the silence of those who did not is itself on the ledger. Nothing from Plan B may be claimed until it runs on testnet (T-033 to T-042 are `todo`). The entropy source is trusted (§7), the contract is unaudited, and nothing has run on mainnet.
 
 **Also must not claim**: *first*, *only*, or *novel* for verifying a drand signature on Soroban. Two Stellar projects already do it — `AshFrancis/splicers` (CAP-0059, same DST, 1st place at `scaffoldstellar`) and `NibrasD/Stellar-VRF` (SCF #44, $50,000) — logged in `docs/SOURCES.md` on 2026-10-25. What is unclaimed by either is the **sortition**: a panel drawn from a roster committed before the case, with the beacon key as a compile-time constant and three independent recomputations locked to golden vectors. Claim that, and say what came before.
 
@@ -88,11 +93,30 @@ A claim appears in a document, README or UI only if it is listed here with its e
       independent recomputation, no deps                       the same recomputation, in a browser
 ```
 
+### The ticket (T-029)
+
+```
+  court / clerk (escrivão)                   juror (G- or C-address)
+      │ enroll(juror)                              │ signs (opt-in)
+      ▼                                            ▼
+  kleroterion (Soroban) ── SAC: trust · set_authorized(true) · mint 1 ──► PINAKION trustline
+      │ lock()        ──► ledger, timestamp, minimum drand round; no enrol after
+      │ impede(juror) ──► SAC: set_authorized(false)            (recusal, art. 463)
+      │ draw_round(round, sig, k)
+      │    verify (CAP-59) → randomness → shuffle (host PRNG) → order
+      │    panel = first k of the order with SAC authorized() and balance ≥ 1
+      ▼
+  panel (addresses)             any Horizon: GET /accounts?asset=PINAKION:issuer
+```
+
+The issuer account sets `AUTH_REQUIRED` and `AUTH_REVOCABLE`, hands the SAC admin to the contract, and then sets its master weight to 0. After that no ticket can be issued or authorized except by the contract, which has no upgrade path and refuses enrolment after `lock()`.
+
 ### Components observed
 
 | Path | What it is |
 |---|---|
 | `contracts/beacon-verifier/` | Soroban contract: `verify`, `randomness`, `draw` |
+| `contracts/kleroterion/` | Soroban contract (T-029): the roster as a classic asset — `enroll`, `lock`, `impede`, `draw_round`; carries its own copy of `verify`/`randomness`/`draw` |
 | `scripts/verificar_sorteio.py` | independent recomputation of the draw, no dependencies |
 | `web/sorteio.mjs` | the same recomputation, for browser and Node |
 | `web/index.html` | page that fetches a round and checks a panel |
@@ -117,11 +141,19 @@ Numbered; each with the test that enforces it, or marked `[proposed]` where noth
 | INV-03 | A panel never repeats a position | `sorteio_sem_repeticao` |
 | INV-04 | The on-chain panel equals the independent off-chain recomputation | `bate_com_a_recomputacao_fora_da_cadeia` (golden vectors) |
 | INV-05 | `randomness = sha256(signature)` | `aleatoriedade_e_sha256_da_assinatura` |
-| INV-06 | No draw uses a beacon round earlier than the roster's definitive ledger | **half enforced** by `draw_round` (T-026): the contract refuses a round below the minimum it is given. That the minimum *is* the roster's cannot be checked without a roster contract — see §11 Q-15 |
-| INV-07 | The attendance count never decreases because of an impediment (art. 463 §2) | `[proposed]` |
-| INV-08 | A substitute always comes from the already-drawn order; there is no re-draw for substitution | `[proposed]` |
-| INV-09 | The contract refuses to operate below the minimum roster size | `[proposed]` |
+| INV-06 | No draw uses a beacon round earlier than the roster's definitive ledger | `draw_round` (T-026) against a caller-given minimum in `beacon-verifier`; **fully** in `kleroterion` (T-029), where the minimum is computed at `lock()` from the ledger timestamp and is not a parameter: `rodada_minima_vem_do_fechamento`, `sorteio_com_rodada_anterior_ao_fechamento_e_recusado` |
+| INV-07 | The attendance count never decreases because of an impediment (art. 463 §2) | `impedido_e_substituido_e_o_painel_fica_do_mesmo_tamanho` (T-029) |
+| INV-08 | A substitute always comes from the already-drawn order; there is no re-draw for substitution | `impedido_e_substituido_e_o_painel_fica_do_mesmo_tamanho`, `substituto_e_o_proximo_da_ordem` (T-029) |
+| INV-09 | The contract refuses to operate below the minimum roster size | `fechar_abaixo_do_minimo_e_recusado` (T-029) |
 | INV-10 | The beacon public key is a pinned constant, not a parameter | `assinatura_de_outra_chave_nao_verifica`, `a_chave_do_beacon_nao_e_parametro` |
+| INV-11 | The roster is committed before the case: after `lock()` nothing can be enrolled, and the issuer cannot mint or authorize once its master weight is 0 | `inscrever_depois_de_fechar_e_recusado` (T-029); the issuer half is a classic ledger fact, proven on testnet in T-031 |
+| INV-12 | A juror sits only with ticket in hand and authorization on: `balance ≥ 1` and SAC `authorized()` at draw time | `sem_bilhete_nao_senta`, `impedido_e_substituido_e_o_painel_fica_do_mesmo_tamanho` (T-029) |
+| INV-13 | The beacon round is fixed at `lock()` from the ledger clock and `seal` accepts that round once; no caller chooses a round and no second draw exists | `[proposed]` — T-033. Today `draw_round` accepts any round ≥ minimum and stores nothing |
+| INV-14 | Nothing changes in the roster after `lock()`: no `enroll`, no `impede` | `[proposed]` — T-033 (Q-21 closes with it) |
+| INV-15 | A seat is claimed only with a valid proof against the root and seed the contract holds; one `y` per leaf per seed, so at most one seat per juror | `[proposed]` — T-037, T-038 |
+| INV-16 | The panel is immutable after `finalize()`; `reveal` is evidence, never a correction | `[proposed]` — T-038 |
+| INV-17 | No event links a `y` to a G-address before `reveal`; a commitment `c` is never accepted twice, in any lock | `[proposed]` — T-035, T-038 |
+| INV-04′ | Under Plan B, INV-04 splits: each seat is verifiable at `claim`; the panel is recomputable **among those who revealed**, and the non-revealers are listed by address | `[proposed]` — T-039 golden vectors |
 
 ---
 
@@ -135,6 +167,7 @@ The beacon recipe is not ours to choose. It is fixed by drand and by the Soroban
 - DST = `BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_NUL_`
 - seed derivation = `HMAC-SHA256(SALT, seed)`, `SALT = sha256("Public Global Stellar Network ; September 2015")`
 - shuffle = Fisher-Yates of `rand` 0.8.5 over `ChaCha20Rng` of `rand_chacha` 0.3.1
+- quicknet genesis = `1692803367`, period = `3` s; round `r` is published at `genesis + (r-1)·period`; the minimum round after a lock at time `t` is `⌊(t−genesis)/period⌋ + 2`, the first round published strictly after `t` (checked 2026-10-25 against `api.drand.sh/<chain>/info`)
 
 Changing any of these breaks every off-chain verifier. A change requires a DEC and regenerated golden vectors.
 
@@ -269,6 +302,32 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 
 | T-028 | Read the event's own rules and settle the submission path | T-009 | §9, §11 Q-11 | review | The paths, the Genesis-only tracks, the rubric and its weights, the deadline and the prize terms read from `hackmeridian.com/build` and the portal MCP, logged in `docs/SOURCES.md` with both conflicts named. Q-11 answered, then superseded by the human on the same day: the path is **Genesis** with the **Stellar Unlocked** track (DEC-013). The Genesis requirements, the Unlocked wording and its four idea starters, the Genesis weights, and what the contract actually calls against them, all logged in `docs/SOURCES.md`. Q-16 moot; Q-17 opened for the one unknown. No code touched |
 
+### The ticket as an asset — fitting *Stellar Unlocked* (DEC-014)
+
+| ID | Title | Deps | Reads | Status | Acceptance criteria |
+|---|---|---|---|---|---|
+| T-029 | `kleroterion`: the roster as a classic asset | T-026, T-028 | §3, §4 INV-06..12, §5, DEC-014 | review | New contract. `enroll` creates the trustline through SAC `trust`, authorizes and mints one ticket; `lock` records ledger and timestamp, computes the minimum round and refuses below the roster minimum; `impede` revokes authorization; `draw_round` refuses before lock and below the minimum, verifies the beacon, shuffles the roster order and seats the first `k` with ticket and authorization. Golden vectors still match. All tests written first and seen failing |
+| T-030 | Verifiers recompute the panel from the roster | T-029 | §3 B-01, B-02, §5 | review | `scripts/verificar_painel.py` and `web/sorteio.mjs` take the ordered roster, the impeded set and `k`, and return the same panel as the contract; a fourth golden vector with addresses; G5 and G6 cover it |
+| T-031 | The classic sequence on testnet | T-029 | §7, DEC-014 | review | Issuer with `AUTH_REQUIRED`+`AUTH_REVOCABLE`, SAC admin handed to the contract, master weight set to 0; seven jurors enrolled, lock, one impediment, one draw; every hash in `docs/evidencia-testnet-bilhete.md`; Horizon `/accounts?asset=` shows the roster; the sort key of that endpoint recorded (the `[VERIFY]` in `docs/SOURCES.md`) |
+| T-032 | Say it everywhere the ticket is an asset | T-029 | §0, §2 | review | `THESIS.md`, `README.md`, the landing and `docs/DEMO.md` describe the ticket, the lock and the two Unlocked bullets it answers; every claim traced to §2; no *first*/*novel* |
+
+### M1 — Plan B: sealed sortition, public after the verdict (DEC-015)
+
+The plan is written up in full, ordered from most to least important, in the doc *Pinakion — Plano B: sortição selada* (https://claude.ai/artifact/9WDXFX9eSJWjhWUdRmrh2N, 2026-10-25); this board holds the acceptance criteria. Estimated at about 10 days of work (an estimate, not a measurement); the hacking window closes 2026-10-26 12:00, so M1 does not ship in this submission — the submission says it is designed and not built. **Kill criterion:** without one proof of our circuit verified on testnet within budget at the end of T-034, M1 stops and the product is the open draw with T-033 only.
+
+| ID | Title | Deps | Reads | Status | Acceptance criteria |
+|---|---|---|---|---|---|
+| T-033 | Close the two doors | T-029 | §4 INV-13, INV-14, §11 Q-21 | todo | `lock(k, reveal_after)` computes and stores the target drand round (first round published strictly after the ledger time, plus a margin ≥ 10 rounds) and refuses `N < k`; `enroll` and `impede` refused after lock; `draw_round` deleted from `kleroterion` (the open draw stays in `beacon-verifier`); tests written first and seen failing; G1–G7 green |
+| T-034 | Spike kill-or-go: Poseidon compatibility and one proof on testnet | T-033 | §11 Q-22, Q-09 | todo | ≥ 20 Poseidon(1)/Poseidon(2) vectors from circomlib JS match the contract's sponge over the host permutation (CAP-75); the ported BN254 verifier verifies one proof of the current circuit **on testnet**, cost measured and recorded with the tx hash; the per-tx CPU ceiling checked at `developers.stellar.org` and logged; a DEC records go or kill |
+| T-035 | Juror commitment and Poseidon tree | T-034 | §3, §4 INV-17, §5 | todo | `enroll(juror, c)` keeps today's SAC path and stores `c` bound to the address; duplicate `c` in a lock and any `c` seen in a previous lock (`used_c`) refused; Merkle tree of depth 6 over authorized holders built by the contract, never a posted root; root frozen at `lock` with `N`, round and `reveal_after`; root recomputed in Python and JS from events for N ∈ {1, 2, 17, 64} with one `impede` before lock |
+| T-036 | Circuit and Groth16 setup | T-034 | §5, DEC-017 | todo | `pinakion_claim.circom` ported from the author's 2026-10-25 `role_membership.circom`: public `[root, seed, y, claimer]`, private `s` + path, depth 6, `y = Poseidon(seed, s)`; public ptau 2^12, single-party phase 2 with published transcript, `vk` exported; CLI `pinakion prove` on snarkjs; negatives (wrong root/seed/claimer) rejected; origin logged in `docs/SOURCES.md` *Copied code* |
+| T-037 | On-chain verifier | T-036 | §3 B-01, §5, §8 | todo | The 2026-10-25 BN254 Groth16 verifier ported as a separate contract with the new `vk`; `kleroterion` assembles the public inputs itself (`root`, `seed` from state, `claimer = SHA-256(address) >> 8`); valid proof passes, one altered byte fails, swapped inputs fail; cost asserted in `test.rs` as today's costs are (G7) |
+| T-038 | `seal`, `claim`, `finalize`, `reveal`, `recuse` | T-035, T-037 | §3, §4 INV-15..17 | todo | `seal(sig)` verifies the stored round once and fixes `seed` and `T = ⌊p·2k/N⌋`; `claim(proof, y)` from a seat account: `y < T`, `y` unseen, ordered insert; `finalize` seats the `k` smallest `y`, widens to `T := p` once if fewer than `k`, then records *incomplete*; `reveal(s)` after `reveal_after` checks `Poseidon(s) = c` and `Poseidon(seed, s) = y`; `recuse` public, before `finalize`, by the main account; no event carries a G-address beside a `y` before reveal; full flow in a unit test with N = 8, k = 3, one non-claimant, one non-revealer |
+| T-039 | Independent recomputation and golden vectors | T-038 | §3 B-02, §4 INV-04′, §8 | todo | `scripts/verificar_painel.py` and `web/sorteio.mjs` read only the ledger and drand, recompute root, every revealed `y`, the order and the panel, and print *seated · revealed · not revealed · drawn-absent* plus match/mismatch; new vectors in `tests/vetores-de-ouro.json` (N = 8, k = 3); altering a `y` turns G5 and G6 red; Fisher-Yates vectors stay with `beacon-verifier` |
+| T-040 | Testnet sequence and measured costs | T-038, T-039 | §7, §8 | todo | `scripts/sequencia_bilhete.sh` runs issuer (with `AUTH_IMMUTABLE` set before weight 0) → 20 enrolls with commitments → one impede → lock → seal with a live drand round → claims from friendbot seat accounts, one duplicate refused → finalize → 18 reveals → one recuse → verifier output; a cost table per operation from the transactions' consumed resources, produced by a §8 command; `docs/evidencia-testnet-bilhete.md` rewritten with the new hashes |
+| T-041 | Thesis, spec, README, claims | T-033 | §0, §1, §2, §4, §11 | todo | `THESIS.md` carries the three-clause guarantee, one user (OSS project with a code of conduct; Rust 2021 lead), Athens corrected to *Ath. Pol.* 63–65 (two lots, no choosing — no claim of secrecy), the fourth *why Stellar* (CAP-74/75); the "regulated issuer" row removed; `README.md` first page states single-party setup, relayer, loss of `s`, reveal completeness, off-chain deliberation breaks the seal, testnet only; *Related work* names Tessera as the author's prior and complementary module; *Prior work* dates the ported code; G7 green; no word forbidden by §2 |
+| T-042 | Ticket page, Tessera export, submission text | T-039, T-041 | §2, `DESIGN.md` | todo | `web/` shows per person *enrolled · recused · seated · revealed · silent* with tx hashes, root, round, `seed`, `T`, read-only; README links stellar.expert and Horizon `/accounts?asset=`; seat-account list exported in Tessera's voter format (`[VERIFY: --aptos format]`); submission text follows the spine problem → user → what → why Stellar → what is not done |
+
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
 ---
@@ -357,6 +416,42 @@ Decision: the submission is Genesis + Stellar Unlocked. The Unlocked case is tha
 Alternatives: Scale, rejected because its first criterion cannot be evidenced (Q-16). *Stellar Composed*, rejected because the project composes no second ecosystem tool or project — it depends on drand, which is not a Stellar project. Entering both tracks, rejected for the same reason.
 Consequences: the rubric that applies is the Genesis one (Track Alignment 20%, User Value & Problem 20%, Technical Execution 15%, Innovation 15%, Hackathon Progress 10%, Market & Ecosystem Potential 10%, Product Design & UX 10%). §9 T-028 restated; Q-11 superseded; Q-16 moot; Q-17 opened for the one thing this repository cannot check — whether the organiser allows the switch. No claim of ZK, of BN254 or of Poseidon may appear anywhere: §2 forbids it and the code does not do it.
 
+### DEC-014: The ticket is a classic asset (2026-10-25, T-029)
+Context: the submission is Genesis + *Stellar Unlocked* (DEC-013). The track's own test is a core-protocol feature used for something it was not obviously built for, by nobody before; the contract stood on the oldest primitive the track names, with two prior drand verifiers on record (Q-18, Q-19). The roster — the half of the guarantee that was 587 lines of design with no code — had no on-chain commitment (Q-15). The human instructed on 2026-10-25 that the project must fit the track, the clock notwithstanding.
+Decision: the *pinakion* becomes literally a ticket: one unit of a classic Stellar asset. The issuer sets `AUTH_REQUIRED` and `AUTH_REVOCABLE`, makes the `kleroterion` contract the SAC admin, and locks itself (master weight 0). The contract enrols jurors through SAC `trust` (CAP-73), `set_authorized` and `mint`; `lock()` fixes the roster, its order, the ledger and the minimum drand round; `impede()` is `set_authorized(false)`; the draw seats the first `k` of the shuffled order who hold a ticket and are authorized. The roster is readable by any Horizon client through `/accounts?asset=`.
+Alternatives: CAP-85 — rejected, it is an upgrade switch (Q-19). A Poseidon Merkle roster (CAP-75) — rejected, cosmetic without a circuit and it needs Poseidon in three languages. Ship as is — rejected by the human. Composing the deployed `beacon-verifier` cross-contract — rejected: `contractimpl` exports cannot be suppressed when a contract crate is linked as a library, so `verify`/`randomness`/`draw` are copied into `kleroterion` verbatim and the golden vectors keep both copies honest.
+Consequences: §3 gains the ticket diagram and the `kleroterion` component; INV-06 becomes fully enforced; INV-07, 08, 09 leave `[proposed]`; INV-11 and INV-12 are new; §5 pins the quicknet genesis and period; T-029 to T-032 added; Q-15 and Q-20 answered. The trust model gains one named role, the clerk (`escrivão`) who enrols and locks — the same open question as Q-07, not a new one. Claims stay as §2 allows: nothing here is audited or on mainnet.
+
+### DEC-015: Sealed sortition, revealed after the verdict (2026-10-25, M1)
+Context: the judges read *Stellar Unlocked* as primitives that did not exist a year ago (the written bullets also reward old assets; both readings are in `docs/SOURCES.md`). Of what Pinakion uses, only CAP-73 is younger than a year, and it is a convenience. The only primitive on the table that makes something impossible a year ago possible is Groth16 on BN254 with Poseidon (CAP-74/75, Protocol 25, 2026-01-22). A roundtable (Tyler, Nicole, Justin; four rounds) tested where it is structural.
+Decision: the juror registers `c = Poseidon(s)` at `enroll`; the contract builds the Poseidon Merkle root at `lock`; `seal` fixes the seed from the stored drand round; a juror with `y = Poseidon(seed, s) < T` proves membership and `y` in Groth16 from a fresh seat account; `finalize` seats the `k` smallest `y`; after `reveal_after` — set at `lock`, intended to fall **after the verdict** — each juror reveals `s`, and the panel is recomputable among those who revealed, with non-revealers listed. The guarantee gains two clauses: *nobody knows who until they have judged; everyone knows afterwards*. One mode only.
+Alternatives: a secret ballot for the panel — rejected: it is the author's own Tessera, awarded the same week, and the vote is not Pinakion's job. A hidden roster — rejected: the roster is public on purpose. Sealed assignment to concurrent cases (the Athenian acorn) — rejected: a code-of-conduct body rarely has concurrent cases, and without a per-juror secret it is commit-reveal. Ship the open draw with the doors closed — kept as the fallback (T-033 alone) and the kill path.
+Consequences: §1 non-goals, §2 claims, §4 INV-13..17 and INV-04′, §9 M1 (T-033..T-042), §11 Q-22..Q-25. The Athenian second lot is cited for *no choosing* (Ath. Pol. 63–65), not for secrecy. Limits stated on page one: single-party phase-2 setup, relayer for seat accounts, anonymity within `k`, recomputation among revealers, deliberation off-chain breaks the seal.
+
+### DEC-016: One mode; `draw_round` leaves `kleroterion` (2026-10-25, M1)
+Context: Tyler proposed a sealed mode beside the open one; Nicole and Justin read two modes as two half-products.
+Decision: `kleroterion` has one mode. The open Fisher-Yates draw survives only in `beacon-verifier`, as evidence of the open, recomputable draw (its golden vectors stay there).
+Alternatives: two modes — rejected; keep `draw_round` as a view — rejected, it is the door that lets a caller pick the round.
+Consequences: T-033; INV-13; the kleroterion golden vector 4 is replaced by T-039's.
+
+### DEC-017: The author's 2026-10-25 BN254 verifier and circuit are ported, and said so (2026-10-25, M1)
+Context: `../Cautela-geracao-retirada/` holds a Soroban Groth16 verifier on the `Bn254` host functions and `role_membership.circom` (Poseidon Merkle + nullifier). DEC-001 says the withdrawn thesis is not cited; the code is the author's, MIT, and the files were created 2026-10-25 12:54–13:02 UTC (filesystem birth times; the folder has no git history), inside the hacking window. The HackMeridian terms require *original work (or properly licensed)* and forbid *misrepresent your work*; no rule covers earlier code.
+Decision: port the verifier (new `vk`) and the circuit (four changes); log both in `docs/SOURCES.md` *Copied code*; a *Prior work* paragraph in the README gives the dates. The withdrawn thesis stays uncited.
+Alternatives: rewrite from scratch — rejected as waste; port silently — rejected (rule 6, and the terms).
+Consequences: T-036, T-037; SOURCES.md; README.
+
+### DEC-018: CAP-85 considered and rejected for the draw code (2026-10-25, M1)
+Context: `verify`/`randomness`/`draw` are copied into two contracts; CAP-85 (Protocol 28, 5 weeks old, no application-level use found) could make them one sealed external executable under an owner contract with no update function.
+Decision: not used. A no-update owner makes it an honest commitment, but it is the fleet-upgrade primitive inside a no-upgrade thesis, the tooling is unexercised, and it changes nothing the user can see. The duplication is answered by golden vectors today and by a shared `no_std` crate later.
+Alternatives: use it alongside M1 — rejected (Justin: subtracts credibility; Nicole: feature to impress).
+Consequences: none in code; this entry is the answer to the question.
+
+### DEC-019: Tessera is named as related, complementary work (2026-10-25, M1)
+Context: Tessera (`ThaisFReis/tessera`, the same author, Find Your Way hackathon) is a secret-ballot module with the same sentence shape — *a contract any governance calls*. A judge finds it in two clicks.
+Decision: the README names it openly in one line — *Tessera decides how one votes, in secret; Pinakion decides who sits. Pinakion has no ballot on purpose; the panel's seat-account list is Tessera's voter list.* No Tessera machinery (ring signatures, key images, Pedersen, time-lock, tallies) enters this repository; the line is the red line of DEC-015.
+Alternatives: not citing — rejected: the omission reads worse than the overlap.
+Consequences: T-041, T-042 (export format `[VERIFY]`, Q-25).
+
 ## §11 Open questions
 
 | ID | Question | Blocks |
@@ -376,8 +471,13 @@ Consequences: the rubric that applies is the Genesis one (Track Alignment 20%, U
 | Q-12 | ~~`AGENTS.md` versus `CLAUDE.md`.~~ **Resolved 2026-10-25 as proposed:** `AGENTS.md` carries the deck's six sections and states that `CLAUDE.md` wins where the two disagree. Neither duplicates the other. Confirm you are happy with that precedence. | — |
 | Q-13 | **Addressed by the design request on 2026-10-25:** T-017 applies Cormorant Garamond and the stone/patina system in the civic direction of DEC-005. The implementation is for human review. | T-017 |
 | Q-14 | The §0 approval line was written on 2026-10-25, after the work it governs. Everything was done on an explicit request, so the intent of the rule held, but the order it prescribes did not. Worth deciding before the next milestone whether the gate is a real gate or should be dropped from `CLAUDE.md`. | — |
-| Q-15 | `draw_round` takes `rodada_minima` as an argument, so the caller states it. Nothing checks that it is the roster's own minimum — that needs the roster on-chain. Until then INV-06 is enforced against the caller's claim, not against the roster. | T-008's other half |
+| Q-15 | ~~`draw_round` takes `rodada_minima` as an argument.~~ **Answered by T-029 (DEC-014):** `kleroterion` computes the minimum at `lock()` from the ledger timestamp; it is not a parameter. `beacon-verifier` keeps the caller-given form as the stateless evidence contract. | — |
 | Q-17 | The portal records this participant on **Scale**, `scale_status: "approved"`, and DEC-013 chooses **Genesis**. Nothing on the organiser's public pages says a path may be changed, and the portal exposes no tool to change it (`docs/SOURCES.md`, *Checked and not found*). **For the human: has the organiser confirmed the switch?** Until they have, the path in the submission form is a claim this repository cannot check. | the submission |
 | Q-18 | The Raven pass on 2026-10-25 found that drand-BLS verification on Soroban has been done twice before, one of them SCF-funded at $50,000 and one a hackathon winner (`docs/SOURCES.md`). Nothing in this repository ever claimed otherwise, so there is nothing to retract — but **Innovation is 15% of the Genesis rubric and Track Alignment is 20%**, and the pitch has to be built on the sortition rather than on the beacon plumbing. §2 now forbids the first-ness claim. **For the human: does the video and the deck say what came before?** | the submission |
 | Q-19 | ~~Build a CAP-85 roster?~~ **Withdrawn 2026-10-25, same day, after reading the spec:** CAP-85 is a beacon proxy — one owner contract repoints the executable of a whole fleet at once. The entry cannot be *removed*, but its *value is updatable*; that is an upgrade switch, the exact power *nobody chooses who judges you* exists to remove. CAP-86 is schema-migration tooling. Neither fits. The timeline finding stands: the track names recent primitives, and this project sits on the oldest one it names. The fit question moves to Q-20. | — |
-| Q-20 | **How to fit *Stellar Unlocked* tightly, with what the research supports.** The track's own test is *a primitive used for something it was not obviously built for, by nobody before*. Three routes were costed against the thesis and the clock (`docs/SOURCES.md`, 2026-10-25): **(a) the ticket is an asset** — each juror holds one unit of a classic asset with `AUTH_REQUIRED`; the roster is the set of authorized trustlines, enumerable by anyone through Horizon `/accounts?asset=`; the commitment is the issuer setting its master weight to 0, after which no ticket can ever be issued; recusal is `set_authorized(false)` under `AUTH_REVOCABLE`; the draw contract checks each drawn juror with SAC `authorized()` — two bullets at once (*SAC trustlines*, *old-school assets, new tricks*), no new dependency, a small contract change, but the shuffle order must be fixed by a rule the verifiers share (account id ascending) and the lock ledger becomes the INV-06 minimum. **(b) Poseidon Merkle roster** (CAP-75, the *membership proofs* words of the ZK bullet) — needs `stellar/rs-soroban-poseidon`, a new dependency, and Poseidon in Python and JavaScript before the golden vectors hold; not feasible before 12:00 and cosmetic without a circuit. **(c) ship as is** and argue the sortition — honest, but on the track's oldest primitive with two prior drand verifiers. **For the human: (a), or (c)?** Either way the video and the deck are still unmade. | the submission |
+| Q-20 | ~~How to fit *Stellar Unlocked* tightly, with what the research supports.** The track's own test is *a primitive used for something it was not obviously built for, by nobody before*. Three routes were costed against the thesis and the clock (`docs/SOURCES.md`, 2026-10-25): **(a) the ticket is an asset** — each juror holds one unit of a classic asset with `AUTH_REQUIRED`; the roster is the set of authorized trustlines, enumerable by anyone through Horizon `/accounts?asset=`; the commitment is the issuer setting its master weight to 0, after which no ticket can ever be issued; recusal is `set_authorized(false)` under `AUTH_REVOCABLE`; the draw contract checks each drawn juror with SAC `authorized()` — two bullets at once (*SAC trustlines*, *old-school assets, new tricks*), no new dependency, a small contract change, but the shuffle order must be fixed by a rule the verifiers share (account id ascending) and the lock ledger becomes the INV-06 minimum. **(b) Poseidon Merkle roster** (CAP-75, the *membership proofs* words of the ZK bullet) — needs `stellar/rs-soroban-poseidon`, a new dependency, and Poseidon in Python and JavaScript before the golden vectors hold; not feasible before 12:00 and cosmetic without a circuit. **(c) ship as is** and argue the sortition — honest, but on the track's oldest primitive with two prior drand verifiers. **For the human: (a), or (c)?** Either way the video and the deck are still unmade. **Answered 2026-10-25 by the human: route (a), the clock set aside — DEC-014, T-029 to T-032.** | — |
+| Q-21 | **The clerk's `impede` is discretionary.** After `lock()` the clerk can strike any juror; the substitute is the next in the drawn order, so selective striking shapes the panel. Every strike is a transaction with a name and a time, so it is auditable, not prevented. The grounds-and-contestation rules of `docs/desenho-rol-sorteio-recusas.md` are not built. Raised in `docs/avaliacao-genesis-unlocked.md` as the objection a judge will make. **For the human: say it in the video, and decide whether the recusal rules are the next milestone.** | the submission; the next milestone  **Closing with DEC-015 / T-033:** `impede` is refused after `lock`. |
+| Q-22 | CAP-75 exposes the Poseidon/Poseidon2 **permutation**, not the full hash (Raven skill `zk-proofs`, 2026-10-25). The sponge and padding assembled in the contract (`stellar/rs-soroban-poseidon`) must match circomlib byte for byte, for t = 2 and t = 3. `[VERIFY: with vectors, T-034]`. | T-034 |
+| Q-23 | The per-transaction CPU ceiling: Q-09 holds 100 M (old whitepaper) against 400 M (Tessera, bisection on testnet, cited). No fraction of the ceiling is published until it is read from `developers.stellar.org` and logged. | T-034 |
+| Q-24 | The default for `reveal_after`. The contract takes a ledger number; the demo uses a small one. With `reveal_after = 0` the seal buys only the claim window, and the spec must say so. **For the human:** is "after the verdict" the documented default? | T-038, T-041 |
+| Q-25 | Tessera's voter-list format for the export (`--aptos` takes CLI identity names or a file with one name per line, per its CLI README — addresses or names? `[VERIFY]`). | T-042 |

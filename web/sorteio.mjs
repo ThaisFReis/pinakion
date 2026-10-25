@@ -100,6 +100,19 @@ export async function sortear(sementeHex, n, k) {
   return roll.slice(0, k);
 }
 
+/**
+ * O painel do kleroterion: embaralha a ordem do rol inteiro e senta os `k`
+ * primeiros que não estão em `inelegiveis` (impedidos ou sem bilhete). Não há
+ * novo sorteio para substituir: o substituto é o próximo da ordem.
+ */
+export async function painel(sementeHex, rol, inelegiveis, k) {
+  const fora = new Set(inelegiveis);
+  const ordem = await sortear(sementeHex, rol.length, rol.length);
+  const sentados = ordem.map((i) => rol[i]).filter((a) => !fora.has(a));
+  if (sentados.length < k) throw new Error(`só ${sentados.length} elegíveis para ${k} assentos`);
+  return sentados.slice(0, k);
+}
+
 /** A aleatoriedade de uma rodada é o sha256 da assinatura. */
 export async function aleatoriedadeDaAssinatura(sigHex) {
   const d = await crypto.subtle.digest("SHA-256", hexToBytes(sigHex));

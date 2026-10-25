@@ -118,6 +118,26 @@ Rehearsed on 2026-10-25 with round 33383606: the page recomputed the same panel 
 
 ---
 
+## The ticket, live
+
+The second path, added on 2026-10-25, shows the half the first one assumes: the roster. One script, every hash printed, about ninety seconds on testnet:
+
+```bash
+scripts/sequencia_bilhete.sh emissor3 admin ana carlos joao lucia marta mesa1 cautela
+```
+
+What to say while it runs, step by step:
+
+- **1 · flags** — *the issuer requires authorization. This asset was built for regulated issuers; we use it to seat a jury.*
+- **5 · master weight 0** — *the issuer just locked itself. Nobody can ever issue another ticket.* Open Horizon on the issuer: `master_weight: 0`.
+- **6 · enroll** — *the contract opens each juror's trustline itself and hands over the ticket.* Open `GET /accounts?asset=PINAKION:…`: the roster, readable by anyone.
+- **7 · lock** — *the roster is closed, and the first beacon round it may use is fixed from the ledger clock, not by us.*
+- **8 · impede** — *one juror is struck. The ticket stays, the seat does not.* Horizon shows `is_authorized: false`. Then the sentence that pre-empts the objection: *the issuer cannot choose, the entropy cannot choose, the contract cannot choose; the clerk can still exclude — and every exclusion is a transaction with a name and a time.*
+- **9 · draw** — three addresses.
+- **10 · recompute** — the same three, from a script with no dependencies.
+
+Run once on 2026-10-25; the record is `docs/evidencia-testnet-bilhete.md`.
+
 ## The three-minute script
 
 The deck's four parts. Timings are the target, not a stopwatch.
@@ -143,6 +163,9 @@ Steps 1 to 4 above, live. Do not narrate the commands; narrate what they mean.
 If a command fails, cut to the recording. Do not debug on camera.
 
 ### 2:00 — Why Stellar *(30 s)*
+
+Two of the track's own words, and nothing that is not in `THESIS.md`: *asset authorization and a locked issuer, from 2015, built for regulated issuers, never used to seat a jury; a trustline opened by a contract, Protocol 26; the beacon checked by the BLS host functions, Protocol 22; the shuffle by the host PRNG.* Then one honest sentence: verifying drand on Soroban was done before us, by splicers and Stellar-VRF; the sortition was not.
+
 
 Three facts, each measured or read from source:
 

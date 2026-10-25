@@ -4,7 +4,7 @@ Where the work stands, and in what order it happens next.
 
 **What this file is for.** `docs/SPEC.md` §9 holds each task's acceptance criteria — what *done* means. This file holds the **order and the state** — what is finished, what is in flight, what is waiting on whom. Where the two disagree about criteria, the spec wins and this file is stale; fix it here and say so.
 
-Last updated **2026-10-25**, after #28 merged (`de2ed03`), from `git log`, `gh issue list` and `gh pr list`. Every line below is checkable with those three commands.
+Last updated **2026-10-25**, after #40 merged (`c226483`), from `git log`, `gh issue list` and `gh pr list`. Every line below is checkable with those three commands.
 
 ---
 
@@ -23,7 +23,7 @@ Today is **25 Oct**. Everything in Phase 3 below is submission-critical; everyth
 
 ## State of the tree
 
-Everything through **T-033's plan** is on `main` (`de2ed03`). **No open pull requests.** #9 to #28 are merged. #24 to #27 were each merged into their stacked base branch, not into `main`; their commits reached `main` only because #28 was cut from the top of that stack. Same trap as #13 and #15: the merge bar has to say *into main*, or the stack has to be merged from the top.
+Everything through **T-033** is on `main` (`c226483`). **Open pull request:** #29, this file. #9 to #28 and #40 are merged. #24 to #27 were each merged into their stacked base branch, not into `main`; their commits reached `main` only because #28 was cut from the top of that stack. Same trap as #13 and #15: the merge bar has to say *into main*, or the stack has to be merged from the top.
 
 Open issues: [#8](https://github.com/ThaisFReis/pinakion/issues/8), the recording, and [#30](https://github.com/ThaisFReis/pinakion/issues/30) to [#39](https://github.com/ThaisFReis/pinakion/issues/39), one per M1 task (Phase 5). [#6](https://github.com/ThaisFReis/pinakion/issues/6) was closed on 2026-10-25, answered by T-029.
 
@@ -34,7 +34,7 @@ Unchanged since T-032: #28 touched documents only, and G7 was re-run on it.
 | # | Command | State |
 |---|---|---|
 | G1 | `cargo fmt --all --check` | PASS |
-| G2 | `cargo test --locked --workspace` | PASS, 38 tests |
+| G2 | `cargo test --locked --workspace` | PASS, 41 tests |
 | G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS |
 | G4 | `stellar contract build` | PASS |
 | G5 | `npm test` | PASS, 4 vectors |
@@ -154,7 +154,7 @@ Full list in `docs/SPEC.md` §11. These are the ones with something waiting on t
 | Q-08 | Documents are in Portuguese, root documents in English, code identifiers mixed. What is the convention? | nothing yet, but it gets worse with every file |
 | Q-02 | Is the milestone goal in §1 correct as written? Still `[INFERRED]`; M1 adds non-goals to it | — |
 
-Answered since the last update: Q-11 (the path is Genesis, DEC-013, superseding the Scale reading), Q-16 (moot under Genesis), Q-21 (closes with T-033), Q-09 (folded into Q-23).
+Answered since the last update: Q-11 (the path is Genesis, DEC-013, superseding the Scale reading), Q-16 (moot under Genesis), Q-21 (closed by T-033, #40), Q-09 (folded into Q-23).
 
 ---
 
@@ -164,11 +164,11 @@ Decided 2026-10-25 (DEC-015 to DEC-019): the juror registers a commitment at `en
 
 **It does not ship on 26 Oct.** About 10 days of work (an estimate, not a measurement); the hacking window closes at 12:00. The submission says M1 is designed and not built, and claims nothing from it (§2).
 
-**Kill criterion.** If T-034 ends without one proof of our circuit verified **on testnet** within budget, M1 stops there: the product is the open draw with T-033 alone, and nothing of Plan B is mentioned. A second cut at half the time given to M1: without `seal → claim → finalize → reveal` passing on testnet, stop the same day — half-built scores below the open draw done well.
+**Kill criterion.** If T-034 ends without one proof of our circuit verified **on testnet** within budget, M1 stops there: the product is the open draw with T-033 alone (`lock(k, reveal_after)` → `seal(sig)`, already on `main`), and nothing of Plan B is mentioned. A second cut at half the time given to M1: without `seal → claim → finalize → reveal` passing on testnet, stop the same day — half-built scores below the open draw done well.
 
 | Order | Task | Deps | Days (est.) | Issue | Branch / PR | State |
 |---|---|---|---|---|---|---|
-| 13 | T-033 close the two doors: round fixed at `lock`, `draw_round` deleted, no `enroll`/`impede` after lock | T-029 | 0.5 | [#30](https://github.com/ThaisFReis/pinakion/issues/30) | — | todo |
+| 13 | T-033 close the two doors: round and `k` fixed at `lock`, `draw_round` replaced by a one-shot `seal(sig)` (DEC-020), no `enroll`/`impede` after lock | T-029 | 0.5 | [#30](https://github.com/ThaisFReis/pinakion/issues/30) | [#40](https://github.com/ThaisFReis/pinakion/pull/40) on `t-033-close-the-doors` | merged — §9 still `review` until the human sets `done` |
 | 13 | T-034 **spike, kill-or-go**: ≥ 20 Poseidon vectors host × circomlib; one proof verified on testnet, cost measured; CPU ceiling read from the docs | T-033 | 1.5 | [#31](https://github.com/ThaisFReis/pinakion/issues/31) | — | todo |
 | 13 | T-041 first page and guarantee sentence — cheap, and what a judge reads; finished after T-040 | T-033 | 1, split | [#38](https://github.com/ThaisFReis/pinakion/issues/38) | — | todo |
 | 14 | T-035 commitment at `enroll`, `used_c`, Poseidon tree built by the contract, root frozen at `lock` | T-034 | 1 | [#32](https://github.com/ThaisFReis/pinakion/issues/32) | — | todo |

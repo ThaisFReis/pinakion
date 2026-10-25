@@ -4,7 +4,7 @@ Where the work stands, and in what order it happens next.
 
 **What this file is for.** `docs/SPEC.md` §9 holds each task's acceptance criteria — what *done* means. This file holds the **order and the state** — what is finished, what is in flight, what is waiting on whom. Where the two disagree about criteria, the spec wins and this file is stale; fix it here and say so.
 
-Last updated **2026-10-25**, after T-024 merged, from `git log`, `gh issue list` and `gh pr list`. Every line below is checkable with those three commands.
+Last updated **2026-10-25**, after #28 merged (`de2ed03`), from `git log`, `gh issue list` and `gh pr list`. Every line below is checkable with those three commands.
 
 ---
 
@@ -23,11 +23,13 @@ Today is **25 Oct**. Everything in Phase 3 below is submission-critical; everyth
 
 ## State of the tree
 
-Everything through T-024 is on `main`. **No open pull requests.** PRs #9 to #19 are merged; #11, #12, #14 and #16 were first merged into their own base branches rather than `main`, which is why #13 and #15 exist — worth remembering next time: the merge bar has to say *into main*.
+Everything through **T-033's plan** is on `main` (`de2ed03`). **No open pull requests.** #9 to #28 are merged. #24 to #27 were each merged into their stacked base branch, not into `main`; their commits reached `main` only because #28 was cut from the top of that stack. Same trap as #13 and #15: the merge bar has to say *into main*, or the stack has to be merged from the top.
 
-Two issues remain: [#8](https://github.com/ThaisFReis/pinakion/issues/8), the recording, and [#6](https://github.com/ThaisFReis/pinakion/issues/6), which is Phase 4.
+Two issues remain open: [#8](https://github.com/ThaisFReis/pinakion/issues/8), the recording, and [#6](https://github.com/ThaisFReis/pinakion/issues/6), which T-029 already answered and is waiting to be closed. M1 (Phase 5) has no issues yet.
 
 ### Gates right now — all seven green on `main`
+
+Unchanged since T-032: #28 touched documents only, and G7 was re-run on it.
 
 | # | Command | State |
 |---|---|---|
@@ -101,18 +103,18 @@ The flow runs live on testnet in 11 seconds, measured on 2026-10-25. What is lef
 
 ---
 
-## Phase 3b — the ticket as an asset · **built, in review**
+## Phase 3b — the ticket as an asset · **done, on `main`**
 
-Decided on 25 Oct, the clock set aside, so that the project fits *Stellar Unlocked* on the track's own terms (DEC-014). Four tasks, four stacked branches under [#23](https://github.com/ThaisFReis/pinakion/pull/23) (T-028, the research), all green on the seven gates. **Merge each one into `main`** — the merge bar defaults to the stacked base, which is how #13 and #15 happened last time.
+Decided on 25 Oct, the clock set aside, so that the project fits *Stellar Unlocked* on the track's own terms (DEC-014). Four tasks, four stacked branches under [#23](https://github.com/ThaisFReis/pinakion/pull/23) (T-028, the research), all green on the seven gates. All four merged; they reached `main` through #28 (see *State of the tree*).
 
 | Order | Task | Branch | State |
 |---|---|---|---|
-| 9 | T-029 `kleroterion`: enroll, lock, impede, draw_round over a classic asset | [#24](https://github.com/ThaisFReis/pinakion/pull/24) on `t-029-bilhete-como-ativo` | review — 22 tests written first |
-| 10 | T-030 the verifiers recompute the panel from the roster; fourth golden vector | [#25](https://github.com/ThaisFReis/pinakion/pull/25) on `t-030-verificadores-do-painel` | review |
-| 11 | T-031 the classic sequence on testnet, every hash in `docs/evidencia-testnet-bilhete.md` | [#26](https://github.com/ThaisFReis/pinakion/pull/26) on `t-031-sequencia-classica-na-testnet` | review — off-chain panel equals on-chain, address for address |
-| 12 | T-032 THESIS, README, DEMO, the page and this file say so; `docs/avaliacao-genesis-unlocked.md` scores the rubric and names the objection (Q-21) | [#27](https://github.com/ThaisFReis/pinakion/pull/27) on `t-032-o-bilhete-em-todo-lugar` | review |
+| 9 | T-029 `kleroterion`: enroll, lock, impede, draw_round over a classic asset | [#24](https://github.com/ThaisFReis/pinakion/pull/24) on `t-029-bilhete-como-ativo` | merged — 22 tests written first |
+| 10 | T-030 the verifiers recompute the panel from the roster; fourth golden vector | [#25](https://github.com/ThaisFReis/pinakion/pull/25) on `t-030-verificadores-do-painel` | merged |
+| 11 | T-031 the classic sequence on testnet, every hash in `docs/evidencia-testnet-bilhete.md` | [#26](https://github.com/ThaisFReis/pinakion/pull/26) on `t-031-sequencia-classica-na-testnet` | merged — off-chain panel equals on-chain, address for address |
+| 12 | T-032 THESIS, README, DEMO, the page and this file say so; `docs/avaliacao-genesis-unlocked.md` scores the rubric and names the objection (Q-21) | [#27](https://github.com/ThaisFReis/pinakion/pull/27) on `t-032-o-bilhete-em-todo-lugar` | merged |
 
-What it closes: INV-06's roster half (Q-15), INV-07, 08, 09; INV-11 and 12 are new. What it does not: the case lifecycle, roster renewal, `AUTH_IMMUTABLE`, costs of the new calls.
+What it closes: INV-06's roster half (Q-15), INV-07, 08, 09; INV-11 and 12 are new. What it does not: the case lifecycle, roster renewal, `AUTH_IMMUTABLE`, costs of the new calls — the last two are now in T-040; and it leaves two doors open after `lock` (any round, any number of draws; `impede` at will), which T-033 closes.
 
 ## Phase 4 — after the event
 
@@ -121,7 +123,7 @@ Not before 26 Oct. These need contracts that do not exist yet.
 | Task | Issue | Blocked on |
 |---|---|---|
 | ~~T-008, the roster half of INV-06~~ | [#6](https://github.com/ThaisFReis/pinakion/issues/6) | **closed by T-029**: `kleroterion::lock` computes the minimum from the ledger clock — Q-15 answered |
-| The case lifecycle, the roster cycle, the recusal rules | — | designed in three documents, **587 lines of design with no implementation** |
+| The case lifecycle, the roster cycle, the recusal rules | — | designed in three documents, **587 lines of design with no implementation**. M1 narrows it: no `impede` after lock (T-033), public `recuse` before `finalize` (T-038); a case, a reviewer and a verdict stay out of scope (DEC-015) |
 | Confidential case files | — | `docs/desenho-sorteio-e-sigilo.md`; threshold decryption per access |
 
 ---
@@ -143,17 +145,42 @@ Full list in `docs/SPEC.md` §11. These are the ones with something waiting on t
 
 | ID | Question | Blocks |
 |---|---|---|
-| Q-02 | Is the milestone goal in §1 correct as written, and are the non-goals right? Still `[INFERRED]`, and the spec is now approved around it | — |
-| Q-06 | **Answered**: rustc 1.97.1 and Node 24.14.1, pinned. The Stellar CLI stays unpinned and §6 says why | — |
-| Q-11 | ~~Which track and category?~~ **Answered:** Genesis/Scale are paths; *Stellar Unlocked* and *Stellar Composed* are Genesis-only tracks. This submission is on **Scale**, which picks none | — |
-| Q-16 | Scale is judged first on milestone completion against the pre-event intake goals, and we have no record of what those were | the submission |
-| Q-13 | **Answered** by the civic direction, recorded with T-017. The implementation itself is still for human review | nothing |
+| Q-17 | The portal records this participant on **Scale**; DEC-013 submits on **Genesis** + *Stellar Unlocked*. Nothing public says a path may be changed. Ask `meridian@growwithguava.com` | the submission |
+| Q-22 | CAP-75 exposes the Poseidon **permutation**, not the hash: the sponge built in the contract must match circomlib byte for byte | T-034 — the kill-or-go |
+| Q-23 | The per-transaction CPU ceiling: 100 M (old whitepaper) against 400 M (Tessera, cited). No fraction of it is published until it is read from the docs | T-034 |
+| Q-24 | The default for `reveal_after`: "after the verdict" or something else? With 0 the seal buys only the claim window | T-038, T-041 |
+| Q-25 | Tessera's voter-list format for the export | T-042 |
 | Q-07 | Who publishes the first roster, and under what authority? Unresolved across three design documents | Phase 4 |
 | Q-08 | Documents are in Portuguese, root documents in English, code identifiers mixed. What is the convention? | nothing yet, but it gets worse with every file |
-| Q-09 | The Soroban CPU ceiling: 100M in one document, 400M measured by bisection in a previous project. Unreconciled | nothing in §2 depends on either |
+| Q-02 | Is the milestone goal in §1 correct as written? Still `[INFERRED]`; M1 adds non-goals to it | — |
+
+Answered since the last update: Q-11 (the path is Genesis, DEC-013, superseding the Scale reading), Q-16 (moot under Genesis), Q-21 (closes with T-033), Q-09 (folded into Q-23).
 
 ---
 
 ## Phase 5 — M1, Plan B: sealed sortition · **todo, after the event**
 
-Decided 2026-10-25 (DEC-015 to DEC-019). Tasks T-033 to T-042 in `docs/SPEC.md` §9; the ordered plan, with days per item and the kill criterion, in the doc *Pinakion — Plano B: sortição selada* (https://claude.ai/artifact/9WDXFX9eSJWjhWUdRmrh2N). About 10 days of work (estimate); it does not ship on 26 Oct. What the 26 Oct submission can say is in that doc's last section. Branch: `t-033-sealed-sortition-plan` (this entry; no code).
+Decided 2026-10-25 (DEC-015 to DEC-019): the juror registers a commitment at `enroll`, the seat is claimed with a Groth16 proof over BN254 and Poseidon (Protocol 25), the panel is the `k` smallest `y`, and it is revealed **after the verdict**. Acceptance criteria in `docs/SPEC.md` §9; the reasoning, the days per item and the limits in the doc *Pinakion — Plano B: sortição selada* (https://claude.ai/artifact/9WDXFX9eSJWjhWUdRmrh2N).
+
+**It does not ship on 26 Oct.** About 10 days of work (an estimate, not a measurement); the hacking window closes at 12:00. The submission says M1 is designed and not built, and claims nothing from it (§2).
+
+**Kill criterion.** If T-034 ends without one proof of our circuit verified **on testnet** within budget, M1 stops there: the product is the open draw with T-033 alone, and nothing of Plan B is mentioned. A second cut at half the time given to M1: without `seal → claim → finalize → reveal` passing on testnet, stop the same day — half-built scores below the open draw done well.
+
+| Order | Task | Deps | Days (est.) | Issue | Branch / PR | State |
+|---|---|---|---|---|---|---|
+| 13 | T-033 close the two doors: round fixed at `lock`, `draw_round` deleted, no `enroll`/`impede` after lock | T-029 | 0.5 | — | — | todo |
+| 13 | T-034 **spike, kill-or-go**: ≥ 20 Poseidon vectors host × circomlib; one proof verified on testnet, cost measured; CPU ceiling read from the docs | T-033 | 1.5 | — | — | todo |
+| 13 | T-041 first page and guarantee sentence — cheap, and what a judge reads; finished after T-040 | T-033 | 1, split | — | — | todo |
+| 14 | T-035 commitment at `enroll`, `used_c`, Poseidon tree built by the contract, root frozen at `lock` | T-034 | 1 | — | — | todo |
+| 14 | T-036 circuit ported, public ptau, single-party phase 2, `vk`, CLI `pinakion prove` | T-034 | 1 | — | — | todo |
+| 15 | T-037 BN254 verifier as a separate contract; inputs assembled by `kleroterion` | T-036 | 1 | — | — | todo |
+| 16 | T-038 `seal`, `claim`, `finalize`, `reveal`, `recuse`; widening when fewer than `k` claim | T-035, T-037 | 1.5 | — | — | todo |
+| 17 | T-039 independent recomputation from the ledger; new golden vectors (N = 8, k = 3) | T-038 | 1 | — | — | todo |
+| 18 | T-040 testnet sequence end to end (with `AUTH_IMMUTABLE`), cost table by a §8 command | T-038, T-039 | 1 | — | — | todo |
+| 19 | T-042 ticket page, README links, Tessera export, submission text | T-039, T-041 | 1 | — | — | todo |
+
+Same order number = can run in parallel. T-035 and T-036 are independent once the spike passes: one person on the contract, one on the circuit, about six calendar days for two. Every task: tests written first and seen failing, seven gates green, one branch and one PR **into `main`**.
+
+**Done when:** a stranger runs `scripts/sequencia_bilhete.sh` and the verifier against testnet and gets *seated · revealed · not revealed · drawn-absent* matching the contract; the README's first page states the setup, the relayer, the reveal condition and the limits; every number in the docs is produced by a §8 command.
+
+**Where it stands today:** nothing started. The plan itself is on `main` (#28).

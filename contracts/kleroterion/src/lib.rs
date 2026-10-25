@@ -16,6 +16,12 @@
 //! é refeito a cada `enroll` e `impede`, e o `lock()` congela a raiz. Ninguém
 //! posta raiz: ela é sempre a que o contrato calculou.
 //!
+//! Uma prova de assento (T-037) é conferida por um contrato verificador à
+//! parte, cujo endereço o construtor fixa e cuja chave está embutida nele.
+//! As entradas públicas `[raiz, seed, y, claimer]` são montadas aqui: a raiz
+//! do fechamento, a semente, o `y` declarado e `SHA-256(strkey) >> 8` da
+//! conta de assento — ninguém entrega ao verificador um vetor pronto.
+//!
 //! A entropia vem da drand quicknet, verificada pelas funções de host da
 //! BLS12-381 (CAP-59); o embaralhamento é o PRNG do host. `verify`,
 //! `randomness` e `draw` são cópias literais do `beacon-verifier`, e os
@@ -23,7 +29,7 @@
 
 use pinakion_poseidon::Sponge;
 use soroban_sdk::{
-    contract, contracterror, contractevent, contractimpl, contracttype,
+    contract, contractclient, contracterror, contractevent, contractimpl, contracttype,
     crypto::bls12_381::{Bls12381G1Affine, Bls12381G2Affine},
     panic_with_error, token, vec, Address, Bytes, BytesN, Env, Vec, U256,
 };
@@ -184,9 +190,27 @@ pub struct Fechado {
     pub revela_em: u32,
 }
 
+/// Uma prova Groth16 no formato do verificador (`contracts/groth16-verifier`):
+/// A e C em G1 (64 bytes), B em G2 (128 bytes). Mesmos campos, mesmo XDR.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Prova {
+    pub a: BytesN<64>,
+    pub b: BytesN<128>,
+    pub c: BytesN<64>,
+}
+
+/// O que o kleroterion pede ao verificador. Declarado aqui para não embutir
+/// o código do verificador neste contrato.
+#[contractclient(name = "VerificadorClient")]
+pub trait Verificador {
+    fn verify(env: Env, proof: Prova, public: Vec<U256>) -> bool;
+}
+
 #[contracttype]
 pub enum DataKey {
     Escrivao,
+    Verificador,
     Bilhete,
     Minimo,
     Rol,
@@ -210,10 +234,19 @@ pub struct Kleroterion;
 #[contractimpl]
 impl Kleroterion {
     /// `escrivao` inscreve e fecha; `bilhete` é o SAC do ativo cujo admin
-    /// este contrato passa a ser; `minimo` é o menor rol que pode fechar.
-    pub fn __constructor(env: Env, escrivao: Address, bilhete: Address, minimo: u32) {
+    /// este contrato passa a ser; `minimo` é o menor rol que pode fechar;
+    /// `verificador` é o contrato Groth16 que confere as provas de assento,
+    /// fixado aqui para sempre (T-037).
+    pub fn __constructor(
+        env: Env,
+        escrivao: Address,
+        bilhete: Address,
+        minimo: u32,
+        verificador: Address,
+    ) {
         let s = env.storage().instance();
         s.set(&DataKey::Escrivao, &escrivao);
+        s.set(&DataKey::Verificador, &verificador);
         s.set(&DataKey::Bilhete, &bilhete);
         s.set(&DataKey::Minimo, &minimo);
         s.set(&DataKey::Autorizados, &0u32);
@@ -359,6 +392,11 @@ impl Kleroterion {
         env.storage().instance().get(&DataKey::Fechamento)
     }
 
+    /// O contrato que confere as provas de assento.
+    pub fn verifier(env: Env) -> Address {
+        env.storage().instance().get(&DataKey::Verificador).unwrap()
+    }
+
     /// O painel, se já houve sorteio.
     pub fn panel(env: Env) -> Option<Vec<Address>> {
         env.storage().persistent().get(&DataKey::Painel)
@@ -441,6 +479,47 @@ impl Kleroterion {
 
     pub(crate) fn zero(env: &Env, nivel: u32) -> U256 {
         U256::from_be_bytes(env, &Bytes::from_array(env, &ZEROS[nivel as usize]))
+    }
+
+    /// A prova de assento vale? INV-15: contra a raiz que o fechamento
+    /// guardou, com esta semente, este `y` e esta conta de assento. As
+    /// entradas públicas são montadas aqui, na ordem do circuito. T-038 chama
+    /// isto de `claim`, com a semente de `seal` e a conta que assina.
+    // Called only by tests until T-038's `claim` calls it; the allow goes with it.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn prova_de_assento_vale(
+        env: &Env,
+        prova: &Prova,
+        seed: &U256,
+        y: &U256,
+        assento: &Address,
+    ) -> bool {
+        let f = match Self::closing(env.clone()) {
+            Some(f) => f,
+            None => panic_with_error!(env, Erro::RolAberto),
+        };
+        let publicas = vec![
+            env,
+            f.raiz,
+            seed.clone(),
+            y.clone(),
+            Self::claimer(env, assento),
+        ];
+        VerificadorClient::new(env, &Self::verifier(env.clone())).verify(prova, &publicas)
+    }
+
+    /// `SHA-256(strkey da conta) >> 8`: um elemento do campo que amarra a
+    /// prova à conta que vai enviá-la (DEC-024; `circuits/pinakion.mjs`).
+    // Called only by tests until T-038's `claim` calls it; the allow goes with it.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn claimer(env: &Env, assento: &Address) -> U256 {
+        let h = env
+            .crypto()
+            .sha256(&assento.to_string().to_bytes())
+            .to_array();
+        let mut b = [0u8; 32];
+        b[1..].copy_from_slice(&h[..31]);
+        U256::from_be_bytes(env, &Bytes::from_array(env, &b))
     }
 
     fn escrivao(env: &Env) -> Address {

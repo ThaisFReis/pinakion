@@ -10,7 +10,7 @@
 #
 #   1. issuer: AUTH_REQUIRED + AUTH_REVOCABLE            (classic, since 2015)
 #   2. SAC for PINAKION:issuer                           (SAC)
-#   3. deploy kleroterion(clerk, SAC, minimum = #jurors)
+#   3. deploy the Groth16 verifier, then kleroterion(clerk, SAC, minimum = #jurors, verifier)
 #   4. SAC admin -> kleroterion
 #   5. issuer master weight 0: nobody can ever issue or authorize a ticket
 #      again except the contract                        (the commitment)
@@ -37,8 +37,9 @@ stellar tx new set-options --source "$ISSUER" $N --set-required --set-revocable 
 log "2. SAC for PINAKION:$EMISSOR"
 SAC=$(stellar contract asset deploy --asset "PINAKION:$EMISSOR" --source "$ISSUER" $N 2>/dev/null | tail -1); echo "sac      $SAC"
 
-log "3. deploy kleroterion (clerk, SAC, minimum ${#JURORS[@]})"
-KLERO=$(stellar contract deploy --wasm "$WASM" --source "$CLERK" $N -- --escrivao "$ESCRIVAO" --bilhete "$SAC" --minimo "${#JURORS[@]}" 2>/dev/null | tail -1); echo "contract $KLERO"
+log "3. deploy the Groth16 verifier (key embedded), then kleroterion (clerk, SAC, minimum ${#JURORS[@]}, verifier)"
+VERIF=$(stellar contract deploy --wasm target/wasm32v1-none/release/groth16_verifier.wasm --source "$CLERK" $N 2>/dev/null | tail -1); echo "verifier $VERIF"
+KLERO=$(stellar contract deploy --wasm "$WASM" --source "$CLERK" $N -- --escrivao "$ESCRIVAO" --bilhete "$SAC" --minimo "${#JURORS[@]}" --verificador "$VERIF" 2>/dev/null | tail -1); echo "contract $KLERO"
 
 log "4. SAC admin -> kleroterion"
 stellar contract invoke --id "$SAC" --source "$ISSUER" $N -- set_admin --new_admin "$KLERO" 2>&1 | grep -o 'tx/[0-9a-f]*' | sed 's#tx/#tx #'

@@ -41,7 +41,7 @@ for (const a of arvores) {
 const a17 = arvores.find((a) => a.n === 17);
 const s = (i) => sha(`pinakion:arvore:17:s:${i}`) % r;
 const SEED = sha("pinakion:t036:seed") >> 8n;
-const ASSENTO = "GDPINAKIONT036XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+const ASSENTO = "GD7ZNPRHTOTUPWH7NZF772OV6HNGQ3M6AVYPFY2MXRGPW4BSG5YXEFHH";
 const input = entrada(a17.eventos, s(3), SEED, ASSENTO);
 ok(input.y === String(P.hash2(SEED, s(3))), "y = Poseidon(seed, s)");
 ok(input.claimer === String(claimer(ASSENTO)), "claimer = SHA-256(endereco) >> 8");
@@ -71,6 +71,17 @@ const fixture = ler("tests/prova-claim.json");
 const be32 = (n) => BigInt(n).toString(16).padStart(64, "0");
 ok(fixture.vk.alpha === be32(vk.vk_alpha_1[0]) + be32(vk.vk_alpha_1[1]), "tests/prova-claim.json usa a vk de circuits/setup");
 ok(vk.nPublic === 4, "quatro entradas publicas");
+const vkRs = readFileSync(join(RAIZ, "contracts", "groth16-verifier", "src", "vk.rs"), "utf8");
+const bytesRs = (nome) => {
+  const m = vkRs.match(new RegExp(`pub const ${nome}: [^=]+= \\[([^;]*)\\];`, "s"));
+  return m ? [...m[1].matchAll(/0x([0-9a-f]{2})/g)].map((x) => x[1]).join("") : "";
+};
+const g2 = (p) => be32(p[0][1]) + be32(p[0][0]) + be32(p[1][1]) + be32(p[1][0]);
+ok(
+  bytesRs("ALPHA") === fixture.vk.alpha && bytesRs("BETA") === g2(vk.vk_beta_2) &&
+    bytesRs("DELTA") === g2(vk.vk_delta_2) && bytesRs("IC") === fixture.vk.ic.join(""),
+  "a chave embutida no verificador (vk.rs) e a de circuits/setup/vk.json",
+);
 
 if (falhas) {
   console.log(`\n${falhas} falha(s).`);

@@ -59,7 +59,7 @@ Full record, with every hash: [`docs/evidencia-testnet-sorteio.md`](docs/evidenc
 
 ## Run it
 
-Requires Rust with the `wasm32v1-none` target, Stellar CLI 28.x and Node 20+.
+The toolchain is pinned: `rust-toolchain.toml` gives you rustc 1.97.1 with the `wasm32v1-none` target, and `.nvmrc` gives you Node 24.14.1. There are no npm dependencies. The Stellar CLI (28.1.0) is the one thing you install yourself.
 
 ```bash
 cargo test --locked --workspace     # 12 tests, including the golden vectors

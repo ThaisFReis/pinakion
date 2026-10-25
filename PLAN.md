@@ -78,11 +78,11 @@ A judge clones it and runs two commands. Today the Python and JavaScript verifie
 | Order | Task | Issue | State | Why it matters |
 |---|---|---|---|---|
 | 3 | T-017 civic identity for the public page | [#7](https://github.com/ThaisFReis/pinakion/issues/7) | `review` | done and merged into the stack; the worked example now matches `docs/evidencia-testnet-sorteio.md` |
-| 4 | T-003 pin the toolchain | [#2](https://github.com/ThaisFReis/pinakion/issues/2) | `todo` | without `rust-toolchain.toml` and `.nvmrc`, "works from a clean checkout" is untested |
+| 4 | T-003 pin the toolchain | [#2](https://github.com/ThaisFReis/pinakion/issues/2) | `review` | `rust-toolchain.toml` and `.nvmrc`; a clean clone runs all six gates green |
 | 5 | T-005 gate the Python verifier | [#4](https://github.com/ThaisFReis/pinakion/issues/4) | `review` | G6 runs it against `tests/vetores-de-ouro.json` and ties those numbers to `test.rs` |
 | 6 | T-006 gate the JavaScript verifier | [#5](https://github.com/ThaisFReis/pinakion/issues/5) | `review` | `npm test` runs `web/test.mjs` against the same file; the placeholder is gone |
 
-Done when: G1–G6 all pass, and each of the three implementations is checked against the same golden vectors by a command in §8. **G1–G6 all pass as of 2026-10-25**; what is left in this phase is T-003, the toolchain pins.
+Done when: G1–G6 all pass, and each of the three implementations is checked against the same golden vectors by a command in §8. **G1–G6 all pass as of 2026-10-25, from a clean clone.** This phase is done.
 
 ---
 

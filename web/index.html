@@ -99,7 +99,7 @@
               </label>
               <dl class="seed"><dt>Semente calculada no navegador</dt><dd id="semente">Aguardando cálculo.</dd></dl>
               <p class="nota" id="notaSemente" role="status">A semente é o SHA-256 da assinatura comprimida. A autenticidade da assinatura não é verificada por esta página.</p>
-              <label for="esperado">Painel informado para comparação
+              <label for="esperado">Painel informado para comparação (cole o que a cadeia devolveu)
                 <textarea id="esperado" spellcheck="false">[23,81,114,169,188,195,142,52,44,13,0,60,7,124,42,37,121,10,192,174,155,177,140,49,135]</textarea>
               </label>
             </div>
@@ -205,8 +205,12 @@
       const r = await fetch(url);
       if (!r.ok) throw new Error("rodada não encontrada");
       const d = await r.json();
+      const trocou = String(d.round) !== $("rodada").value.trim();
       $("rodada").value = d.round;
       $("assinatura").value = d.signature;
+      // O painel informado pertence à rodada anterior: compará-lo com a nova
+      // só produziria uma divergência sem significado.
+      if (trocou) $("esperado").value = "";
       await recomputar();
       const conferiu = semente === d.randomness;
       $("notaSemente").textContent = conferiu

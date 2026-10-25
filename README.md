@@ -12,8 +12,9 @@ The guarantee, in one sentence: *nobody chooses who judges you.*
 
 ## Try it
 
-**In a browser, nothing to install.** Paste a drand round and a panel, and the page recomputes it:
-[claude.ai/artifact/E8fZMeWK3bcXo8BH1MqiaM](https://claude.ai/artifact/E8fZMeWK3bcXo8BH1MqiaM)
+**In a browser, nothing to install:** [thaisfreis.github.io/pinakion/web/index.html](https://thaisfreis.github.io/pinakion/web/index.html)
+
+Fetch a drand round, let the page recompute the panel, and paste what the chain returned. It says whether they match. The page is this repository's `web/`, served from `main` — what you read here is what runs there.
 
 **On the command line**, with no dependencies at all:
 

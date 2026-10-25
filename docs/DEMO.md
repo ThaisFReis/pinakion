@@ -32,7 +32,7 @@ export ID=<your funded testnet identity>
 pip install py_ecc          # only for scripts/rodada.py
 ```
 
-Two terminals and a browser window. Terminal font large enough to read in a 1080p recording. The browser on `web/index.html`, served over HTTP — it is an ES module, so `file://` will not load it:
+Two terminals and a browser window. Terminal font large enough to read in a 1080p recording. The browser on the page, served over HTTP — it is an ES module, so `file://` will not load it:
 
 ```bash
 python3 -m http.server 8731 --directory web
@@ -99,7 +99,7 @@ Run on 2026-10-25, round `33383146`, both sides:
 
 ### 5 · And again in a browser, so it is not a programmer's trick
 
-Serve the page and open it:
+The page is live at **[thaisfreis.github.io/pinakion/web/index.html](https://thaisfreis.github.io/pinakion/web/index.html)**. For the recording, prefer serving it locally — no network between you and the page, one less thing to fail:
 
 ```bash
 python3 -m http.server 8731 --directory web

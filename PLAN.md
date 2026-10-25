@@ -83,7 +83,7 @@ The deck names four deliverables. Two are written, one is half-built, one has no
 
 | Deliverable | State | Task |
 |---|---|---|
-| Landing page | built, and the stale-comparison bug the rehearsal found is fixed | T-017, T-024, done |
+| Landing page | built, fixed, and **published**: <https://thaisfreis.github.io/pinakion/web/index.html> | T-017, T-024, T-027, done |
 | MVP spec — the demo path, nothing more | written and proven: `docs/DEMO.md` | T-016 |
 | Video demo, 3 min | script written in `docs/DEMO.md`; **the recording is not made** | T-016 |
 | Submission data | the name and one line exist; track still unknown (Q-11) | T-009 done, Q-11 open |

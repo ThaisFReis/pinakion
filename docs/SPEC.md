@@ -220,12 +220,12 @@ Run from a clean checkout. The baseline below was recorded on 2026-10-25 **befor
 | T-000 | Bootstrap: spec, sources, gate baseline | — | — | review | SPEC.md and SOURCES.md exist; baseline recorded; branch `t-000-spec` |
 | T-001 | Decide the fate of the withdrawn generation | T-000 | §1, §11 Q-03 | review | Moved to `../Cautela-geracao-retirada/` with a note; removed from this tree; §1, §3, §6 and §8 updated |
 | T-002 | License the repository | T-000 | §11 Q-01 | review | MIT. `LICENSE` present; `package.json` renamed to `pinakion` and declares MIT |
-| T-003 | Pin the toolchain | T-000 | §6, §11 Q-06 | todo | `rust-toolchain.toml` and `.nvmrc` present; G1–G4 pass from a clean checkout |
-| T-004 | Green the baseline: fmt and clippy | T-003 | §8 | todo | G1 and G3 pass; no behaviour change; deprecated aliases replaced |
-| T-005 | Test the Python verifier in the repository | T-003 | §4 INV-04 | todo | A gate runs `scripts/verificar_sorteio.py` against the golden vectors and fails if they diverge |
-| T-006 | Test the JavaScript verifier in the repository | T-005 | §3 B-02 | todo | A gate runs `web/sorteio.mjs` against the same vectors; `npm test` stops being a placeholder (replaces G5) |
-| T-007 | Pin the beacon public key | T-004 | §4 INV-10, §7 | todo | The key is a constant; `verify` no longer accepts it as a parameter; a test proves a wrong key cannot verify any round |
-| T-008 | Enforce the roster's minimum round | T-007 | §4 INV-06 | todo | A draw against a round earlier than the roster's definitive ledger is rejected |
+| T-003 | Pin the toolchain ([#2](https://github.com/ThaisFReis/pinakion/issues/2)) | T-000 | §6, §11 Q-06 | todo | `rust-toolchain.toml` and `.nvmrc` present; G1–G4 pass from a clean checkout |
+| T-004 | Green the baseline: fmt and clippy ([#3](https://github.com/ThaisFReis/pinakion/issues/3)) | T-003 | §8 | todo | G1 and G3 pass; no behaviour change; deprecated aliases replaced |
+| T-005 | Test the Python verifier in the repository ([#4](https://github.com/ThaisFReis/pinakion/issues/4)) | T-003 | §4 INV-04 | todo | A gate runs `scripts/verificar_sorteio.py` against the golden vectors and fails if they diverge |
+| T-006 | Test the JavaScript verifier in the repository ([#5](https://github.com/ThaisFReis/pinakion/issues/5)) | T-005 | §3 B-02 | todo | A gate runs `web/sorteio.mjs` against the same vectors; `npm test` stops being a placeholder (replaces G5) |
+| T-007 | Pin the beacon public key ([#1](https://github.com/ThaisFReis/pinakion/issues/1)) | T-004 | §4 INV-10, §7 | todo | The key is a constant; `verify` no longer accepts it as a parameter; a test proves a wrong key cannot verify any round |
+| T-008 | Enforce the roster's minimum round ([#6](https://github.com/ThaisFReis/pinakion/issues/6)) | T-007 | §4 INV-06 | todo | A draw against a round earlier than the roster's definitive ledger is rejected |
 
 ### Event track — from the Speedrun SHIP deck
 
@@ -237,11 +237,11 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 | T-010 | Write `THESIS.md` | T-009 | §1 | review | Present at the repository root: the guarantee, who it is for, the problem with two documented cases, why Stellar with measured figures, what is proven and what is not |
 | T-011 | Write `AGENTS.md` | T-010 | §0 | review | Present at the root, in the deck's six sections. Defers to `CLAUDE.md` where the two disagree, and to §9 here for scope |
 | T-012 | Write `DESIGN.md` | T-010 | — | review | Present at the root: tokens for both themes, three type roles with a scale, the mark as inline SVG, layout and voice. Derived from the thesis — cool stone, oxidised bronze, and the machine's own black and white balls as the semantic pair |
-| T-017 | Bring `web/index.html` onto the design tokens | T-012 | `DESIGN.md` | todo | The page uses the `DESIGN.md` fonts and `:root` tokens; no literal colours; both themes checked. Declared divergence in `DESIGN.md` is removed |
-| T-013 | Public repository | T-011, T-015 | §11 Q-04 | todo | All six documents and `LICENSE` present (done); remote created and pushed (**not done** — no remote exists) |
-| T-014 | Spec tasks become issues | T-013 | §9 | todo | Each open task is a GitHub issue with an owner; one branch and one PR per issue |
+| T-017 | Bring `web/index.html` onto the design tokens ([#7](https://github.com/ThaisFReis/pinakion/issues/7)) | T-012 | `DESIGN.md` | todo | The page uses the `DESIGN.md` fonts and `:root` tokens; no literal colours; both themes checked. Declared divergence in `DESIGN.md` is removed |
+| T-013 | Public repository | T-011, T-015 | §11 Q-04 | review | Live at [github.com/ThaisFReis/pinakion](https://github.com/ThaisFReis/pinakion), public, MIT, one clean commit on `main` |
+| T-014 | Spec tasks become issues | T-013 | §9 | review | Eight issues open, one per task still to do. Owners not yet assigned |
 | T-015 | Rewrite `README.md` | T-010 | §2 | review | Opens with the one-liner; how to run it; every claim traced to §2; limits stated before the instructions |
-| T-016 | Write the demo path and record the video | T-012, T-015 | §2 | todo | One flow, live on testnet, with the video as backup. 3 minutes in the deck's four parts |
+| T-016 | Write the demo path and record the video ([#8](https://github.com/ThaisFReis/pinakion/issues/8)) | T-012, T-015 | §2 | todo | One flow, live on testnet, with the video as backup. 3 minutes in the deck's four parts |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
@@ -276,7 +276,7 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 | Q-01 | ~~No `LICENSE`, and `package.json` declared ISC.~~ **Answered 2026-10-25: MIT.** It is the licence of the human's previous project and the ecosystem norm for contracts and applications (OpenZeppelin stellar-contracts, script3/soroban-governor). Apache-2.0, used by the SDF's own repositories, was the alternative and adds an express patent grant. | — |
 | Q-02 | §1 states the goal as inferred. Is the milestone goal correct as written, and are the non-goals right? | T-001 |
 | Q-03 | ~~What happens to the withdrawn generation?~~ **Answered 2026-10-25:** moved out of the repository to `../Cautela-geracao-retirada/`, with a note explaining that the thesis changed and the work did not fail. Nothing deleted; the Groth16 verifier still has green tests and a testnet deployment there. | — |
-| Q-04 | ~~The active project has no name.~~ **Answered 2026-10-25: Pinakion.** The πινάκιον was the bronze ticket bearing a citizen's name, slotted into the kleroterion before an Athenian jury draw. Chosen over *Kleroterion* because `kleros` is the root of an existing onchain jury protocol. Still open: does this repository get renamed, or does Pinakion start a new one? | T-013 |
+| Q-04 | ~~The active project has no name, and where does it live?~~ **Answered 2026-10-25: Pinakion**, in a new public repository at `ThaisFReis/pinakion`; the Cautela tree stays where it was. The πινάκιον was the bronze ticket bearing a citizen's name, slotted into the kleroterion before an Athenian jury draw. Chosen over *Kleroterion* because `kleros` is the root of an existing onchain jury protocol. | — |
 | Q-05 | `verify` takes the beacon public key as a parameter. Anyone can pass their own key and have any round verify. Confirm this is pinned before anything depends on it. | T-007 |
 | Q-06 | No toolchain pins exist (`rust-toolchain.toml`, `.nvmrc`). Which versions are the project's? | T-003 |
 | Q-07 | Who publishes the first roster, and under what authority? This is unresolved across three design documents. | — |

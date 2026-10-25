@@ -155,6 +155,7 @@ None declared yet. `[INFERRED]` candidate: nothing is stable enough to freeze be
 | Node | 24.14.1 | installed; **no `.nvmrc`** (§11 Q-06) |
 | `rand` (inside the Soroban host) | 0.8.5 | pinned by `rs-soroban-env`; the off-chain verifiers depend on this |
 | `rand_chacha` (inside the host) | 0.3.1 | same |
+| `py_ecc` | optional | only for `scripts/rodada.py`, which decompresses a drand signature for the demo. No gate depends on it, and `scripts/verificar_sorteio.py` keeps its zero-dependency promise |
 
 Open `[VERIFY]` items: none outstanding — every external fact relied on today is logged in `docs/SOURCES.md`.
 
@@ -191,13 +192,15 @@ Run from a clean checkout. The baseline below was recorded on 2026-10-25 **befor
 | G2 | `cargo test --locked --workspace` | PASS, 10 tests | **PASS, 12 tests** | +2 from T-007 |
 | G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | FAIL, 5 deprecated aliases | **PASS** | fixed by T-004 |
 | G4 | `stellar contract build` | PASS | **PASS** | beacon-verifier, 2,576 B optimised |
-| G5 | `npm test` | FAIL | FAIL | deliberate placeholder until T-006 replaces it |
+| G5 | `npm test` | FAIL | **PASS, 3 vectors** | was a placeholder; T-006 replaced it with `web/test.mjs` |
+| G6 | `python3 scripts/conferir_vetores.py` | did not exist | **PASS, 3 vectors + the tie to `test.rs`** | added by T-005 |
+
+**Golden vectors.** `tests/vetores-de-ouro.json` holds them, and three implementations are held to it: the contract (G2, hard-coded in `test.rs`), the Python verifier (G6) and the JavaScript one (G5). G6 also checks that the JSON and `test.rs` still carry the same numbers, so the two cannot drift apart while each stays green on its own. Both gates were proven to fail: altering one number turns G5 and G6 red, with exit code 1 (checked 2026-10-25).
 
 **Missing gates** (proposed as tasks, not added silently):
 
-- No test runs `scripts/verificar_sorteio.py`. Its agreement with the contract is asserted only from the Rust side.
-- No test runs `web/sorteio.mjs`. It was validated outside the repository and that validation is not reproducible here.
 - `CLAUDE.md` requires every published number to be reproducible by a gate. The figures in `docs/evidencia-testnet-sorteio.md` are produced by G2 but are not checked against the document.
+- Nothing runs `scripts/rodada.py`; it needs the network and an optional dependency, so it is exercised by the demo, not by a gate.
 
 ---
 
@@ -227,8 +230,8 @@ Run from a clean checkout. The baseline below was recorded on 2026-10-25 **befor
 | T-002 | License the repository | T-000 | §11 Q-01 | review | MIT. `LICENSE` present; `package.json` renamed to `pinakion` and declares MIT |
 | T-003 | Pin the toolchain ([#2](https://github.com/ThaisFReis/pinakion/issues/2)) | T-000 | §6, §11 Q-06 | todo | `rust-toolchain.toml` and `.nvmrc` present; G1–G4 pass from a clean checkout |
 | T-004 | Green the baseline: fmt and clippy ([#3](https://github.com/ThaisFReis/pinakion/issues/3)) | — | §8 | review | G1 and G3 pass. Aliases renamed to `Bls12381G1Affine` / `Bls12381G2Affine`; rustfmt applied. No behaviour change: the golden vectors still match |
-| T-005 | Test the Python verifier in the repository ([#4](https://github.com/ThaisFReis/pinakion/issues/4)) | T-003 | §4 INV-04 | todo | A gate runs `scripts/verificar_sorteio.py` against the golden vectors and fails if they diverge |
-| T-006 | Test the JavaScript verifier in the repository ([#5](https://github.com/ThaisFReis/pinakion/issues/5)) | T-005 | §3 B-02 | todo | A gate runs `web/sorteio.mjs` against the same vectors; `npm test` stops being a placeholder (replaces G5) |
+| T-005 | Test the Python verifier in the repository ([#4](https://github.com/ThaisFReis/pinakion/issues/4)) | T-003 | §4 INV-04 | review | G6 runs `scripts/conferir_vetores.py` against `tests/vetores-de-ouro.json` and also ties those numbers to `test.rs`; proven to fail when a vector is altered |
+| T-006 | Test the JavaScript verifier in the repository ([#5](https://github.com/ThaisFReis/pinakion/issues/5)) | T-005 | §3 B-02 | review | `npm test` runs `web/test.mjs` against the same file and stops being a placeholder; proven to fail when a vector is altered |
 | T-007 | Pin the beacon public key ([#1](https://github.com/ThaisFReis/pinakion/issues/1)) | — | §4 INV-10, §7 | review | Key pinned; `verify` takes no key; `beacon()` publishes the trusted chain hash; a forged signature from a real adversary keypair is rejected on testnet |
 | T-008 | Enforce the roster's minimum round ([#6](https://github.com/ThaisFReis/pinakion/issues/6)) | T-007 | §4 INV-06 | todo | A draw against a round earlier than the roster's definitive ledger is rejected |
 
@@ -283,20 +286,20 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Alternatives:** A settable key behind an admin — rejected: it reintroduces the same party with an extra step. A set of accepted keys — rejected as unneeded complexity before a second beacon exists.
 **Consequences:** The contract trusts exactly one drand chain. A quicknet group-key rotation is a new chain with a new hash and requires a new contract; changing the key without changing the contract is precisely the power this pinning removes. Verification cost rose by 887 instructions, the constant being loaded rather than passed. INV-10 is now enforced; §7 and Q-05 updated. `beacon()` is a new public function and §5 declares no frozen interface yet.
 
-### DEC-006: A separate `PLAN.md` for order and state (2026-10-25, post-T-014)
-**Context:** §9 holds both the acceptance criteria and the status of every task, plus the event's deliverables. Reading it to answer "what is next, and what is waiting on whom" means reading three tables and two prose paragraphs, and the branch and PR state is not in it at all.
-**Decision:** `PLAN.md` at the root carries the order, the phases, the branch and PR state, and what is deliberately out of scope before the ship date. §9 keeps the acceptance criteria and remains the authority on them.
-**Alternatives:** Keeping everything in §9 — rejected: the file a human checks hourly during an event should not be the file that also defines correctness. Generating `PLAN.md` from §9 — rejected: no generator exists and writing one before the video is the wrong order.
-**Consequences:** Two files state task status, which can drift. `PLAN.md` states the rule for that: where the two disagree about criteria, the spec wins and `PLAN.md` is stale. Fixed the §0 table, which still listed `THESIS.md`, `DESIGN.md` and `AGENTS.md` as missing after T-010 to T-012 wrote them.
-
----
-
 ### DEC-005: Civic editorial identity for all governance audiences (2026-10-25, T-017)
 **Context:** The human requested a stronger design focused on what governance should convey, avoiding crypto clichés, and specified that all listed audiences matter.
 **Decision:** Use the stone/patina palette and serif/sans/data type roles in an editorial layout. Lead with procedure and people. Place the working comparison, its evidence and its limitations together. Put technical inputs behind native disclosure controls. A matching result describes agreement with the supplied data.
 **Correction made while finishing the task:** the page's worked example pointed at contract `CCLWP7WO…` and two transactions that no document in this repository records. Both are real on testnet, but they belong to the pre-T-007 deployment, whose beacon key was still a call parameter. The example is now round 33382274 on `CBPHNZLG…`, with the two transactions `docs/evidencia-testnet-sorteio.md` lists.
 **Consequences:** T-017 includes hierarchy and copy presentation as authorised in the conversation; general approval in §0 remains pending. No contract or independent algorithm change. The page is a local preview, not a public deployment. Empty signature input clears the previous result so an obsolete success state is not displayed.
 **Validation (observed 2026-10-25):** G1–G4 passed with their §8 commands, including 12 Rust tests. G5 fails as the placeholder `docs/SPEC.md` §8 declares, which T-006 replaces — an earlier note here said `npm` was absent from PATH; it is present (v24.14.1, via nvm) and the failure is the declared one, not a missing tool. Browser checks at 800px and 375px, light and dark: the documented panel recomputes and matches, a deliberately altered panel is refused, no console errors, no horizontal overflow. These checks do not replace T-006 or establish new contract guarantees.
+
+---
+
+### DEC-006: A separate `PLAN.md` for order and state (2026-10-25, post-T-014)
+**Context:** §9 holds both the acceptance criteria and the status of every task, plus the event's deliverables. Reading it to answer "what is next, and what is waiting on whom" means reading three tables and two prose paragraphs, and the branch and PR state is not in it at all.
+**Decision:** `PLAN.md` at the root carries the order, the phases, the branch and PR state, and what is deliberately out of scope before the ship date. §9 keeps the acceptance criteria and remains the authority on them.
+**Alternatives:** Keeping everything in §9 — rejected: the file a human checks hourly during an event should not be the file that also defines correctness. Generating `PLAN.md` from §9 — rejected: no generator exists and writing one before the video is the wrong order.
+**Consequences:** Two files state task status, which can drift. `PLAN.md` states the rule for that: where the two disagree about criteria, the spec wins and `PLAN.md` is stale. Fixed the §0 table, which still listed `THESIS.md`, `DESIGN.md` and `AGENTS.md` as missing after T-010 to T-012 wrote them.
 
 ### DEC-007: Git is written in English (2026-10-25, T-019)
 **Context:** The conversation runs in Portuguese and the commit messages followed it, as did two PR bodies. The repository is public and read by people who do not read Portuguese; the history and the PR record are part of what they see.
@@ -309,6 +312,11 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Decision:** Add `scripts/rodada.py`, which fetches a round and prints the uncompressed signature ready for the CLI. It depends on `py_ecc`.
 **Alternatives:** Implementing BLS12-381 decompression by hand to keep the zero-dependency rule — rejected for now: it is a square root in F_p with a sign rule, and getting it subtly wrong would produce a point that simply fails the pairing, which looks like a broken demo rather than a broken script. Worth doing later. Decompressing in the contract — rejected: it would spend CPU on something that is safe to do outside, since a wrong point fails the pairing anyway.
 **Consequences:** `scripts/verificar_sorteio.py` keeps its zero-dependency promise and is still the one that matters for the guarantee; `rodada.py` is a convenience for the demo and says so. The repository now has an optional Python dependency, declared in `docs/DEMO.md` and §6.
+### DEC-009: One file of golden vectors, three implementations (2026-10-25, T-005/T-006)
+**Context:** INV-04 says the contract and the off-chain recomputations agree. Until now that was asserted only from the Rust side, with the numbers hard-coded in `test.rs`; the Python verifier was checked by hand and the JavaScript one was validated outside the repository.
+**Decision:** `tests/vetores-de-ouro.json` is the one set of numbers. G6 runs the Python verifier against it, `npm test` runs the JavaScript one, and G6 additionally parses `test.rs` and fails if its asserted panels and the JSON have diverged.
+**Alternatives:** Generating the JSON from the Rust test — rejected: it needs a build step before a gate can run. Having the Rust test read the JSON — rejected for now: the contract crate is `no_std` and parsing JSON there costs more than the drift check does. Three separate copies of the vectors — rejected, since that is the failure being prevented.
+**Consequences:** G5 stops being a deliberate failure and the §8 baseline records that. A host change to the PRNG or the shuffle now turns three gates red instead of one. `tests/` is a new directory holding data, not code.
 
 ---
 

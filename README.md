@@ -63,8 +63,12 @@ Requires Rust with the `wasm32v1-none` target, Stellar CLI 28.x and Node 20+.
 
 ```bash
 cargo test --locked --workspace     # 12 tests, including the golden vectors
+npm test                            # the same vectors, in the browser's verifier
+python3 scripts/conferir_vetores.py # and in the dependency-free one
 stellar contract build              # plain `cargo build` to Wasm fails by design
 ```
+
+The three implementations are held to one file, [`tests/vetores-de-ouro.json`](tests/vetores-de-ouro.json). Change a number in it and all three go red.
 
 Deploy and exercise it on testnet:
 

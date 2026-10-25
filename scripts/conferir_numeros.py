@@ -29,7 +29,10 @@ TUPLAS = {
     ),
     "kleroterion": (
         RAIZ / "contracts" / "kleroterion" / "src" / "test.rs",
-        ["CUSTO_ENROLL", "CUSTO_IMPEDE", "CUSTO_LOCK", "CUSTO_PROVA"],
+        [
+            "CUSTO_ENROLL", "CUSTO_IMPEDE", "CUSTO_LOCK", "CUSTO_PROVA",
+            "CUSTO_SEAL", "CUSTO_CLAIM", "CUSTO_RECUSE", "CUSTO_FINALIZE", "CUSTO_REVEAL",
+        ],
     ),
 }
 
@@ -47,6 +50,8 @@ ONDE = {
         "verify_cpu", "verify_mem",
         "kleroterion_custo_enroll_cpu", "kleroterion_custo_impede_cpu", "kleroterion_custo_lock_cpu",
         "kleroterion_custo_prova_cpu", "groth16_custo_verify_cpu",
+        "kleroterion_custo_seal_cpu", "kleroterion_custo_claim_cpu", "kleroterion_custo_recuse_cpu",
+        "kleroterion_custo_finalize_cpu", "kleroterion_custo_reveal_cpu",
     ],
     "docs/SOURCES.md": ["verify_cpu", "verify_mem"],
     "docs/DEMO.md": ["verify_cpu"],

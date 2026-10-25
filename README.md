@@ -56,7 +56,8 @@ Verifying a drand round on Soroban is not new: [`AshFrancis/splicers`](https://g
 
 ## What is not
 
-- The case lifecycle is designed and **not built**. Of the roster cycle only enrol → impede → lock → seal exists.
+- The case lifecycle is designed and **not built**. Of the roster cycle, enrol → impede → lock → seal → claim → finalize → reveal exists in `kleroterion` and has passed unit tests only.
+- **Since T-038 `kleroterion` draws sealed** (each juror proves a seat from a fresh account; the panel is public after the verdict). The Fisher-Yates draw described above is `beacon-verifier`'s, and was `kleroterion`'s in the testnet run linked here; this page is rewritten in T-041.
 - The evidence is one run with seven jurors on one machine; `AUTH_IMMUTABLE` was not set; the costs of `enroll`, `lock` and `draw_round` were not measured. That run used the pre-T-033 contract (`draw_round` with a caller-given round); the current `lock(k, reveal_after)` → `seal(sig)` has passed its unit tests and has **not** been run on testnet.
 - Nothing has been audited. Nothing has run on mainnet.
 - Below a roster of about sixteen the draw guarantees nothing, and the contract should refuse rather than pretend — see [`docs/limite-inferior-do-rol.md`](docs/limite-inferior-do-rol.md).

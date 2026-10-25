@@ -44,6 +44,19 @@ Painel sorteado on-chain:
  37, 121, 10, 192, 174, 155, 177, 140, 49, 135]
 ```
 
+## A rodada mínima, imposta na cadeia (T-026)
+
+Contrato `CBVWEEIGMZWLGSK4JG5M5VP6N4DWTZXAN4V2EHVXHZ6B74MNHHH3MIA3`, com `draw_round`. Este é um **deploy novo**: o contrato mudou.
+
+| Ato | Resultado | Transação |
+|---|---|---|
+| `draw_round` com rodada **anterior** à mínima | **recusado**, `Error(Contract, #1)` | nenhuma — falha já na simulação, então não há transação para mostrar |
+| `draw_round` na própria rodada mínima | o painel documentado abaixo | [fba36469…](https://stellar.expert/explorer/testnet/tx/fba364692f63acb3088a5452c975ce7fdc41c627efdb7dcd29ad410c6a91238f) |
+
+O painel devolvido é idêntico ao da tabela anterior, o que prova duas coisas de uma vez: a semente derivada na cadeia é a mesma que a drand publica, e o caminho estrito chega ao mesmo lugar que o caminho da demo.
+
+**O que isto não prova.** A `rodada_minima` é argumento de quem chama. Que ela seja a do rol, e não um número escolhido depois, exige o rol na cadeia — que não existe. É a outra metade de INV-06, registrada como Q-15.
+
 ## A recomputação independente
 
 O mesmo painel, recomputado fora da cadeia por uma implementação escrita do zero — ChaCha20, amostragem de Lemire e Fisher-Yates à mão, **sem nenhuma dependência**:

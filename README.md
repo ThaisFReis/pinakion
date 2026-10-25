@@ -62,7 +62,7 @@ Full record, with every hash: [`docs/evidencia-testnet-sorteio.md`](docs/evidenc
 The toolchain is pinned: `rust-toolchain.toml` gives you rustc 1.97.1 with the `wasm32v1-none` target, and `.nvmrc` gives you Node 24.14.1. There are no npm dependencies. The Stellar CLI (28.1.0) is the one thing you install yourself.
 
 ```bash
-cargo test --locked --workspace     # 12 tests, including the golden vectors
+cargo test --locked --workspace     # 16 tests, including the golden vectors
 npm test                            # the same vectors, in the browser's verifier
 python3 scripts/conferir_vetores.py # and in the dependency-free one
 stellar contract build              # plain `cargo build` to Wasm fails by design

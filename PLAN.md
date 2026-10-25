@@ -32,7 +32,7 @@ Two issues remain: [#8](https://github.com/ThaisFReis/pinakion/issues/8), the re
 | # | Command | State |
 |---|---|---|
 | G1 | `cargo fmt --all --check` | PASS |
-| G2 | `cargo test --locked --workspace` | PASS, 12 tests |
+| G2 | `cargo test --locked --workspace` | PASS, 16 tests |
 | G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS |
 | G4 | `stellar contract build` | PASS |
 | G5 | `npm test` | PASS, 3 vectors |
@@ -107,7 +107,7 @@ Not before 26 Oct. These need contracts that do not exist yet.
 
 | Task | Issue | Blocked on |
 |---|---|---|
-| T-008 enforce the roster's minimum beacon round (INV-06) | [#6](https://github.com/ThaisFReis/pinakion/issues/6) | there is no roster contract to hold the minimum |
+| T-008, the roster half of INV-06 | [#6](https://github.com/ThaisFReis/pinakion/issues/6) | the caller's half is enforced by `draw_round` (T-026); checking the minimum is the roster's own still needs a roster contract — Q-15 |
 | The case lifecycle, the roster cycle, the recusal rules | — | designed in three documents, **587 lines of design with no implementation** |
 | Confidential case files | — | `docs/desenho-sorteio-e-sigilo.md`; threshold decryption per access |
 

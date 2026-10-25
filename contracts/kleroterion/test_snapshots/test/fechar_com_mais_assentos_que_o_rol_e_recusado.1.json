@@ -297,6 +297,9 @@
         }
       ]
     ],
+    [],
+    [],
+    [],
     [
       [
         "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
@@ -305,7 +308,14 @@
             "contract_fn": {
               "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
               "function_name": "lock",
-              "args": []
+              "args": [
+                {
+                  "u32": 7
+                },
+                {
+                  "u32": 17280
+                }
+              ]
             }
           },
           "sub_invocations": []
@@ -453,7 +463,7 @@
               "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
               "key": {
                 "ledger_key_nonce": {
-                  "nonce": "2307661404550649928"
+                  "nonce": "4571470874178140630"
                 }
               },
               "durability": "temporary",
@@ -641,6 +651,14 @@
                         "map": [
                           {
                             "key": {
+                              "symbol": "k"
+                            },
+                            "val": {
+                              "u32": 7
+                            }
+                          },
+                          {
+                            "key": {
                               "symbol": "ledger"
                             },
                             "val": {
@@ -649,10 +667,18 @@
                           },
                           {
                             "key": {
-                              "symbol": "rodada_minima"
+                              "symbol": "revela_em"
                             },
                             "val": {
-                              "u64": "2"
+                              "u32": 17280
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "rodada"
+                            },
+                            "val": {
+                              "u64": "12"
                             }
                           },
                           {

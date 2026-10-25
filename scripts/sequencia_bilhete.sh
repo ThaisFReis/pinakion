@@ -15,9 +15,9 @@
 #   5. issuer master weight 0: nobody can ever issue or authorize a ticket
 #      again except the contract                        (the commitment)
 #   6. enroll each juror: SAC trust (CAP-73) + set_authorized + mint
-#   7. lock: ledger, timestamp, minimum drand round
-#   8. impede the first juror of the enrolment order    (art. 463)
-#   9. draw_round with the latest drand round, k = 3
+#   7. impede the first juror of the enrolment order    (art. 463; refused after lock)
+#   8. lock(k = 3, reveal_after ledger): ledger, timestamp, the drand round, k
+#   9. wait for that round, then seal with its signature (once; no round is chosen)
 #  10. recompute the panel off-chain, no dependencies
 set -euo pipefail
 N="--network testnet"
@@ -53,19 +53,22 @@ for J in "${JURORS[@]}"; do
   printf '%-8s %s  tx %s\n' "$J" "$A" "$H"
 done
 
-log "7. lock"
-stellar contract invoke --id "$KLERO" --source "$CLERK" $N -- lock 2>&1 | grep -E 'tx/|ledger|tempo|rodada' | sed 's#.*tx/#tx #'
-stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=no -- closing 2>/dev/null | tail -1
-
-log "8. impede the first of the enrolment order"
+log "7. impede the first of the enrolment order (before lock: after it, impede is refused)"
 PRIMEIRO=$(stellar keys address "${JURORS[0]}")
 stellar contract invoke --id "$KLERO" --source "$CLERK" $N -- impede --jurado "$PRIMEIRO" 2>&1 | grep -o 'tx/[0-9a-f]*' | sed 's#tx/#tx #'
 
-log "9. draw_round with the latest drand round, k = 3"
-RODADA=$(python3 scripts/rodada.py | awk '/^round/{print $2}')
+log "8. lock, k = 3; reveal_after = the ledger about one day ahead (unused until T-038)"
+LEDGER=$(curl -s https://horizon-testnet.stellar.org/ | python3 -c "import sys,json;print(json.load(sys.stdin)['history_latest_ledger'])")
+stellar contract invoke --id "$KLERO" --source "$CLERK" $N -- lock --k 3 --revela_em $(( LEDGER + 17280 )) 2>&1 | grep -E 'tx/|ledger|tempo|rodada' | sed 's#.*tx/#tx #'
+FECHAMENTO=$(stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=no -- closing 2>/dev/null | tail -1); echo "$FECHAMENTO"
+RODADA=$(printf '%s' "$FECHAMENTO" | python3 -c "import sys,json;print(json.load(sys.stdin)['rodada'])")
+
+log "9. wait for round $RODADA, then seal with its signature"
+QUANDO=$(( 1692803367 + (RODADA - 1) * 3 )); ESPERA=$(( QUANDO - $(date +%s) + 3 ))
+[ "$ESPERA" -gt 0 ] && { echo "round $RODADA is published at $QUANDO; waiting ${ESPERA}s"; sleep "$ESPERA"; }
 SIG=$(python3 scripts/rodada.py "$RODADA" | awk '/^signature/{print $2}')
 echo "round    $RODADA"
-stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=yes -- draw_round --round "$RODADA" --sig "$SIG" --k 3 2>&1 | grep -E 'tx/|^\[' | sed 's#.*tx/#tx #'
+stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=yes -- seal --sig "$SIG" 2>&1 | grep -E 'tx/|^\[' | sed 's#.*tx/#tx #'
 
 log "10. the same panel, recomputed off-chain"
 SEMENTE=$(curl -s "https://api.drand.sh/52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971/public/$RODADA" | python3 -c "import sys,json;print(json.load(sys.stdin)['randomness'])")

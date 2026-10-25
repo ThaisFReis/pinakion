@@ -6,6 +6,13 @@ draw was re-sent once with `--send=yes`, because the CLI only simulates a
 read-only call by default. Links open on stellar.expert; the same hashes
 resolve on any Horizon or RPC for testnet. Nothing here has run on mainnet.
 
+**This run predates T-033.** The contract deployed here has `lock()` with no
+arguments, a *minimum* round, `impede` open after `lock`, and
+`draw_round(round, sig, k)`. The contract in the repository today has
+`lock(k, reveal_after)`, an exact round, `impede` refused after `lock`, and
+`seal(sig)` once (DEC-020). The script was updated to match and has not been
+run again; T-040 rewrites this page with new hashes.
+
 | | |
 |---|---|
 | issuer | `GC3JC24U74YAIY26MEQMV6LZLVBDMR6CVF2AOAN6UA5XEGZ6EZOADRBB` |

@@ -305,7 +305,14 @@
             "contract_fn": {
               "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
               "function_name": "lock",
-              "args": []
+              "args": [
+                {
+                  "u32": 3
+                },
+                {
+                  "u32": 17280
+                }
+              ]
             }
           },
           "sub_invocations": []
@@ -642,6 +649,14 @@
                         "map": [
                           {
                             "key": {
+                              "symbol": "k"
+                            },
+                            "val": {
+                              "u32": 3
+                            }
+                          },
+                          {
+                            "key": {
                               "symbol": "ledger"
                             },
                             "val": {
@@ -650,10 +665,18 @@
                           },
                           {
                             "key": {
-                              "symbol": "rodada_minima"
+                              "symbol": "revela_em"
                             },
                             "val": {
-                              "u64": "2"
+                              "u32": 17280
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "rodada"
+                            },
+                            "val": {
+                              "u64": "12"
                             }
                           },
                           {

@@ -50,6 +50,22 @@ The guarantee that was missing is old and has a name: the deciding body is deter
 
 ---
 
+## The ticket
+
+The *pinakion* is literally a ticket here: **one unit of a classic Stellar asset.** The issuer sets `AUTH_REQUIRED` and `AUTH_REVOCABLE`, hands the asset's contract admin to the `kleroterion` contract, and then sets its own master weight to 0. From that ledger on, nobody can issue or authorize a ticket except the contract — and the contract refuses enrolment after `lock()`.
+
+| In Athens | Here |
+|---|---|
+| the bronze ticket with your name | one PINAKION on your trustline, created by the contract itself (SAC `trust`, Protocol 26) |
+| the ticket slotted before the draw | `enroll` before `lock`; the enrolment order is the order the balls fall on |
+| the slab closed | the issuer locked, the roster frozen, the minimum beacon round fixed from the ledger clock |
+| a citizen struck off | `set_authorized(false)` — the ticket stays, the seat does not (art. 463: the next in the drawn order takes it) |
+| anyone counting the tickets | any Horizon: `GET /accounts?asset=PINAKION:issuer` |
+
+None of this needed a new primitive. Asset authorization flags date from 2015 and were built for regulated issuers; a contract creating a trustline is Protocol 26. They were never used to seat a jury — which is the point.
+
+---
+
 ## Why Stellar
 
 Not "because blockchain". Three specific things, each measured or read from source:
@@ -57,6 +73,8 @@ Not "because blockchain". Three specific things, each measured or read from sour
 **The beacon verification is affordable on-chain.** A drand round is a BLS12-381 signature. Stellar's host functions verify it for **26,719,483 CPU instructions** — measured in the Soroban test host, and executed on testnet in [transaction `c74150ee…`](https://stellar.expert/explorer/testnet/tx/c74150eeb7b73d0a196d20b44ed851a140812b3ac67e579b670b87ee2c3ffeea). The draw itself costs 2,274,884 for a roster of a thousand.
 
 **The draw is exactly reproducible off-chain.** The Soroban host derives its PRNG seed with `HMAC-SHA256` under a fixed salt, and the host's own source states that this salt is part of the protocol and must be identical in every implementation. The shuffle is Fisher-Yates from pinned crate versions. That declaration is the reason a browser can recompute a panel at all — and we did: an implementation written from scratch, with no dependencies, reproduces the on-chain panel exactly.
+
+**The roster can live in the classic ledger, frozen by the ledger's own rules.** A locked issuer cannot sign; an `AUTH_REQUIRED` asset cannot be held without the issuer's — now the contract's — say-so. Those are protocol rules, not contract code, and any Horizon client can read the result without trusting us. Proven on testnet in `docs/evidencia-testnet-bilhete.md`.
 
 **The randomness the chain offers is not good enough, and says so.** The `soroban-sdk` documents that its PRNG seed is under validator control and is not hard to bias. So the entropy comes from outside, from drand, and the chain's job is to *verify* it rather than produce it. Building this on a chain whose own documentation is honest about that limit is easier than building it on one that is not.
 
@@ -74,13 +92,14 @@ Not "because blockchain". Three specific things, each measured or read from sour
 
 ## What is proven today
 
-- A live drand round verifies on Stellar testnet; a tampered one is rejected. Transaction hashes in `docs/evidencia-testnet-sorteio.md`.
+- A live drand round verifies on Stellar testnet; a tampered one is rejected. Transaction hashes in `docs/evidencia-testnet-sorteio.md`. This part is not new on Stellar: `AshFrancis/splicers` and `NibrasD/Stellar-VRF` verified drand with the same host functions before us, and we say so.
+- The roster is a classic asset: seven jurors enrolled with trustlines the contract created, the issuer locked at master weight 0, the roster closed with its minimum round fixed from the ledger clock, one juror impeded, a panel of three drawn from a live round and reproduced off-chain, address for address. Every hash in `docs/evidencia-testnet-bilhete.md`.
 - The panel drawn on testnet is reproduced, digit for digit, by two independent implementations — one in Python, one in JavaScript — written from the host's semantics rather than its code.
 - The agreement is locked as a regression test, so a change to the host's algorithm turns the suite red.
 
 ## What is not
 
-- The case lifecycle, the roster cycle and the recusal rules are designed (`docs/desenho-rol-sorteio-recusas.md`) and **not built**.
+- The case lifecycle is designed (`docs/desenho-rol-sorteio-recusas.md`) and **not built**. Of the roster cycle, only enrol → lock → impede exists; renewal, contestation windows and the quorum arithmetic do not.
 - Nothing has been audited. Nothing has run on mainnet.
 - Below a roster of about sixteen the draw guarantees nothing, and the contract should refuse to operate rather than pretend (`docs/limite-inferior-do-rol.md`).
 

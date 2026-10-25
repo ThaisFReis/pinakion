@@ -29,7 +29,7 @@ That prints the panel that contract `CBPHNZLG…` drew on testnet, in [this tran
 
 ## How it works
 
-**1. The roster is committed first.** A Merkle root of the eligible members, published with a window in which anyone can contest an entry, and a minimum beacon round fixed when it becomes definitive. No draw may use a round older than that.
+**1. The ticket is an asset, and the roster is frozen in the ledger.** Each juror holds one unit of a classic Stellar asset whose issuer requires authorization. The `kleroterion` contract enrols a juror by creating the trustline itself (SAC `trust`, Protocol 26), authorizing it and minting the ticket; the issuer then sets its master weight to 0, so nobody but the contract can ever issue or authorize a ticket again. `lock()` closes the roster and fixes the minimum beacon round from the ledger clock. Any Horizon client lists the roster: `GET /accounts?asset=PINAKION:issuer`.
 
 **2. The entropy arrives afterwards.** A [drand](https://drand.love) quicknet round — a public beacon that publishes an unpredictable value every three seconds. Its BLS12-381 signature is verified **on-chain**. Nobody, including us, knew the value when the roster was committed.
 
@@ -47,12 +47,17 @@ That prints the panel that contract `CBPHNZLG…` drew on testnet, in [this tran
 | One verification costs 26,719,483 CPU instructions, 161,818 bytes | measured with `env.cost_estimate().budget()` in the test host — **not** a figure taken from a testnet transaction |
 | The contract trusts one named beacon, auditable on-chain | `beacon()` returns the quicknet chain hash |
 | A draw from a roster of 1,000 costs 2,274,884 instructions | measured the same way |
+| The roster is a classic asset, frozen by a locked issuer, with trustlines the contract created | the sequence in [`scripts/sequencia_bilhete.sh`](scripts/sequencia_bilhete.sh), run on testnet: issuer flags [`b104d57e…`](https://stellar.expert/explorer/testnet/tx/b104d57ede1234c87b84c511530862fb81e9bbcdc9fd30e5474d0293e905e7d8), master weight 0 [`77808909…`](https://stellar.expert/explorer/testnet/tx/77808909a7a4a14bbd097a8622c0f354c83505a83eaee5b3c6f5b528e1056f63), lock [`8a98bcf6…`](https://stellar.expert/explorer/testnet/tx/8a98bcf680b55a272e59df393c162a48c83731ee2f160abb039b763dfc7cef9c) |
+| An impeded juror is skipped and the next in the drawn order sits; the off-chain recomputation returns the same panel, address for address | draw [`fc4a5f93…`](https://stellar.expert/explorer/testnet/tx/fc4a5f93fa7c01779c81ffc924b29e766496ddbc7ca9556ff0a81babec2b85c2) and `scripts/verificar_painel.py` |
 
-Full record, with every hash: [`docs/evidencia-testnet-sorteio.md`](docs/evidencia-testnet-sorteio.md).
+Full record, with every hash: [`docs/evidencia-testnet-sorteio.md`](docs/evidencia-testnet-sorteio.md) for the beacon, [`docs/evidencia-testnet-bilhete.md`](docs/evidencia-testnet-bilhete.md) for the ticket.
+
+Verifying a drand round on Soroban is not new: [`AshFrancis/splicers`](https://github.com/AshFrancis/splicers) and [`NibrasD/Stellar-VRF`](https://github.com/NibrasD/Stellar-VRF) did it before us with the same host functions. What neither does is seat a jury from a roster frozen before the case.
 
 ## What is not
 
-- The case lifecycle, the roster cycle and the recusal rules are designed and **not built**.
+- The case lifecycle is designed and **not built**. Of the roster cycle only enrol → lock → impede exists.
+- The evidence is one run with seven jurors on one machine; `AUTH_IMMUTABLE` was not set; the costs of `enroll`, `lock` and `draw_round` were not measured.
 - Nothing has been audited. Nothing has run on mainnet.
 - Below a roster of about sixteen the draw guarantees nothing, and the contract should refuse rather than pretend — see [`docs/limite-inferior-do-rol.md`](docs/limite-inferior-do-rol.md).
 
@@ -63,7 +68,7 @@ Full record, with every hash: [`docs/evidencia-testnet-sorteio.md`](docs/evidenc
 The toolchain is pinned: `rust-toolchain.toml` gives you rustc 1.97.1 with the `wasm32v1-none` target, and `.nvmrc` gives you Node 24.14.1. There are no npm dependencies. The Stellar CLI (28.1.0) is the one thing you install yourself.
 
 ```bash
-cargo test --locked --workspace     # 16 tests, including the golden vectors
+cargo test --locked --workspace     # 38 tests, including the golden vectors
 npm test                            # the same vectors, in the browser's verifier
 python3 scripts/conferir_vetores.py # and in the dependency-free one
 stellar contract build              # plain `cargo build` to Wasm fails by design
@@ -81,6 +86,12 @@ stellar contract deploy --wasm target/wasm32v1-none/release/beacon_verifier.wasm
 Then `verify --round <n> --sig <hex>`, `beacon`, and `draw --seed <hex> --n <size> --k <panel>`.
 The beacon key is pinned in the contract — there is no key to pass.
 
+The whole ticket sequence — issue, lock, enrol, close, impede, draw, recompute — is one script, and it prints every hash:
+
+```bash
+scripts/sequencia_bilhete.sh <issuer-identity> <clerk-identity> <juror-identity>...
+```
+
 ---
 
 ## Layout
@@ -94,8 +105,11 @@ CLAUDE.md      how to work here, long
 docs/SPEC.md   goals, invariants, gates, task board, decisions
 docs/SOURCES.md every external fact checked, with its date
 
-contracts/beacon-verifier/   the Soroban contract: verify, randomness, draw
+contracts/beacon-verifier/   the beacon: verify, randomness, draw
+contracts/kleroterion/       the roster as an asset: enroll, lock, impede, draw_round
 scripts/verificar_sorteio.py an independent recomputation, no dependencies
+scripts/verificar_painel.py  the same, from a roster to a panel of addresses
+scripts/sequencia_bilhete.sh the classic sequence on testnet, end to end
 web/                         the same recomputation, in a browser
 ```
 

@@ -65,6 +65,10 @@ A claim appears in a document, README or UI only if it is listed here with its e
 | One beacon verification costs 26,719,483 CPU instructions and 161,818 memory bytes | measured via `env.cost_estimate().budget()` in `contracts/beacon-verifier/src/test.rs`; test-host figure, **not** a figure from a testnet transaction |
 | The draw is recomputable off-chain by an independent implementation | `scripts/verificar_sorteio.py` and `web/sorteio.mjs` reproduce the on-chain panel; locked by golden vectors in `bate_com_a_recomputacao_fora_da_cadeia` |
 | `randomness = sha256(signature)` for drand quicknet | verified against live rounds; test `aleatoriedade_e_sha256_da_assinatura` |
+| The roster is a classic asset frozen by a locked issuer; the contract created each trustline through SAC `trust` | txs `b104d57e…` (flags), `7f9279a7…` (admin to the contract), `77808909…` (master weight 0), seven `enroll` txs; `docs/evidencia-testnet-bilhete.md` |
+| `lock()` fixes the minimum beacon round from the ledger clock, not from the caller | tx `8a98bcf6…` → `rodada_minima 33385833` from `tempo 1792960862`; tests `rodada_minima_vem_do_fechamento`, `sorteio_com_rodada_anterior_ao_fechamento_e_recusado` |
+| An impeded juror is skipped and the next in the drawn order sits; the off-chain panel equals the on-chain one, address for address | txs `c1a2f592…`, `fc4a5f93…`; `scripts/verificar_painel.py`; golden vector 4 |
+| Verifying a drand round on Soroban was done before this project | `AshFrancis/splicers`, `NibrasD/Stellar-VRF` — stated wherever the beacon is claimed |
 
 **Must not claim** (no evidence today): secure, audited, production-ready, trustless, unbiasable. The entropy source is trusted (§7), the contract is unaudited, and nothing has run on mainnet.
 
@@ -295,10 +299,10 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 
 | ID | Title | Deps | Reads | Status | Acceptance criteria |
 |---|---|---|---|---|---|
-| T-029 | `kleroterion`: the roster as a classic asset | T-026, T-028 | §3, §4 INV-06..12, §5, DEC-014 | doing | New contract. `enroll` creates the trustline through SAC `trust`, authorizes and mints one ticket; `lock` records ledger and timestamp, computes the minimum round and refuses below the roster minimum; `impede` revokes authorization; `draw_round` refuses before lock and below the minimum, verifies the beacon, shuffles the roster order and seats the first `k` with ticket and authorization. Golden vectors still match. All tests written first and seen failing |
-| T-030 | Verifiers recompute the panel from the roster | T-029 | §3 B-01, B-02, §5 | todo | `scripts/verificar_painel.py` and `web/sorteio.mjs` take the ordered roster, the impeded set and `k`, and return the same panel as the contract; a fourth golden vector with addresses; G5 and G6 cover it |
-| T-031 | The classic sequence on testnet | T-029 | §7, DEC-014 | todo | Issuer with `AUTH_REQUIRED`+`AUTH_REVOCABLE`, SAC admin handed to the contract, master weight set to 0; seven jurors enrolled, lock, one impediment, one draw; every hash in `docs/evidencia-testnet-bilhete.md`; Horizon `/accounts?asset=` shows the roster; the sort key of that endpoint recorded (the `[VERIFY]` in `docs/SOURCES.md`) |
-| T-032 | Say it everywhere the ticket is an asset | T-029 | §0, §2 | todo | `THESIS.md`, `README.md`, the landing and `docs/DEMO.md` describe the ticket, the lock and the two Unlocked bullets it answers; every claim traced to §2; no *first*/*novel* |
+| T-029 | `kleroterion`: the roster as a classic asset | T-026, T-028 | §3, §4 INV-06..12, §5, DEC-014 | review | New contract. `enroll` creates the trustline through SAC `trust`, authorizes and mints one ticket; `lock` records ledger and timestamp, computes the minimum round and refuses below the roster minimum; `impede` revokes authorization; `draw_round` refuses before lock and below the minimum, verifies the beacon, shuffles the roster order and seats the first `k` with ticket and authorization. Golden vectors still match. All tests written first and seen failing |
+| T-030 | Verifiers recompute the panel from the roster | T-029 | §3 B-01, B-02, §5 | review | `scripts/verificar_painel.py` and `web/sorteio.mjs` take the ordered roster, the impeded set and `k`, and return the same panel as the contract; a fourth golden vector with addresses; G5 and G6 cover it |
+| T-031 | The classic sequence on testnet | T-029 | §7, DEC-014 | review | Issuer with `AUTH_REQUIRED`+`AUTH_REVOCABLE`, SAC admin handed to the contract, master weight set to 0; seven jurors enrolled, lock, one impediment, one draw; every hash in `docs/evidencia-testnet-bilhete.md`; Horizon `/accounts?asset=` shows the roster; the sort key of that endpoint recorded (the `[VERIFY]` in `docs/SOURCES.md`) |
+| T-032 | Say it everywhere the ticket is an asset | T-029 | §0, §2 | review | `THESIS.md`, `README.md`, the landing and `docs/DEMO.md` describe the ticket, the lock and the two Unlocked bullets it answers; every claim traced to §2; no *first*/*novel* |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 

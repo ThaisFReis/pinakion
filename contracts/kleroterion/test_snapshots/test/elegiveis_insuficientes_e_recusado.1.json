@@ -304,21 +304,6 @@
           "function": {
             "contract_fn": {
               "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
-              "function_name": "lock",
-              "args": []
-            }
-          },
-          "sub_invocations": []
-        }
-      ]
-    ],
-    [
-      [
-        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-        {
-          "function": {
-            "contract_fn": {
-              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
               "function_name": "impede",
               "args": [
                 {
@@ -407,13 +392,35 @@
         }
       ]
     ],
+    [
+      [
+        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+        {
+          "function": {
+            "contract_fn": {
+              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+              "function_name": "lock",
+              "args": [
+                {
+                  "u32": 3
+                },
+                {
+                  "u32": 17280
+                }
+              ]
+            }
+          },
+          "sub_invocations": []
+        }
+      ]
+    ],
     [],
     []
   ],
   "ledger": {
     "protocol_version": 29,
     "sequence_number": 0,
-    "timestamp": 1692803367,
+    "timestamp": 1695803331,
     "network_id": "0000000000000000000000000000000000000000000000000000000000000000",
     "base_reserve": 0,
     "min_persistent_entry_ttl": 4096,
@@ -838,6 +845,14 @@
                         "map": [
                           {
                             "key": {
+                              "symbol": "k"
+                            },
+                            "val": {
+                              "u32": 3
+                            }
+                          },
+                          {
+                            "key": {
                               "symbol": "ledger"
                             },
                             "val": {
@@ -846,10 +861,18 @@
                           },
                           {
                             "key": {
-                              "symbol": "rodada_minima"
+                              "symbol": "revela_em"
                             },
                             "val": {
-                              "u64": "2"
+                              "u32": 17280
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "rodada"
+                            },
+                            "val": {
+                              "u64": "1000000"
                             }
                           },
                           {
@@ -857,7 +880,7 @@
                               "symbol": "tempo"
                             },
                             "val": {
-                              "u64": "1692803367"
+                              "u64": "1695803331"
                             }
                           }
                         ]

@@ -161,101 +161,165 @@ fn inscrever_sem_escrivao_e_recusado() {
 
 // ---- fechamento ----------------------------------------------------------
 
+/// Assentos usados nos testes, e o ledger de revelação: um dia de ledgers de
+/// 5 s depois do zero, sem relação com os fechamentos dos testes.
+const K: u32 = 3;
+const REVELA_EM: u32 = 17_280;
+
+/// Fecha num instante em que a rodada alvo é exatamente `rodada`: a primeira
+/// publicada depois do fechamento é `rodada - MARGEM_DE_RODADAS`.
+fn fechar_para(m: &Mesa, rodada: u64, k: u32) -> Fechamento {
+    m.env.ledger().with_mut(|l| {
+        l.timestamp = GENESIS_QUICKNET + (rodada - 2 - MARGEM_DE_RODADAS) * PERIODO_QUICKNET
+    });
+    m.c.lock(&k, &REVELA_EM)
+}
+
 #[test]
 fn fechar_abaixo_do_minimo_e_recusado() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, (MINIMO - 1) as usize));
-    assert_eq!(m.c.try_lock(), Err(Ok(Erro::RolAbaixoDoMinimo.into())));
+    assert_eq!(
+        m.c.try_lock(&K, &REVELA_EM),
+        Err(Ok(Erro::RolAbaixoDoMinimo.into()))
+    );
     assert_eq!(m.c.closing(), None);
 }
 
 #[test]
-fn fechar_fixa_ledger_tempo_e_rodada_minima() {
+fn fechar_fixa_ledger_tempo_rodada_k_e_revelacao() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
     m.env.ledger().with_mut(|l| {
         l.sequence_number = 4321;
         l.timestamp = GENESIS_QUICKNET + 6;
     });
-    let f = m.c.lock();
+    let f = m.c.lock(&K, &REVELA_EM);
     assert_eq!(f.ledger, 4321);
     assert_eq!(f.tempo, GENESIS_QUICKNET + 6);
     assert_eq!(
-        f.rodada_minima, 4,
-        "rodada 3 sai em genesis+6, no mesmo segundo; a 4 e a primeira depois"
+        f.rodada,
+        4 + MARGEM_DE_RODADAS,
+        "rodada 3 sai em genesis+6, no mesmo segundo; a 4 e a primeira depois, mais a margem"
     );
+    assert_eq!(f.k, K);
+    assert_eq!(f.revela_em, REVELA_EM);
     assert_eq!(m.c.closing(), Some(f));
 }
 
-/// INV-06, a outra metade: a rodada mínima é calculada do relógio do ledger,
-/// não passada por quem chama.
+/// A margem mínima do SPEC (§9 T-033) é 10 rodadas; abaixo disso não compila.
+const _: () = assert!(MARGEM_DE_RODADAS >= 10);
+
+/// INV-13: a rodada é calculada do relógio do ledger, com margem, e não
+/// passada por quem chama.
 #[test]
-fn rodada_minima_vem_do_fechamento() {
-    for (dt, esperado) in [(0u64, 2u64), (1, 2), (2, 2), (3, 3), (4, 3), (5, 3), (6, 4)] {
+fn a_rodada_vem_do_fechamento_com_margem() {
+    for (dt, primeira) in [(0u64, 2u64), (1, 2), (2, 2), (3, 3), (4, 3), (5, 3), (6, 4)] {
         let m = mesa();
         inscrever_todos(&m, &jurados(&m, MINIMO as usize));
         m.env
             .ledger()
             .with_mut(|l| l.timestamp = GENESIS_QUICKNET + dt);
-        assert_eq!(m.c.lock().rodada_minima, esperado, "dt = {}", dt);
+        assert_eq!(
+            m.c.lock(&K, &REVELA_EM).rodada,
+            primeira + MARGEM_DE_RODADAS,
+            "dt = {}",
+            dt
+        );
     }
+}
+
+#[test]
+fn fechar_com_mais_assentos_que_o_rol_e_recusado() {
+    let m = mesa();
+    inscrever_todos(&m, &jurados(&m, MINIMO as usize));
+    assert_eq!(
+        m.c.try_lock(&(MINIMO + 1), &REVELA_EM),
+        Err(Ok(Erro::AssentosInvalidos.into()))
+    );
+    assert_eq!(
+        m.c.try_lock(&0u32, &REVELA_EM),
+        Err(Ok(Erro::AssentosInvalidos.into()))
+    );
+    assert_eq!(m.c.closing(), None);
+    // k = N é permitido.
+    assert_eq!(m.c.lock(&MINIMO, &REVELA_EM).k, MINIMO);
 }
 
 #[test]
 fn fechar_duas_vezes_e_recusado() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
-    m.c.lock();
-    assert_eq!(m.c.try_lock(), Err(Ok(Erro::RolFechado.into())));
+    m.c.lock(&K, &REVELA_EM);
+    assert_eq!(
+        m.c.try_lock(&K, &REVELA_EM),
+        Err(Ok(Erro::RolFechado.into()))
+    );
 }
 
-/// INV-11: o rol é comprometido antes do caso existir.
+/// INV-11 e INV-14: o rol é comprometido antes do caso existir.
 #[test]
 fn inscrever_depois_de_fechar_e_recusado() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
-    m.c.lock();
+    m.c.lock(&K, &REVELA_EM);
     let tarde = Address::generate(&m.env);
     assert_eq!(m.c.try_enroll(&tarde), Err(Ok(Erro::RolFechado.into())));
     assert_eq!(bilhete(&m).balance(&tarde), 0);
     assert_eq!(m.c.roster().len(), MINIMO);
 }
 
+/// INV-14 (Q-21): depois do fechamento o escrivão não tira ninguém.
+#[test]
+fn impedir_depois_de_fechar_e_recusado() {
+    let m = mesa();
+    let js = jurados(&m, MINIMO as usize);
+    inscrever_todos(&m, &js);
+    m.c.lock(&K, &REVELA_EM);
+    assert_eq!(m.c.try_impede(&js[0]), Err(Ok(Erro::RolFechado.into())));
+    assert!(sac(&m).authorized(&js[0]), "continua autorizado");
+}
+
 // ---- sorteio -------------------------------------------------------------
 
 #[test]
-fn sortear_antes_de_fechar_e_recusado() {
+fn selar_antes_de_fechar_e_recusado() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
-    let r = m.c.try_draw_round(&ROUND_A, &sig_a(&m), &3u32);
-    assert_eq!(r, Err(Ok(Erro::RolAberto.into())));
+    assert_eq!(m.c.try_seal(&sig_a(&m)), Err(Ok(Erro::RolAberto.into())));
 }
 
+/// INV-13: só a rodada que o fechamento guardou serve. A assinatura de
+/// qualquer outra rodada — mesmo autêntica, mesmo posterior — é recusada.
 #[test]
-fn sorteio_com_rodada_anterior_ao_fechamento_e_recusado() {
+fn selar_com_outra_rodada_e_recusado() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
-    // Fecha no segundo em que a rodada A sai: a mínima passa a ser A+1.
-    m.env
-        .ledger()
-        .with_mut(|l| l.timestamp = GENESIS_QUICKNET + (ROUND_A - 1) * PERIODO_QUICKNET);
-    assert_eq!(m.c.lock().rodada_minima, ROUND_A + 1);
-    let r = m.c.try_draw_round(&ROUND_A, &sig_a(&m), &3u32);
-    assert_eq!(r, Err(Ok(Erro::RodadaAnteriorAoRol.into())));
-    // Uma rodada bem posterior passa.
-    let painel =
-        m.c.draw_round(&ROUND_B, &BytesN::from_array(&m.env, &SIG_B), &3u32);
-    assert_eq!(painel.len(), 3);
+    assert_eq!(fechar_para(&m, ROUND_A, K).rodada, ROUND_A);
+    let b = BytesN::from_array(&m.env, &SIG_B);
+    assert!(m.c.verify(&ROUND_B, &b), "a assinatura B e autentica");
+    assert_eq!(m.c.try_seal(&b), Err(Ok(Erro::AssinaturaInvalida.into())));
+    assert_eq!(m.c.panel(), None);
 }
 
 #[test]
 fn assinatura_forjada_e_recusada() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
-    m.c.lock();
-    let r =
-        m.c.try_draw_round(&ROUND_A, &BytesN::from_array(&m.env, &SIG_FORJADA), &3u32);
+    fechar_para(&m, ROUND_A, K);
+    let r = m.c.try_seal(&BytesN::from_array(&m.env, &SIG_FORJADA));
     assert_eq!(r, Err(Ok(Erro::AssinaturaInvalida.into())));
+}
+
+/// INV-13: não há segundo sorteio. O painel guardado não muda.
+#[test]
+fn selar_duas_vezes_e_recusado() {
+    let m = mesa();
+    inscrever_todos(&m, &jurados(&m, MINIMO as usize));
+    fechar_para(&m, ROUND_A, K);
+    let painel = m.c.seal(&sig_a(&m));
+    assert_eq!(m.c.try_seal(&sig_a(&m)), Err(Ok(Erro::JaSelado.into())));
+    assert_eq!(m.c.panel(), Some(painel));
 }
 
 /// A ordem é o vetor de ouro "rol pequeno" (n = 7) do beacon-verifier:
@@ -267,8 +331,8 @@ fn painel_segue_a_ordem_de_ouro() {
     let m = mesa();
     let js = jurados(&m, 7);
     inscrever_todos(&m, &js);
-    m.c.lock();
-    let painel = m.c.draw_round(&ROUND_A, &sig_a(&m), &3u32);
+    fechar_para(&m, ROUND_A, K);
+    let painel = m.c.seal(&sig_a(&m));
     for i in 0..3 {
         assert_eq!(
             painel.get(i).unwrap(),
@@ -280,18 +344,19 @@ fn painel_segue_a_ordem_de_ouro() {
 }
 
 /// INV-07 e INV-08: um impedido não encolhe a mesa, e o substituto é o
-/// próximo da ordem já sorteada — não há novo sorteio.
+/// próximo da ordem sorteada — não há novo sorteio. O impedimento vem antes
+/// do fechamento (INV-14).
 #[test]
 fn impedido_e_substituido_e_o_painel_fica_do_mesmo_tamanho() {
     let m = mesa();
     let js = jurados(&m, 7);
     inscrever_todos(&m, &js);
-    m.c.lock();
     let primeiro = &js[ORDEM_DE_OURO[0] as usize];
     m.c.impede(primeiro);
     assert!(!sac(&m).authorized(primeiro));
+    fechar_para(&m, ROUND_A, K);
 
-    let painel = m.c.draw_round(&ROUND_A, &sig_a(&m), &3u32);
+    let painel = m.c.seal(&sig_a(&m));
     assert_eq!(painel.len(), 3);
     assert!(!painel.contains(primeiro), "impedido nao senta");
     for i in 0..3 {
@@ -307,10 +372,10 @@ fn substituto_e_o_proximo_da_ordem() {
     let m = mesa();
     let js = jurados(&m, 7);
     inscrever_todos(&m, &js);
-    m.c.lock();
     // Impede o segundo da ordem: o painel pula só ele.
     m.c.impede(&js[ORDEM_DE_OURO[1] as usize]);
-    let painel = m.c.draw_round(&ROUND_A, &sig_a(&m), &3u32);
+    fechar_para(&m, ROUND_A, K);
+    let painel = m.c.seal(&sig_a(&m));
     let esperado = [ORDEM_DE_OURO[0], ORDEM_DE_OURO[2], ORDEM_DE_OURO[3]];
     for i in 0..3 {
         assert_eq!(painel.get(i).unwrap(), js[esperado[i as usize] as usize]);
@@ -323,7 +388,7 @@ fn sem_bilhete_nao_senta() {
     let m = mesa();
     let js = jurados(&m, 7);
     inscrever_todos(&m, &js);
-    m.c.lock();
+    fechar_para(&m, ROUND_A, K);
     let doador = &js[ORDEM_DE_OURO[0] as usize];
     let receptor = &js[ORDEM_DE_OURO[6] as usize];
     bilhete(&m).transfer(doador, receptor, &UM_BILHETE);
@@ -333,7 +398,7 @@ fn sem_bilhete_nao_senta() {
         "continua autorizado, mas sem bilhete"
     );
 
-    let painel = m.c.draw_round(&ROUND_A, &sig_a(&m), &3u32);
+    let painel = m.c.seal(&sig_a(&m));
     assert!(!painel.contains(doador));
     assert_eq!(painel.get(0).unwrap(), js[ORDEM_DE_OURO[1] as usize]);
 }
@@ -343,24 +408,25 @@ fn elegiveis_insuficientes_e_recusado() {
     let m = mesa();
     let js = jurados(&m, 7);
     inscrever_todos(&m, &js);
-    m.c.lock();
     for j in &js[..5] {
         m.c.impede(j);
     }
-    let r = m.c.try_draw_round(&ROUND_A, &sig_a(&m), &3u32);
+    fechar_para(&m, ROUND_A, K);
+    let r = m.c.try_seal(&sig_a(&m));
     assert_eq!(r, Err(Ok(Erro::ElegiveisInsuficientes.into())));
-    let ok = m.c.draw_round(&ROUND_A, &sig_a(&m), &2u32);
-    assert_eq!(ok.len(), 2);
+    assert_eq!(m.c.panel(), None);
 }
 
 #[test]
-fn o_sorteio_e_deterministico() {
+fn com_dois_elegiveis_dois_assentos_sentam() {
     let m = mesa();
-    inscrever_todos(&m, &jurados(&m, 7));
-    m.c.lock();
-    let a = m.c.draw_round(&ROUND_A, &sig_a(&m), &5u32);
-    let b = m.c.draw_round(&ROUND_A, &sig_a(&m), &5u32);
-    assert_eq!(a, b);
+    let js = jurados(&m, 7);
+    inscrever_todos(&m, &js);
+    for j in &js[..5] {
+        m.c.impede(j);
+    }
+    fechar_para(&m, ROUND_A, 2);
+    assert_eq!(m.c.seal(&sig_a(&m)).len(), 2);
 }
 
 /// O quarto vetor de tests/vetores-de-ouro.json: sete endereços fixos, o
@@ -384,9 +450,9 @@ fn bate_com_o_vetor_de_enderecos() {
         .map(|s| Address::from_str(&m.env, s))
         .collect();
     inscrever_todos(&m, &js);
-    m.c.lock();
     m.c.impede(&js[ORDEM_DE_OURO[0] as usize]);
-    let painel = m.c.draw_round(&ROUND_A, &sig_a(&m), &3u32);
+    fechar_para(&m, ROUND_A, K);
+    let painel = m.c.seal(&sig_a(&m));
     let esperado = [
         "CBNZ6GW7SJP4RWRMHXME65XUHZCTBVXA27PPO4KR7IDMJH2UZL7HPXPP",
         "CBYYRHFKSY5VVAACXXJS44HXYQ47CPF65JALEPTSUL7EHPCP5SCEL4TK",

@@ -29,7 +29,7 @@ That prints the panel that contract `CBPHNZLG…` drew on testnet, in [this tran
 
 ## How it works
 
-**1. The ticket is an asset, and the roster is frozen in the ledger.** Each juror holds one unit of a classic Stellar asset whose issuer requires authorization. The `kleroterion` contract enrols a juror by creating the trustline itself (SAC `trust`, Protocol 26), authorizing it and minting the ticket; the issuer then sets its master weight to 0, so nobody but the contract can ever issue or authorize a ticket again. `lock()` closes the roster and fixes the minimum beacon round from the ledger clock. Any Horizon client lists the roster: `GET /accounts?asset=PINAKION:issuer`.
+**1. The ticket is an asset, and the roster is frozen in the ledger.** Each juror holds one unit of a classic Stellar asset whose issuer requires authorization. The `kleroterion` contract enrols a juror by creating the trustline itself (SAC `trust`, Protocol 26), authorizing it and minting the ticket; the issuer then sets its master weight to 0, so nobody but the contract can ever issue or authorize a ticket again. `lock(k, reveal_after)` closes the roster — nobody enrols or is impeded after it — and fixes `k` and the exact beacon round from the ledger clock; `seal(sig)` draws once, with that round. Any Horizon client lists the roster: `GET /accounts?asset=PINAKION:issuer`.
 
 **2. The entropy arrives afterwards.** A [drand](https://drand.love) quicknet round — a public beacon that publishes an unpredictable value every three seconds. Its BLS12-381 signature is verified **on-chain**. Nobody, including us, knew the value when the roster was committed.
 
@@ -56,8 +56,8 @@ Verifying a drand round on Soroban is not new: [`AshFrancis/splicers`](https://g
 
 ## What is not
 
-- The case lifecycle is designed and **not built**. Of the roster cycle only enrol → lock → impede exists.
-- The evidence is one run with seven jurors on one machine; `AUTH_IMMUTABLE` was not set; the costs of `enroll`, `lock` and `draw_round` were not measured.
+- The case lifecycle is designed and **not built**. Of the roster cycle only enrol → impede → lock → seal exists.
+- The evidence is one run with seven jurors on one machine; `AUTH_IMMUTABLE` was not set; the costs of `enroll`, `lock` and `draw_round` were not measured. That run used the pre-T-033 contract (`draw_round` with a caller-given round); the current `lock(k, reveal_after)` → `seal(sig)` has passed its unit tests and has **not** been run on testnet.
 - Nothing has been audited. Nothing has run on mainnet.
 - Below a roster of about sixteen the draw guarantees nothing, and the contract should refuse rather than pretend — see [`docs/limite-inferior-do-rol.md`](docs/limite-inferior-do-rol.md).
 
@@ -68,7 +68,7 @@ Verifying a drand round on Soroban is not new: [`AshFrancis/splicers`](https://g
 The toolchain is pinned: `rust-toolchain.toml` gives you rustc 1.97.1 with the `wasm32v1-none` target, and `.nvmrc` gives you Node 24.14.1. There are no npm dependencies. The Stellar CLI (28.1.0) is the one thing you install yourself.
 
 ```bash
-cargo test --locked --workspace     # 38 tests, including the golden vectors
+cargo test --locked --workspace     # 41 tests, including the golden vectors
 npm test                            # the same vectors, in the browser's verifier
 python3 scripts/conferir_vetores.py # and in the dependency-free one
 stellar contract build              # plain `cargo build` to Wasm fails by design
@@ -86,7 +86,7 @@ stellar contract deploy --wasm target/wasm32v1-none/release/beacon_verifier.wasm
 Then `verify --round <n> --sig <hex>`, `beacon`, and `draw --seed <hex> --n <size> --k <panel>`.
 The beacon key is pinned in the contract — there is no key to pass.
 
-The whole ticket sequence — issue, lock, enrol, close, impede, draw, recompute — is one script, and it prints every hash:
+The whole ticket sequence — issue, lock the issuer, enrol, impede, close, wait for the round, draw, recompute — is one script, and it prints every hash. It was last run before T-033 changed `lock` and replaced `draw_round` with `seal`; the current version has not been run (T-040):
 
 ```bash
 scripts/sequencia_bilhete.sh <issuer-identity> <clerk-identity> <juror-identity>...
@@ -106,7 +106,7 @@ docs/SPEC.md   goals, invariants, gates, task board, decisions
 docs/SOURCES.md every external fact checked, with its date
 
 contracts/beacon-verifier/   the beacon: verify, randomness, draw
-contracts/kleroterion/       the roster as an asset: enroll, lock, impede, draw_round
+contracts/kleroterion/       the roster as an asset: enroll, impede, lock, seal
 scripts/verificar_sorteio.py an independent recomputation, no dependencies
 scripts/verificar_painel.py  the same, from a roster to a panel of addresses
 scripts/sequencia_bilhete.sh the classic sequence on testnet, end to end

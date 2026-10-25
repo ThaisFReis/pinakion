@@ -6,7 +6,9 @@
 //! é o que dá assento. O rol é a lista de trustlines autorizadas, legível por
 //! qualquer Horizon em `/accounts?asset=`; a ordem do rol é a ordem de
 //! inscrição guardada aqui; o compromisso é `lock()`, depois do qual ninguém
-//! entra — e o emissor, com master weight 0, não emite nem autoriza mais nada.
+//! entra nem sai — e o emissor, com master weight 0, não emite nem autoriza
+//! mais nada. O `lock()` também fixa a rodada do beacon e o número de
+//! assentos; `seal()` usa essa rodada uma única vez (INV-13, INV-14).
 //!
 //! A entropia vem da drand quicknet, verificada pelas funções de host da
 //! BLS12-381 (CAP-59); o embaralhamento é o PRNG do host. `verify`,
@@ -36,6 +38,11 @@ pub const BEACON_CHAIN_HASH: [u8; 32] = *include_bytes!("quicknet_chain.bin");
 pub const GENESIS_QUICKNET: u64 = 1_692_803_367;
 pub const PERIODO_QUICKNET: u64 = 3;
 
+/// Rodadas entre a primeira publicada depois do fechamento e a que o sorteio
+/// usa. Dez rodadas são 30 s: a transação do `lock()` tem tempo de entrar num
+/// ledger e ser vista antes que a rodada alvo exista (§9 T-033: ≥ 10).
+pub const MARGEM_DE_RODADAS: u64 = 10;
+
 /// Um bilhete: 1.0000000 PINAKION, em stroops. Ter menos que isto é não ter
 /// bilhete (INV-12).
 pub const UM_BILHETE: i128 = 10_000_000;
@@ -51,9 +58,12 @@ const METADE_DE_P: [u8; 48] = [
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Erro {
-    /// A rodada pedida é anterior à que o fechamento fixou (INV-06).
+    /// A rodada pedida é anterior à que o fechamento fixou (INV-06). Desde
+    /// T-033 ninguém pede rodada, então nada mais devolve este erro; o número
+    /// fica reservado para não mudar o dos outros.
     RodadaAnteriorAoRol = 1,
-    /// A assinatura não é da quicknet.
+    /// A assinatura não é da quicknet, ou não é da rodada que o fechamento
+    /// fixou.
     AssinaturaInvalida = 2,
     /// O rol já fechou: ninguém mais entra (INV-11).
     RolFechado = 3,
@@ -65,15 +75,23 @@ pub enum Erro {
     JuradoRepetido = 6,
     /// Não há jurados elegíveis suficientes para `k` assentos.
     ElegiveisInsuficientes = 7,
+    /// `k` é zero ou maior que o rol.
+    AssentosInvalidos = 8,
+    /// O sorteio já foi feito: não há segundo (INV-13).
+    JaSelado = 9,
 }
 
-/// O que `lock()` fixa, de uma vez por todas.
+/// O que `lock()` fixa, de uma vez por todas: quando, qual rodada do beacon
+/// decide, quantos assentos, e o ledger a partir do qual os jurados revelam
+/// (`revela_em`, usado a partir de T-038; Q-24).
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Fechamento {
     pub ledger: u32,
     pub tempo: u64,
-    pub rodada_minima: u64,
+    pub rodada: u64,
+    pub k: u32,
+    pub revela_em: u32,
 }
 
 #[contracttype]
@@ -83,6 +101,7 @@ pub enum DataKey {
     Minimo,
     Rol,
     Fechamento,
+    Painel,
 }
 
 #[contract]
@@ -122,23 +141,30 @@ impl Kleroterion {
         env.storage().persistent().set(&DataKey::Rol, &rol);
     }
 
-    /// Fecha o rol: a partir daqui ninguém entra (INV-11), e a rodada mínima
-    /// do beacon fica fixada pelo relógio do ledger, não por quem chama
-    /// (INV-06). Recusa abaixo do mínimo (INV-09).
-    pub fn lock(env: Env) -> Fechamento {
+    /// Fecha o rol: a partir daqui ninguém entra nem sai (INV-11, INV-14).
+    /// A rodada do beacon fica fixada pelo relógio do ledger, não por quem
+    /// chama (INV-06, INV-13), e `k` fica fixado aqui, antes de a rodada
+    /// existir. Recusa abaixo do mínimo (INV-09) e `k` fora de `1..=N`.
+    pub fn lock(env: Env, k: u32, revela_em: u32) -> Fechamento {
         Self::escrivao(&env).require_auth();
         if Self::closing(env.clone()).is_some() {
             panic_with_error!(&env, Erro::RolFechado);
         }
         let minimo: u32 = env.storage().instance().get(&DataKey::Minimo).unwrap();
-        if Self::roster(env.clone()).len() < minimo {
+        let n = Self::roster(env.clone()).len();
+        if n < minimo {
             panic_with_error!(&env, Erro::RolAbaixoDoMinimo);
+        }
+        if k == 0 || k > n {
+            panic_with_error!(&env, Erro::AssentosInvalidos);
         }
         let tempo = env.ledger().timestamp();
         let f = Fechamento {
             ledger: env.ledger().sequence(),
             tempo,
-            rodada_minima: Self::primeira_rodada_depois_de(tempo),
+            rodada: Self::primeira_rodada_depois_de(tempo) + MARGEM_DE_RODADAS,
+            k,
+            revela_em,
         };
         env.storage().instance().set(&DataKey::Fechamento, &f);
         f
@@ -146,9 +172,13 @@ impl Kleroterion {
 
     /// Impedimento ou recusa (art. 463): tira a autorização do bilhete. O
     /// jurado continua no rol e na ordem; só não senta (INV-12), e o
-    /// substituto é o próximo da ordem já sorteada (INV-08).
+    /// substituto é o próximo da ordem sorteada (INV-08). Só antes do
+    /// fechamento: depois dele o escrivão não escolhe quem sai (INV-14, Q-21).
     pub fn impede(env: Env, jurado: Address) {
         Self::escrivao(&env).require_auth();
+        if Self::closing(env.clone()).is_some() {
+            panic_with_error!(&env, Erro::RolFechado);
+        }
         token::StellarAssetClient::new(&env, &Self::bilhete(&env)).set_authorized(&jurado, &false);
     }
 
@@ -162,18 +192,24 @@ impl Kleroterion {
         env.storage().instance().get(&DataKey::Fechamento)
     }
 
-    /// Sorteia `k` assentos a partir de uma rodada do beacon: verifica a
-    /// assinatura, deriva a semente, embaralha a ordem do rol e senta os `k`
-    /// primeiros que têm bilhete e autorização.
-    pub fn draw_round(env: Env, round: u64, sig: BytesN<96>, k: u32) -> Vec<Address> {
+    /// O painel, se já houve sorteio.
+    pub fn panel(env: Env) -> Option<Vec<Address>> {
+        env.storage().persistent().get(&DataKey::Painel)
+    }
+
+    /// Sorteia os `k` assentos com a rodada que o fechamento fixou, uma vez
+    /// só (INV-13): verifica a assinatura dessa rodada, deriva a semente,
+    /// embaralha a ordem do rol e senta os `k` primeiros que têm bilhete e
+    /// autorização. Qualquer um pode chamar: não há o que escolher.
+    pub fn seal(env: Env, sig: BytesN<96>) -> Vec<Address> {
         let f = match Self::closing(env.clone()) {
             Some(f) => f,
             None => panic_with_error!(&env, Erro::RolAberto),
         };
-        if round < f.rodada_minima {
-            panic_with_error!(&env, Erro::RodadaAnteriorAoRol);
+        if Self::panel(env.clone()).is_some() {
+            panic_with_error!(&env, Erro::JaSelado);
         }
-        if !Self::verify(env.clone(), round, sig.clone()) {
+        if !Self::verify(env.clone(), f.rodada, sig.clone()) {
             panic_with_error!(&env, Erro::AssinaturaInvalida);
         }
         let seed = Self::randomness(env.clone(), sig);
@@ -185,7 +221,7 @@ impl Kleroterion {
         let saldo = token::TokenClient::new(&env, &bilhete);
         let mut painel: Vec<Address> = Vec::new(&env);
         for i in ordem.iter() {
-            if painel.len() == k {
+            if painel.len() == f.k {
                 break;
             }
             let j = rol.get(i).unwrap();
@@ -193,9 +229,10 @@ impl Kleroterion {
                 painel.push_back(j);
             }
         }
-        if painel.len() < k {
+        if painel.len() < f.k {
             panic_with_error!(&env, Erro::ElegiveisInsuficientes);
         }
+        env.storage().persistent().set(&DataKey::Painel, &painel);
         painel
     }
 

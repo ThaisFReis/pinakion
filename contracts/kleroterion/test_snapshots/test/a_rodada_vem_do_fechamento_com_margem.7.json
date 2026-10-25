@@ -305,18 +305,24 @@
             "contract_fn": {
               "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
               "function_name": "lock",
-              "args": []
+              "args": [
+                {
+                  "u32": 3
+                },
+                {
+                  "u32": 17280
+                }
+              ]
             }
           },
           "sub_invocations": []
         }
       ]
-    ],
-    []
+    ]
   ],
   "ledger": {
     "protocol_version": 29,
-    "sequence_number": 4321,
+    "sequence_number": 0,
     "timestamp": 1692803373,
     "network_id": "0000000000000000000000000000000000000000000000000000000000000000",
     "base_reserve": 0,
@@ -463,7 +469,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 6316320
+        "live_until": 6311999
       },
       {
         "entry": {
@@ -589,7 +595,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 8416
+        "live_until": 4095
       },
       {
         "entry": {
@@ -642,18 +648,34 @@
                         "map": [
                           {
                             "key": {
-                              "symbol": "ledger"
+                              "symbol": "k"
                             },
                             "val": {
-                              "u32": 4321
+                              "u32": 3
                             }
                           },
                           {
                             "key": {
-                              "symbol": "rodada_minima"
+                              "symbol": "ledger"
                             },
                             "val": {
-                              "u64": "4"
+                              "u32": 0
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "revela_em"
+                            },
+                            "val": {
+                              "u32": 17280
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "rodada"
+                            },
+                            "val": {
+                              "u64": "14"
                             }
                           },
                           {
@@ -686,7 +708,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 8416
+        "live_until": 4095
       },
       {
         "entry": {

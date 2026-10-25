@@ -96,7 +96,11 @@ fn inscrever_da_bilhete_e_autorizacao() {
     let m = mesa();
     let j = Address::generate(&m.env);
     m.c.enroll(&j);
-    assert_eq!(bilhete(&m).balance(&j), 1, "um bilhete, nem mais nem menos");
+    assert_eq!(
+        bilhete(&m).balance(&j),
+        UM_BILHETE,
+        "um bilhete, nem mais nem menos"
+    );
     assert!(sac(&m).authorized(&j), "inscrito sai autorizado");
     assert_eq!(m.c.roster(), soroban_sdk::vec![&m.env, j]);
 }
@@ -121,7 +125,7 @@ fn inscrever_repetido_e_recusado() {
     assert_eq!(r, Err(Ok(Erro::JuradoRepetido.into())));
     assert_eq!(
         bilhete(&m).balance(&j),
-        1,
+        UM_BILHETE,
         "a recusa nao emite segundo bilhete"
     );
 }
@@ -322,7 +326,7 @@ fn sem_bilhete_nao_senta() {
     m.c.lock();
     let doador = &js[ORDEM_DE_OURO[0] as usize];
     let receptor = &js[ORDEM_DE_OURO[6] as usize];
-    bilhete(&m).transfer(doador, receptor, &1);
+    bilhete(&m).transfer(doador, receptor, &UM_BILHETE);
     assert_eq!(bilhete(&m).balance(doador), 0);
     assert!(
         sac(&m).authorized(doador),

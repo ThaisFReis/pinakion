@@ -36,6 +36,10 @@ pub const BEACON_CHAIN_HASH: [u8; 32] = *include_bytes!("quicknet_chain.bin");
 pub const GENESIS_QUICKNET: u64 = 1_692_803_367;
 pub const PERIODO_QUICKNET: u64 = 3;
 
+/// Um bilhete: 1.0000000 PINAKION, em stroops. Ter menos que isto é não ter
+/// bilhete (INV-12).
+pub const UM_BILHETE: i128 = 10_000_000;
+
 /// (p-1)/2 para o campo base da BLS12-381, big-endian.
 const METADE_DE_P: [u8; 48] = [
     0x0d, 0x00, 0x88, 0xf5, 0x1c, 0xbf, 0xf3, 0x4d, 0x25, 0x8d, 0xd3, 0xdb, 0x21, 0xa5, 0xd6, 0x6b,
@@ -113,7 +117,7 @@ impl Kleroterion {
         let sac = token::StellarAssetClient::new(&env, &Self::bilhete(&env));
         sac.trust(&jurado);
         sac.set_authorized(&jurado, &true);
-        sac.mint(&jurado, &1);
+        sac.mint(&jurado, &UM_BILHETE);
         rol.push_back(jurado);
         env.storage().persistent().set(&DataKey::Rol, &rol);
     }
@@ -185,7 +189,7 @@ impl Kleroterion {
                 break;
             }
             let j = rol.get(i).unwrap();
-            if sac.authorized(&j) && saldo.balance(&j) >= 1 {
+            if sac.authorized(&j) && saldo.balance(&j) >= UM_BILHETE {
                 painel.push_back(j);
             }
         }

@@ -14,11 +14,12 @@ Source of truth for this repository. Written by Bootstrap on 2026-10-25 from wha
 
   | File | Role | State |
   |---|---|---|
-  | `THESIS.md` | **the root** — one line, who it is for, the problem, why Stellar. Change it here first, then the others | **missing** (T-010) |
+  | `THESIS.md` | **the root** — one line, who it is for, the problem, why Stellar. Change it here first, then the others | present (T-010) |
   | `SPEC.md` | what to build and how to check it works | this file |
-  | `DESIGN.md` | colours, type, logo, for every screen | **missing** (T-012) |
-  | `AGENTS.md` | the mission, ground rules, scope, tools, working style, done-when | **missing** (T-011) |
-  | `README.md` | how to run it; says what it is in line 1 | present, describes the withdrawn generation |
+  | `DESIGN.md` | colours, type, logo, for every screen | present (T-012) |
+  | `AGENTS.md` | the mission, ground rules, scope, tools, working style, done-when | present (T-011) |
+  | `README.md` | how to run it; says what it is in line 1 | present, rewritten for Pinakion (T-015) |
+  | `PLAN.md` | the order and state of the work; this file keeps the acceptance criteria | present (DEC-006) |
 
   The deck's rule for correcting course: a mentor saying *"nobody has this problem"* means fixing `THESIS.md`; *"cut that feature"* means `SPEC.md`; *"I can't tell what it does"* means `DESIGN.md`. Fix the file, not only the code.
 - Project-specific additions to `CLAUDE.md`: none yet.
@@ -201,6 +202,8 @@ Run from a clean checkout. The baseline below was recorded on 2026-10-25 **befor
 
 ## §9 Milestones and tasks
 
+**Progress view:** [`PLAN.md`](../PLAN.md) at the root carries the order of the work, the branch and PR state, and the phases. This section stays the authority on each task's acceptance criteria (DEC-006).
+
 **The clock.** The *Speedrun SHIP* deck puts the event at: 25 Oct build, 26 Oct ship — stop new features, record the video, submit one hour early. Today is **25 Oct**, and the first-hour checklist (thesis, spec, design, open repo with issues) is not done. The repository has **zero commits** and is not public, against the deck's "public repo on day 1".
 
 **Current milestone:** M0 — put the repository on its own feet, and get the four documents the event expects. No feature work until this spec is approved.
@@ -243,6 +246,7 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 | T-014 | Spec tasks become issues | T-013 | §9 | review | Eight issues open, one per task still to do. Owners not yet assigned |
 | T-015 | Rewrite `README.md` | T-010 | §2 | review | Opens with the one-liner; how to run it; every claim traced to §2; limits stated before the instructions |
 | T-016 | Write the demo path and record the video ([#8](https://github.com/ThaisFReis/pinakion/issues/8)) | T-012, T-015 | §2 | todo | One flow, live on testnet, with the video as backup. 3 minutes in the deck's four parts |
+| T-018 | Write `PLAN.md`, the progress board | T-014 | §8, §9, §11 | review | Phases ordered by the clock; branch and PR state; what is out of scope before the ship date; §9 stays the authority on acceptance criteria (DEC-006) |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
@@ -273,6 +277,12 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Decision:** The quicknet group key is a constant compiled into the contract, and `verify` takes no key. A new read, `beacon()`, returns the chain hash the contract trusts, so the pinned trust is auditable on-chain without reading the Wasm.
 **Alternatives:** A settable key behind an admin — rejected: it reintroduces the same party with an extra step. A set of accepted keys — rejected as unneeded complexity before a second beacon exists.
 **Consequences:** The contract trusts exactly one drand chain. A quicknet group-key rotation is a new chain with a new hash and requires a new contract; changing the key without changing the contract is precisely the power this pinning removes. Verification cost rose by 887 instructions, the constant being loaded rather than passed. INV-10 is now enforced; §7 and Q-05 updated. `beacon()` is a new public function and §5 declares no frozen interface yet.
+
+### DEC-006: A separate `PLAN.md` for order and state (2026-10-25, post-T-014)
+**Context:** §9 holds both the acceptance criteria and the status of every task, plus the event's deliverables. Reading it to answer "what is next, and what is waiting on whom" means reading three tables and two prose paragraphs, and the branch and PR state is not in it at all.
+**Decision:** `PLAN.md` at the root carries the order, the phases, the branch and PR state, and what is deliberately out of scope before the ship date. §9 keeps the acceptance criteria and remains the authority on them.
+**Alternatives:** Keeping everything in §9 — rejected: the file a human checks hourly during an event should not be the file that also defines correctness. Generating `PLAN.md` from §9 — rejected: no generator exists and writing one before the video is the wrong order.
+**Consequences:** Two files state task status, which can drift. `PLAN.md` states the rule for that: where the two disagree about criteria, the spec wins and `PLAN.md` is stale. Fixed the §0 table, which still listed `THESIS.md`, `DESIGN.md` and `AGENTS.md` as missing after T-010 to T-012 wrote them.
 
 ---
 

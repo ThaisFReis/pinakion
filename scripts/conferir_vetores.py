@@ -18,6 +18,9 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from verificar_sorteio import painel, sortear  # noqa: E402
+from poseidon import hash1, hash2  # noqa: E402
+from arvore import raiz, zeros  # noqa: E402
+import exportar_constantes_poseidon as constantes  # noqa: E402
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 VETORES = RAIZ / "tests" / "vetores-de-ouro.json"
@@ -78,10 +81,48 @@ def main():
                 else:
                     print(f"  ok    os enderecos do vetor estão em {nome}")
 
+    # T-035: the constants JSON is still the contract's params.rs ...
+    fonte = constantes.PARAMS.read_text()
+    json_c = json.loads(constantes.SAIDA.read_text())
+    for t, f in [("t2", "2"), ("t3", "3")]:
+        for parte in ("mds", "rc"):
+            if json_c[t][parte] != constantes.matriz(fonte, f"get_{parte}_bn254_t_{f}"):
+                falhas += 1
+                print(f"  FALHA tests/poseidon-bn254.json divergiu de params.rs ({t}.{parte})")
+    # ... Poseidon equals circomlib's vectors ...
+    poseidon = json.loads((RAIZ / "tests" / "vetores-poseidon.json").read_text())["vetores"]
+    erradas = 0
+    for v in poseidon:
+        xs = [int(x, 16) for x in v["entradas"]]
+        h = hash1(*xs) if len(xs) == 1 else hash2(*xs)
+        if h != int(v["saida"], 16):
+            erradas += 1
+            print(f"  FALHA Poseidon({v['entradas']}) = {h:#x}, esperado {v['saida']}")
+    falhas += erradas
+    if not erradas:
+        print(f"  ok    Poseidon: {len(poseidon)} vetores da circomlib")
+    # ... and the root rebuilt from the events is the one in the vectors.
+    arvores = json.loads((RAIZ / "tests" / "vetores-arvore.json").read_text())
+    if [str(z) for z in zeros()] == arvores["zeros"]:
+        print("  ok    as raizes vazias")
+    else:
+        falhas += 1
+        print("  FALHA as raizes vazias")
+    for a in arvores["arvores"]:
+        obtida = str(raiz(a["eventos"]))
+        if obtida == a["raiz"]:
+            print(f"  ok    arvore: {a['nome']}")
+        else:
+            falhas += 1
+            print(f"  FALHA arvore: {a['nome']}\n        esperado {a['raiz']}\n        obtido   {obtida}")
+
     if falhas:
         print(f"\n{falhas} falha(s).")
         return 1
-    print(f"\n{len(vetores)} vetores conferidos.")
+    print(
+        f"\n{len(vetores)} vetores conferidos, {len(poseidon)} de Poseidon, "
+        f"{len(arvores['arvores'])} arvores."
+    )
     return 0
 
 

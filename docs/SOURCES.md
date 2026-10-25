@@ -83,6 +83,8 @@ Every external fact this project relies on, and every piece of code copied in. A
 | 2026-10-25 | circomlib's Poseidon rounds for BN254 | t = 2: 8 full + 56 partial; t = 3: 8 full + 57 partial; S-box x⁵ | circomlib 2.0.5 | `soroban-poseidon` v28.0.0 `src/poseidon/sponge.rs`; confirmed by 22 vectors from circomlibjs 0.1.7 matching byte for byte (`contracts/poseidon`, T-034) |
 | 2026-10-25 | Licences of the ZK toolchain | circom 2.2.2 compiler, circomlib 2.0.5, circomlibjs 0.1.7, snarkjs 0.7.6: **GPL-3.0** | as listed | each package's `package.json` `license` field and `COPYING` in `node_modules/` |
 | 2026-10-25 | Plan B fits the budget on testnet | one Groth16 verify of `pinakion_claim` (4 public inputs): **30,837,655** instructions declared, 11,737 stroops charged, tx `76fc290f…`; test host: 29,128,335 | testnet, protocol as of that date | `docs/evidencia-testnet-spike.md` — measured |
+| 2026-10-25 | The host's Poseidon permutation, step by step: for each round, add the round constants, then the S-box `x^d` on every cell (full rounds: the first `rounds_f/2` and the last `rounds_f/2`) or on cell 0 only (partial rounds), then `out[i] = Σ mds[i][j]·state[j]` | — | soroban-env-host 29.0.1 | installed source `soroban-env-host-29.0.1/src/crypto/poseidon/poseidon.rs`; reproduced by `scripts/poseidon.py` and `web/poseidon.mjs`, which match the 22 circomlibjs vectors (T-035) |
+| 2026-10-25 | Maximum contract Wasm size on testnet | `contract_max_size_bytes` 131,072 | network config read live | `stellar network settings --network testnet` (T-035) |
 
 ## Conflicting sources
 
@@ -120,6 +122,7 @@ Every external fact this project relies on, and every piece of code copied in. A
 | 2026-10-25 | `contracts/groth16-verifier/` | the author's withdrawn generation, `../Cautela-geracao-retirada/contracts/groth16-verifier/` (created 2026-10-25 13:02 UTC; not a git repository, so no commit) — logic unchanged, tests rewritten for the Pinakion proof | the author's own, released here under MIT | T-034 (DEC-017) |
 | 2026-10-25 | `circuits/pinakion_claim.circom` | ported from the author's `role_membership.circom` (created 2026-10-25 12:54 UTC): same leaf and path; nullifier → `y`, actionHash → `claimer`, depth 4 → 6 | the author's own; **GPL-3.0** with the rest of `circuits/` because it includes circomlib (DEC-021) | T-034 |
 | 2026-10-25 | `circuits/exportar_soroban.mjs` | the author's `scripts/export_soroban.mjs` (created 2026-10-25 12:54 UTC), unchanged but for the header | the author's own; GPL-3.0 with `circuits/` | T-034 |
+| 2026-10-25 | `tests/poseidon-bn254.json` | exported by `scripts/exportar_constantes_poseidon.py` from `contracts/poseidon/src/params.rs` — the same Apache-2.0 constants, as data; G6 checks the two are equal | **Apache-2.0** (attribution in the file's `_` field) | T-035 |
 | 2026-10-25 | `circuits/LICENSE` | `https://www.gnu.org/licenses/gpl-3.0.txt`, sha256 `3972dc97…b36986` | the licence text itself | T-034 |
 
 Not copied: circomlib, circomlibjs and snarkjs are pinned npm devDependencies (`package.json`, `package-lock.json`) and stay in `node_modules/`. `circuits/` includes circomlib by path and is GPL-3.0; everything outside it remains MIT (DEC-021). The compiled circuit (`build/claim/`: r1cs, witness wasm, zkey) is git-ignored.

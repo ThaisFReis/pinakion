@@ -10,15 +10,22 @@
 //! mais nada. O `lock()` também fixa a rodada do beacon e o número de
 //! assentos; `seal()` usa essa rodada uma única vez (INV-13, INV-14).
 //!
+//! Cada jurado se inscreve com um compromisso `c = Poseidon(s)` (T-035). O
+//! contrato mantém a árvore de Merkle de Poseidon, profundidade 6, cuja folha
+//! `i` é o `c` do `i`-ésimo inscrito, ou zero se ele foi impedido; o caminho
+//! é refeito a cada `enroll` e `impede`, e o `lock()` congela a raiz. Ninguém
+//! posta raiz: ela é sempre a que o contrato calculou.
+//!
 //! A entropia vem da drand quicknet, verificada pelas funções de host da
 //! BLS12-381 (CAP-59); o embaralhamento é o PRNG do host. `verify`,
 //! `randomness` e `draw` são cópias literais do `beacon-verifier`, e os
 //! vetores de ouro mantêm as duas cópias honestas (DEC-014).
 
+use pinakion_poseidon::Sponge;
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype,
+    contract, contracterror, contractevent, contractimpl, contracttype,
     crypto::bls12_381::{Bls12381G1Affine, Bls12381G2Affine},
-    panic_with_error, token, vec, Address, Bytes, BytesN, Env, Vec,
+    panic_with_error, token, vec, Address, Bytes, BytesN, Env, Vec, U256,
 };
 
 /// Domain separation tag do drand quicknet.
@@ -46,6 +53,44 @@ pub const MARGEM_DE_RODADAS: u64 = 10;
 /// Um bilhete: 1.0000000 PINAKION, em stroops. Ter menos que isto é não ter
 /// bilhete (INV-12).
 pub const UM_BILHETE: i128 = 10_000_000;
+
+/// Profundidade da árvore de compromissos: 2⁶ = 64 jurados no máximo. É a do
+/// circuito (`circuits/pinakion_claim.circom`).
+pub const PROFUNDIDADE: u32 = 6;
+
+/// Raiz da subárvore vazia de cada nível: `Z₀ = 0`, `Zₙ₊₁ = Poseidon(Zₙ, Zₙ)`.
+/// Embutidas para não pagar seis hashes por chamada; `os_zeros_sao_os_da_circomlib`
+/// confere contra tests/vetores-arvore.json.
+const ZEROS: [[u8; 32]; 7] = [
+    [0; 32],
+    hex32(b"2098f5fb9e239eab3ceac3f27b81e481dc3124d55ffed523a839ee8446b64864"),
+    hex32(b"1069673dcdb12263df301a6ff584a7ec261a44cb9dc68df067a4774460b1f1e1"),
+    hex32(b"18f43331537ee2af2e3d758d50f72106467c6eea50371dd528d57eb2b856d238"),
+    hex32(b"07f9d837cb17b0d36320ffe93ba52345f1b728571a568265caac97559dbc952a"),
+    hex32(b"2b94cf5e8746b3f5c9631f4c5df32907a699c58c94b2ad4d7b5cec1639183f55"),
+    hex32(b"2dee93c5a666459646ea7d22cca9e1bcfed71e6951b953611d11dda32ea09d78"),
+];
+
+/// Módulo r do campo escalar do BN254: um compromisso é um elemento do campo.
+const R_BN254: [u8; 32] =
+    hex32(b"30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001");
+
+const fn hex32(h: &[u8; 64]) -> [u8; 32] {
+    const fn nib(c: u8) -> u8 {
+        match c {
+            b'0'..=b'9' => c - b'0',
+            b'a'..=b'f' => c - b'a' + 10,
+            _ => panic!("hex"),
+        }
+    }
+    let mut out = [0u8; 32];
+    let mut i = 0;
+    while i < 32 {
+        out[i] = nib(h[2 * i]) << 4 | nib(h[2 * i + 1]);
+        i += 1;
+    }
+    out
+}
 
 /// (p-1)/2 para o campo base da BLS12-381, big-endian.
 const METADE_DE_P: [u8; 48] = [
@@ -79,16 +124,61 @@ pub enum Erro {
     AssentosInvalidos = 8,
     /// O sorteio já foi feito: não há segundo (INV-13).
     JaSelado = 9,
+    /// O compromisso é zero (a folha vazia) ou não é elemento do campo.
+    CompromissoInvalido = 10,
+    /// Este compromisso já foi usado, por quem quer que seja (INV-17).
+    CompromissoRepetido = 11,
+    /// A árvore tem 2⁶ folhas e estão todas ocupadas.
+    RolCheio = 12,
+    /// Impedir quem não está no rol.
+    JuradoDesconhecido = 13,
+    /// O jurado já está impedido.
+    JaImpedido = 14,
 }
 
 /// O que `lock()` fixa, de uma vez por todas: quando, qual rodada do beacon
-/// decide, quantos assentos, e o ledger a partir do qual os jurados revelam
-/// (`revela_em`, usado a partir de T-038; Q-24).
+/// decide, quantos assentos, o ledger a partir do qual os jurados revelam
+/// (`revela_em`, usado a partir de T-038; Q-24), a raiz da árvore de
+/// compromissos e `n`, quantos estavam autorizados.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Fechamento {
     pub ledger: u32,
     pub tempo: u64,
+    pub rodada: u64,
+    pub k: u32,
+    pub revela_em: u32,
+    pub raiz: U256,
+    pub n: u32,
+}
+
+/// Um jurado entrou no rol, na posição `indice`, com o compromisso `c`. Com
+/// estes eventos e os de `Impedido`, qualquer um refaz a raiz
+/// (scripts/arvore.py, web/arvore.mjs).
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Inscrito {
+    #[topic]
+    pub jurado: Address,
+    pub indice: u32,
+    pub c: U256,
+}
+
+/// Um jurado foi impedido antes do fechamento: a folha `indice` vira zero.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Impedido {
+    #[topic]
+    pub jurado: Address,
+    pub indice: u32,
+}
+
+/// O rol fechou com esta raiz, `n` autorizados, esta rodada e `k` assentos.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Fechado {
+    pub raiz: U256,
+    pub n: u32,
     pub rodada: u64,
     pub k: u32,
     pub revela_em: u32,
@@ -102,6 +192,16 @@ pub enum DataKey {
     Rol,
     Fechamento,
     Painel,
+    /// Quantos inscritos continuam autorizados.
+    Autorizados,
+    /// O compromisso de um jurado.
+    Compromisso(Address),
+    /// A posição de um jurado na ordem de inscrição — e na árvore.
+    Indice(Address),
+    /// Um compromisso já usado, para sempre.
+    Usado(U256),
+    /// Nó da árvore: (nível, posição). Ausente é a subárvore vazia.
+    No(u32, u32),
 }
 
 #[contract]
@@ -116,6 +216,7 @@ impl Kleroterion {
         s.set(&DataKey::Escrivao, &escrivao);
         s.set(&DataKey::Bilhete, &bilhete);
         s.set(&DataKey::Minimo, &minimo);
+        s.set(&DataKey::Autorizados, &0u32);
         let vazio: Vec<Address> = Vec::new(&env);
         env.storage().persistent().set(&DataKey::Rol, &vazio);
     }
@@ -123,7 +224,11 @@ impl Kleroterion {
     /// Inscreve um jurado: cria a trustline (SAC `trust`, CAP-73), autoriza e
     /// emite um bilhete. O escrivão e o jurado assinam — o jurado consente em
     /// servir; é a parte afetada pelo caso que nunca consentiu com o foro.
-    pub fn enroll(env: Env, jurado: Address) {
+    ///
+    /// `c` é o compromisso do jurado, `Poseidon(s)` para um segredo `s` que só
+    /// ele guarda. Fica preso ao endereço, vira a folha da posição de
+    /// inscrição, e nunca mais é aceito de ninguém (INV-17).
+    pub fn enroll(env: Env, jurado: Address, c: U256) {
         Self::escrivao(&env).require_auth();
         jurado.require_auth();
         if Self::closing(env.clone()).is_some() {
@@ -133,28 +238,49 @@ impl Kleroterion {
         if rol.contains(&jurado) {
             panic_with_error!(&env, Erro::JuradoRepetido);
         }
+        let r = U256::from_be_bytes(&env, &Bytes::from_array(&env, &R_BN254));
+        if c == U256::from_u32(&env, 0) || c >= r {
+            panic_with_error!(&env, Erro::CompromissoInvalido);
+        }
+        let p = env.storage().persistent();
+        if p.has(&DataKey::Usado(c.clone())) {
+            panic_with_error!(&env, Erro::CompromissoRepetido);
+        }
+        let indice = rol.len();
+        if indice >= 1 << PROFUNDIDADE {
+            panic_with_error!(&env, Erro::RolCheio);
+        }
         let sac = token::StellarAssetClient::new(&env, &Self::bilhete(&env));
         sac.trust(&jurado);
         sac.set_authorized(&jurado, &true);
         sac.mint(&jurado, &UM_BILHETE);
-        rol.push_back(jurado);
-        env.storage().persistent().set(&DataKey::Rol, &rol);
+        rol.push_back(jurado.clone());
+        p.set(&DataKey::Rol, &rol);
+        p.set(&DataKey::Usado(c.clone()), &true);
+        p.set(&DataKey::Compromisso(jurado.clone()), &c);
+        p.set(&DataKey::Indice(jurado.clone()), &indice);
+        Self::por_folha(&env, indice, c.clone());
+        let i = env.storage().instance();
+        let autorizados: u32 = i.get(&DataKey::Autorizados).unwrap();
+        i.set(&DataKey::Autorizados, &(autorizados + 1));
+        Inscrito { jurado, indice, c }.publish(&env);
     }
 
     /// Fecha o rol: a partir daqui ninguém entra nem sai (INV-11, INV-14).
     /// A rodada do beacon fica fixada pelo relógio do ledger, não por quem
     /// chama (INV-06, INV-13), e `k` fica fixado aqui, antes de a rodada
-    /// existir. Recusa abaixo do mínimo (INV-09) e `k` fora de `1..=N`.
+    /// existir, e a raiz da árvore com ele. Recusa abaixo do mínimo (INV-09)
+    /// e `k` fora de `1..=N`, sendo `N` os inscritos ainda autorizados.
     pub fn lock(env: Env, k: u32, revela_em: u32) -> Fechamento {
         Self::escrivao(&env).require_auth();
         if Self::closing(env.clone()).is_some() {
             panic_with_error!(&env, Erro::RolFechado);
         }
         let minimo: u32 = env.storage().instance().get(&DataKey::Minimo).unwrap();
-        let n = Self::roster(env.clone()).len();
-        if n < minimo {
+        if Self::roster(env.clone()).len() < minimo {
             panic_with_error!(&env, Erro::RolAbaixoDoMinimo);
         }
+        let n: u32 = env.storage().instance().get(&DataKey::Autorizados).unwrap();
         if k == 0 || k > n {
             panic_with_error!(&env, Erro::AssentosInvalidos);
         }
@@ -165,8 +291,18 @@ impl Kleroterion {
             rodada: Self::primeira_rodada_depois_de(tempo) + MARGEM_DE_RODADAS,
             k,
             revela_em,
+            raiz: Self::root(env.clone()),
+            n,
         };
         env.storage().instance().set(&DataKey::Fechamento, &f);
+        Fechado {
+            raiz: f.raiz.clone(),
+            n: f.n,
+            rodada: f.rodada,
+            k: f.k,
+            revela_em: f.revela_em,
+        }
+        .publish(&env);
         f
     }
 
@@ -174,12 +310,43 @@ impl Kleroterion {
     /// jurado continua no rol e na ordem; só não senta (INV-12), e o
     /// substituto é o próximo da ordem sorteada (INV-08). Só antes do
     /// fechamento: depois dele o escrivão não escolhe quem sai (INV-14, Q-21).
+    /// A folha do impedido vira zero: ele não tem como provar assento.
     pub fn impede(env: Env, jurado: Address) {
         Self::escrivao(&env).require_auth();
         if Self::closing(env.clone()).is_some() {
             panic_with_error!(&env, Erro::RolFechado);
         }
-        token::StellarAssetClient::new(&env, &Self::bilhete(&env)).set_authorized(&jurado, &false);
+        let indice: u32 = match env
+            .storage()
+            .persistent()
+            .get(&DataKey::Indice(jurado.clone()))
+        {
+            Some(i) => i,
+            None => panic_with_error!(&env, Erro::JuradoDesconhecido),
+        };
+        let sac = token::StellarAssetClient::new(&env, &Self::bilhete(&env));
+        if !sac.authorized(&jurado) {
+            panic_with_error!(&env, Erro::JaImpedido);
+        }
+        sac.set_authorized(&jurado, &false);
+        Self::por_folha(&env, indice, U256::from_u32(&env, 0));
+        let i = env.storage().instance();
+        let autorizados: u32 = i.get(&DataKey::Autorizados).unwrap();
+        i.set(&DataKey::Autorizados, &(autorizados - 1));
+        Impedido { jurado, indice }.publish(&env);
+    }
+
+    /// O compromisso de um jurado, se inscrito.
+    pub fn commitment(env: Env, jurado: Address) -> Option<U256> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Compromisso(jurado))
+    }
+
+    /// A raiz da árvore de compromissos agora. Depois do `lock()` é a mesma
+    /// de `closing().raiz`, porque nada mais entra nem sai.
+    pub fn root(env: Env) -> U256 {
+        Self::no(&env, PROFUNDIDADE, 0)
     }
 
     /// O rol, na ordem de inscrição. É esta ordem que o sorteio embaralha.
@@ -242,6 +409,38 @@ impl Kleroterion {
     /// segundo do fechamento já podia ser conhecida; por isso "estritamente".
     fn primeira_rodada_depois_de(t: u64) -> u64 {
         t.saturating_sub(GENESIS_QUICKNET) / PERIODO_QUICKNET + 2
+    }
+
+    /// Põe `valor` na folha `indice` e refaz o caminho até a raiz: uma
+    /// Poseidon(2) por nível, com o irmão lido do armazenamento ou, se nunca
+    /// escrito, a subárvore vazia daquele nível.
+    fn por_folha(env: &Env, indice: u32, valor: U256) {
+        let p = env.storage().persistent();
+        let h = Sponge::t3(env);
+        let mut pos = indice;
+        let mut atual = valor;
+        p.set(&DataKey::No(0, pos), &atual);
+        for nivel in 0..PROFUNDIDADE {
+            let irmao = Self::no(env, nivel, pos ^ 1);
+            atual = if pos & 1 == 0 {
+                h.hash(&vec![env, atual, irmao])
+            } else {
+                h.hash(&vec![env, irmao, atual])
+            };
+            pos >>= 1;
+            p.set(&DataKey::No(nivel + 1, pos), &atual);
+        }
+    }
+
+    fn no(env: &Env, nivel: u32, pos: u32) -> U256 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::No(nivel, pos))
+            .unwrap_or_else(|| Self::zero(env, nivel))
+    }
+
+    pub(crate) fn zero(env: &Env, nivel: u32) -> U256 {
+        U256::from_be_bytes(env, &Bytes::from_array(env, &ZEROS[nivel as usize]))
     }
 
     fn escrivao(env: &Env) -> Address {

@@ -1,8 +1,11 @@
 #![cfg(test)]
 extern crate std;
 use super::*;
-use soroban_sdk::testutils::{Address as _, IssuerFlags, Ledger as _, MockAuth, MockAuthInvoke};
-use soroban_sdk::{token, Address, BytesN, Env, IntoVal};
+use soroban_sdk::testutils::{
+    Address as _, Events as _, IssuerFlags, Ledger as _, MockAuth, MockAuthInvoke,
+};
+use soroban_sdk::{token, Address, Bytes, BytesN, Env, Event, IntoVal, U256};
+use std::cell::Cell;
 
 // Vetores partilhados com contracts/beacon-verifier/src/test.rs. Mesma rodada,
 // mesma assinatura, mesma aleatoriedade: é isso que mantém as cópias honestas.
@@ -46,13 +49,20 @@ const MINIMO: u32 = 7;
 struct Mesa {
     env: Env,
     bilhete: Address,
+    id: Address,
     c: KleroterionClient<'static>,
+    /// Próximo compromisso de teste: cada jurado recebe um `c` diferente.
+    proximo_c: Cell<u32>,
 }
 
 /// Emissor com AUTH_REQUIRED e AUTH_REVOCABLE, SAC entregue ao contrato.
 /// Quem fecha o emissor (master weight 0) é a sequência clássica de T-031;
 /// o ambiente de teste não tem assinatura de conta para simular isso.
 fn mesa() -> Mesa {
+    mesa_com_minimo(MINIMO)
+}
+
+fn mesa_com_minimo(minimo: u32) -> Mesa {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().with_mut(|l| l.timestamp = GENESIS_QUICKNET);
@@ -61,10 +71,44 @@ fn mesa() -> Mesa {
     sac.issuer().set_flag(IssuerFlags::RequiredFlag);
     sac.issuer().set_flag(IssuerFlags::RevocableFlag);
     let bilhete = sac.address();
-    let id = env.register(Kleroterion, (&escrivao, &bilhete, &MINIMO));
+    let id = env.register(Kleroterion, (&escrivao, &bilhete, &minimo));
     token::StellarAssetClient::new(&env, &bilhete).set_admin(&id);
     let c = KleroterionClient::new(&env, &id);
-    Mesa { env, bilhete, c }
+    Mesa {
+        env,
+        bilhete,
+        id,
+        c,
+        proximo_c: Cell::new(1000),
+    }
+}
+
+/// Um compromisso de teste novo. Qualquer elemento do campo, não nulo, serve:
+/// o contrato não sabe — nem precisa saber — que `c = Poseidon(s)`.
+fn novo_c(m: &Mesa) -> U256 {
+    let v = m.proximo_c.get();
+    m.proximo_c.set(v + 1);
+    U256::from_u32(&m.env, v)
+}
+
+fn inscrever(m: &Mesa, j: &Address) -> U256 {
+    let c = novo_c(m);
+    m.c.enroll(j, &c);
+    c
+}
+
+fn u256(env: &Env, decimal: &str) -> U256 {
+    // decimal -> 32 bytes big-endian, sem dependências
+    let mut b = [0u8; 32];
+    for d in decimal.bytes() {
+        let mut vai = (d - b'0') as u32;
+        for x in b.iter_mut().rev() {
+            let v = (*x as u32) * 10 + vai;
+            *x = v as u8;
+            vai = v >> 8;
+        }
+    }
+    U256::from_be_bytes(env, &Bytes::from_array(env, &b))
 }
 
 fn jurados(m: &Mesa, n: usize) -> std::vec::Vec<Address> {
@@ -73,7 +117,7 @@ fn jurados(m: &Mesa, n: usize) -> std::vec::Vec<Address> {
 
 fn inscrever_todos(m: &Mesa, js: &[Address]) {
     for j in js {
-        m.c.enroll(j);
+        inscrever(m, j);
     }
 }
 
@@ -95,11 +139,16 @@ fn sig_a(m: &Mesa) -> BytesN<96> {
 fn inscrever_da_bilhete_e_autorizacao() {
     let m = mesa();
     let j = Address::generate(&m.env);
-    m.c.enroll(&j);
+    let c = inscrever(&m, &j);
     assert_eq!(
         bilhete(&m).balance(&j),
         UM_BILHETE,
         "um bilhete, nem mais nem menos"
+    );
+    assert_eq!(
+        m.c.commitment(&j),
+        Some(c),
+        "o compromisso fica preso ao endereco"
     );
     assert!(sac(&m).authorized(&j), "inscrito sai autorizado");
     assert_eq!(m.c.roster(), soroban_sdk::vec![&m.env, j]);
@@ -120,8 +169,8 @@ fn a_ordem_do_rol_e_a_de_inscricao() {
 fn inscrever_repetido_e_recusado() {
     let m = mesa();
     let j = Address::generate(&m.env);
-    m.c.enroll(&j);
-    let r = m.c.try_enroll(&j);
+    inscrever(&m, &j);
+    let r = m.c.try_enroll(&j, &novo_c(&m));
     assert_eq!(r, Err(Ok(Erro::JuradoRepetido.into())));
     assert_eq!(
         bilhete(&m).balance(&j),
@@ -144,17 +193,18 @@ fn inscrever_sem_escrivao_e_recusado() {
 
     // Só o jurado assina; o escrivão não.
     let j = Address::generate(&env);
+    let cj = U256::from_u32(&env, 7);
     env.mock_auths(&[MockAuth {
         address: &j,
         invoke: &MockAuthInvoke {
             contract: &id,
             fn_name: "enroll",
-            args: (j.clone(),).into_val(&env),
+            args: (j.clone(), cj.clone()).into_val(&env),
             sub_invokes: &[],
         },
     }]);
     assert!(
-        c.try_enroll(&j).is_err(),
+        c.try_enroll(&j, &cj).is_err(),
         "sem o escrivao ninguem entra no rol"
     );
 }
@@ -264,7 +314,10 @@ fn inscrever_depois_de_fechar_e_recusado() {
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
     m.c.lock(&K, &REVELA_EM);
     let tarde = Address::generate(&m.env);
-    assert_eq!(m.c.try_enroll(&tarde), Err(Ok(Erro::RolFechado.into())));
+    assert_eq!(
+        m.c.try_enroll(&tarde, &novo_c(&m)),
+        Err(Ok(Erro::RolFechado.into()))
+    );
     assert_eq!(bilhete(&m).balance(&tarde), 0);
     assert_eq!(m.c.roster().len(), MINIMO);
 }
@@ -403,15 +456,34 @@ fn sem_bilhete_nao_senta() {
     assert_eq!(painel.get(0).unwrap(), js[ORDEM_DE_OURO[1] as usize]);
 }
 
+/// N, no fechamento, conta só os autorizados: cinco impedidos de sete deixam
+/// N = 2, e três assentos são recusados já no `lock`.
 #[test]
-fn elegiveis_insuficientes_e_recusado() {
+fn fechar_com_mais_assentos_que_autorizados_e_recusado() {
     let m = mesa();
     let js = jurados(&m, 7);
     inscrever_todos(&m, &js);
     for j in &js[..5] {
         m.c.impede(j);
     }
-    fechar_para(&m, ROUND_A, K);
+    m.env.ledger().with_mut(|l| {
+        l.timestamp = GENESIS_QUICKNET + (ROUND_A - 2 - MARGEM_DE_RODADAS) * PERIODO_QUICKNET
+    });
+    assert_eq!(
+        m.c.try_lock(&K, &REVELA_EM),
+        Err(Ok(Erro::AssentosInvalidos.into()))
+    );
+}
+
+/// Depois do fechamento um jurado ainda pode passar o bilhete adiante; se
+/// sobram menos de `k` com bilhete, o sorteio é recusado.
+#[test]
+fn elegiveis_insuficientes_e_recusado() {
+    let m = mesa();
+    let js = jurados(&m, 7);
+    inscrever_todos(&m, &js);
+    fechar_para(&m, ROUND_A, 7);
+    bilhete(&m).transfer(&js[0], &js[1], &UM_BILHETE);
     let r = m.c.try_seal(&sig_a(&m));
     assert_eq!(r, Err(Ok(Erro::ElegiveisInsuficientes.into())));
     assert_eq!(m.c.panel(), None);
@@ -468,6 +540,182 @@ fn bate_com_o_vetor_de_enderecos() {
     }
 }
 
+// ---- compromissos e árvore (T-035) ---------------------------------------
+
+#[test]
+fn compromisso_repetido_e_recusado() {
+    let m = mesa();
+    let a = Address::generate(&m.env);
+    let b = Address::generate(&m.env);
+    let c = inscrever(&m, &a);
+    assert_eq!(
+        m.c.try_enroll(&b, &c),
+        Err(Ok(Erro::CompromissoRepetido.into()))
+    );
+    assert_eq!(bilhete(&m).balance(&b), 0, "a recusa nao emite bilhete");
+}
+
+/// INV-17: um `c` visto uma vez nunca mais é aceito, nem depois de o dono
+/// ter sido impedido.
+#[test]
+fn compromisso_de_impedido_nao_volta() {
+    let m = mesa();
+    let a = Address::generate(&m.env);
+    let c = inscrever(&m, &a);
+    m.c.impede(&a);
+    let b = Address::generate(&m.env);
+    assert_eq!(
+        m.c.try_enroll(&b, &c),
+        Err(Ok(Erro::CompromissoRepetido.into()))
+    );
+}
+
+#[test]
+fn compromisso_zero_ou_fora_do_campo_e_recusado() {
+    let m = mesa();
+    let j = Address::generate(&m.env);
+    let zero = U256::from_u32(&m.env, 0);
+    assert_eq!(
+        m.c.try_enroll(&j, &zero),
+        Err(Ok(Erro::CompromissoInvalido.into())),
+        "zero e a folha vazia"
+    );
+    let r = u256(
+        &m.env,
+        "21888242871839275222246405745257275088548364400416034343698204186575808495617",
+    );
+    assert_eq!(
+        m.c.try_enroll(&j, &r),
+        Err(Ok(Erro::CompromissoInvalido.into())),
+        "r nao e elemento do campo"
+    );
+}
+
+#[test]
+fn a_arvore_tem_64_folhas() {
+    let m = mesa();
+    inscrever_todos(&m, &jurados(&m, 64));
+    let j = Address::generate(&m.env);
+    assert_eq!(
+        m.c.try_enroll(&j, &novo_c(&m)),
+        Err(Ok(Erro::RolCheio.into()))
+    );
+}
+
+#[test]
+fn impedir_quem_nao_esta_no_rol_ou_duas_vezes_e_recusado() {
+    let m = mesa();
+    let a = Address::generate(&m.env);
+    assert_eq!(m.c.try_impede(&a), Err(Ok(Erro::JuradoDesconhecido.into())));
+    inscrever(&m, &a);
+    m.c.impede(&a);
+    assert_eq!(m.c.try_impede(&a), Err(Ok(Erro::JaImpedido.into())));
+}
+
+/// As raízes de subárvores vazias que o contrato embute são as da
+/// circomlib (tests/vetores-arvore.json).
+#[test]
+fn os_zeros_sao_os_da_circomlib() {
+    let env = Env::default();
+    let j: serde_json::Value = serde_json::from_str(ARVORES).unwrap();
+    let zeros = j["zeros"].as_array().unwrap();
+    assert_eq!(zeros.len() as u32, PROFUNDIDADE + 1);
+    for (d, z) in zeros.iter().enumerate() {
+        assert_eq!(
+            Kleroterion::zero(&env, d as u32),
+            u256(&env, z.as_str().unwrap()),
+            "nivel {}",
+            d
+        );
+    }
+}
+
+const ARVORES: &str = include_str!("../../../tests/vetores-arvore.json");
+
+/// T-035: a árvore é construída pelo contrato, evento a evento, e a raiz
+/// congelada no `lock` é a que a circomlib — o circuito — calcula para os
+/// mesmos compromissos. Cada evento emitido é o que o vetor lista, então
+/// quem lê só os eventos recompõe a raiz (scripts/arvore.py, web/arvore.mjs).
+#[test]
+fn a_raiz_bate_com_os_vetores_da_circomlib() {
+    let j: serde_json::Value = serde_json::from_str(ARVORES).unwrap();
+    for caso in j["arvores"].as_array().unwrap() {
+        let nome = caso["nome"].as_str().unwrap();
+        let n = caso["n"].as_u64().unwrap() as usize;
+        let m = mesa_com_minimo(1);
+        let js = jurados(&m, n);
+        for ev in caso["eventos"].as_array().unwrap() {
+            let i = ev["indice"].as_u64().unwrap() as u32;
+            let jurado = &js[i as usize];
+            match ev["evento"].as_str().unwrap() {
+                "enroll" => {
+                    let c = u256(&m.env, ev["c"].as_str().unwrap());
+                    m.c.enroll(jurado, &c);
+                    let esperado = Inscrito {
+                        jurado: jurado.clone(),
+                        indice: i,
+                        c,
+                    };
+                    assert_eq!(
+                        m.env.events().all().filter_by_contract(&m.id),
+                        [esperado.to_xdr(&m.env, &m.id)],
+                        "{}: evento de inscricao {}",
+                        nome,
+                        i
+                    );
+                }
+                "impede" => {
+                    m.c.impede(jurado);
+                    let esperado = Impedido {
+                        jurado: jurado.clone(),
+                        indice: i,
+                    };
+                    assert_eq!(
+                        m.env.events().all().filter_by_contract(&m.id),
+                        [esperado.to_xdr(&m.env, &m.id)],
+                        "{}: evento de impedimento",
+                        nome
+                    );
+                }
+                outro => panic!("evento desconhecido {}", outro),
+            }
+        }
+        let raiz = u256(&m.env, caso["raiz"].as_str().unwrap());
+        assert_eq!(m.c.root(), raiz, "{}: raiz antes do fechamento", nome);
+        let f = m.c.lock(&1u32, &REVELA_EM);
+        assert_eq!(f.raiz, raiz, "{}: raiz congelada", nome);
+        assert_eq!(
+            f.n as u64,
+            caso["autorizados"].as_u64().unwrap(),
+            "{}: N",
+            nome
+        );
+    }
+}
+
+/// O fechamento publica o que fixou, e a raiz não muda mais: depois dele
+/// ninguém entra nem sai (INV-14).
+#[test]
+fn fechar_publica_raiz_n_rodada_k() {
+    let m = mesa();
+    inscrever_todos(&m, &jurados(&m, MINIMO as usize));
+    let raiz = m.c.root();
+    let f = fechar_para(&m, ROUND_A, K);
+    assert_eq!(f.raiz, raiz);
+    assert_eq!(f.n, MINIMO);
+    let esperado = Fechado {
+        raiz: f.raiz.clone(),
+        n: f.n,
+        rodada: f.rodada,
+        k: f.k,
+        revela_em: f.revela_em,
+    };
+    assert_eq!(
+        m.env.events().all().filter_by_contract(&m.id),
+        [esperado.to_xdr(&m.env, &m.id)]
+    );
+}
+
 // ---- as cópias do beacon-verifier ---------------------------------------
 
 /// As mesmas asserções de beacon-verifier::bate_com_a_recomputacao_fora_da_cadeia,
@@ -520,4 +768,35 @@ fn rodada_real_verifica() {
     let m = mesa();
     assert!(m.c.verify(&ROUND_A, &sig_a(&m)));
     assert!(!m.c.verify(&(ROUND_A + 1), &sig_a(&m)));
+}
+
+/// Custo no host de teste, `(cpu, mem)`, não numa transação da testnet:
+/// a inscrição do 64.º jurado (o caminho inteiro da árvore e as três chamadas
+/// ao SAC), um impedimento e o fechamento. Mudou, fica vermelho (G2); G7
+/// confere que docs/SPEC.md ainda diz estes números.
+const CUSTO_ENROLL: (u64, u64) = (10_472_755, 1_714_763);
+const CUSTO_IMPEDE: (u64, u64) = (8_656_396, 1_039_588);
+const CUSTO_LOCK: (u64, u64) = (587_464, 283_073);
+
+#[test]
+fn custo_medido_de_enroll_impede_lock() {
+    let m = mesa();
+    let js = jurados(&m, 64);
+    inscrever_todos(&m, &js[..63]);
+    let medir = |f: &dyn Fn()| {
+        m.env.cost_estimate().budget().reset_unlimited();
+        f();
+        let b = m.env.cost_estimate().budget();
+        (b.cpu_instruction_cost(), b.memory_bytes_cost())
+    };
+    let c = novo_c(&m);
+    let enroll = medir(&|| m.c.enroll(&js[63], &c));
+    let impede = medir(&|| m.c.impede(&js[0]));
+    let lock = medir(&|| {
+        fechar_para(&m, ROUND_A, K);
+    });
+    std::println!("enroll {:?} impede {:?} lock {:?}", enroll, impede, lock);
+    assert_eq!(enroll, CUSTO_ENROLL, "enroll (cpu, mem)");
+    assert_eq!(impede, CUSTO_IMPEDE, "impede (cpu, mem)");
+    assert_eq!(lock, CUSTO_LOCK, "lock (cpu, mem)");
 }

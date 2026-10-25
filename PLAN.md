@@ -41,7 +41,8 @@ The stack is linear: #9 merges first, then #10. `CLAUDE.md` forbids the agent me
 | G2 | `cargo test --locked --workspace` | PASS, 12 tests |
 | G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS (on `t-004-green-gates`) |
 | G4 | `stellar contract build` | PASS |
-| G5 | `npm test` | **FAIL** — deliberate placeholder until T-006 replaces it |
+| G5 | `npm test` | PASS, 3 vectors |
+| G6 | `python3 scripts/conferir_vetores.py` | PASS, 3 vectors + the tie to `test.rs` |
 
 ---
 
@@ -78,10 +79,10 @@ A judge clones it and runs two commands. Today the Python and JavaScript verifie
 |---|---|---|---|---|
 | 3 | T-017 civic identity for the public page | [#7](https://github.com/ThaisFReis/pinakion/issues/7) | `review` | done and merged into the stack; the worked example now matches `docs/evidencia-testnet-sorteio.md` |
 | 4 | T-003 pin the toolchain | [#2](https://github.com/ThaisFReis/pinakion/issues/2) | `todo` | without `rust-toolchain.toml` and `.nvmrc`, "works from a clean checkout" is untested |
-| 5 | T-005 gate the Python verifier | [#4](https://github.com/ThaisFReis/pinakion/issues/4) | `todo` | INV-04 is asserted only from the Rust side; nothing catches the Python drifting |
-| 6 | T-006 gate the JavaScript verifier | [#5](https://github.com/ThaisFReis/pinakion/issues/5) | `todo` | replaces the G5 placeholder; `web/sorteio.mjs` was validated **outside** this repository and that validation is not reproducible here |
+| 5 | T-005 gate the Python verifier | [#4](https://github.com/ThaisFReis/pinakion/issues/4) | `review` | G6 runs it against `tests/vetores-de-ouro.json` and ties those numbers to `test.rs` |
+| 6 | T-006 gate the JavaScript verifier | [#5](https://github.com/ThaisFReis/pinakion/issues/5) | `review` | `npm test` runs `web/test.mjs` against the same file; the placeholder is gone |
 
-Done when: G1–G5 all pass, and each of the three implementations is checked against the same golden vectors by a command in §8.
+Done when: G1–G6 all pass, and each of the three implementations is checked against the same golden vectors by a command in §8. **G1–G6 all pass as of 2026-10-25**; what is left in this phase is T-003, the toolchain pins.
 
 ---
 

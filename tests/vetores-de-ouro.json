@@ -1,0 +1,26 @@
+{
+  "_": "Golden vectors. The contract and both independent recomputations must agree on every entry. The panels here are the ones asserted in contracts/beacon-verifier/src/test.rs::bate_com_a_recomputacao_fora_da_cadeia, and scripts/conferir_vetores.py checks that these numbers still match that file, so the two cannot drift apart silently.",
+  "vetores": [
+    {
+      "nome": "rodada real, rol de 200, painel de 25",
+      "semente": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
+      "n": 200,
+      "k": 25,
+      "painel": [15, 179, 44, 133, 177, 1, 168, 104, 157, 62, 43, 63, 57, 23, 86, 50, 165, 64, 26, 27, 148, 96, 120, 13, 29]
+    },
+    {
+      "nome": "semente zero, rol de 50, painel de 7",
+      "semente": "0000000000000000000000000000000000000000000000000000000000000000",
+      "n": 50,
+      "k": 7,
+      "painel": [28, 10, 18, 23, 41, 36, 26]
+    },
+    {
+      "nome": "rol pequeno, todos sorteados",
+      "semente": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
+      "n": 7,
+      "k": 7,
+      "painel": [0, 1, 4, 2, 6, 5, 3]
+    }
+  ]
+}

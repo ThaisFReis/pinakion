@@ -22,7 +22,8 @@ Source of truth for this repository. Written by Bootstrap on 2026-10-25 from wha
   | `PLAN.md` | the order and state of the work; this file keeps the acceptance criteria | present (DEC-006) |
 
   The deck's rule for correcting course: a mentor saying *"nobody has this problem"* means fixing `THESIS.md`; *"cut that feature"* means `SPEC.md`; *"I can't tell what it does"* means `DESIGN.md`. Fix the file, not only the code.
-- Project-specific additions to `CLAUDE.md`: none yet.
+- Project-specific additions to `CLAUDE.md`:
+  - **Git is written in English.** Every commit message, and every pull request title and body, is in English, whatever language the conversation is in (DEC-007).
 
 ---
 
@@ -248,6 +249,8 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 | T-016 | Write the demo path and record the video ([#8](https://github.com/ThaisFReis/pinakion/issues/8)) | T-012, T-015 | §2 | todo | One flow, live on testnet, with the video as backup. 3 minutes in the deck's four parts |
 | T-018 | Write `PLAN.md`, the progress board | T-014 | §8, §9, §11 | review | Phases ordered by the clock; branch and PR state; what is out of scope before the ship date; §9 stays the authority on acceptance criteria (DEC-006) |
 
+| T-019 | Put the git record in English | T-018 | §0, §11 Q-08 | review | Commits not yet on `main` rewritten in English; PR titles and bodies in English; the convention recorded in §0 and DEC-007 |
+
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
 ---
@@ -293,6 +296,12 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Consequences:** T-017 includes hierarchy and copy presentation as authorised in the conversation; general approval in §0 remains pending. No contract or independent algorithm change. The page is a local preview, not a public deployment. Empty signature input clears the previous result so an obsolete success state is not displayed.
 **Validation (observed 2026-10-25):** G1–G4 passed with their §8 commands, including 12 Rust tests. G5 fails as the placeholder `docs/SPEC.md` §8 declares, which T-006 replaces — an earlier note here said `npm` was absent from PATH; it is present (v24.14.1, via nvm) and the failure is the declared one, not a missing tool. Browser checks at 800px and 375px, light and dark: the documented panel recomputes and matches, a deliberately altered panel is refused, no console errors, no horizontal overflow. These checks do not replace T-006 or establish new contract guarantees.
 
+### DEC-007: Git is written in English (2026-10-25, T-019)
+**Context:** The conversation runs in Portuguese and the commit messages followed it, as did two PR bodies. The repository is public and read by people who do not read Portuguese; the history and the PR record are part of what they see.
+**Decision:** Every commit message and every pull request title and body is written in English. The language of the conversation does not decide the language of the repository's git record.
+**Alternatives:** Bilingual messages — rejected as noise. Leaving it to each commit — rejected: that is how the inconsistency arose.
+**Consequences:** Five Portuguese commits that had not reached `main` were rewritten in English on a fresh branch, giving the same tree in three commits instead of seven. Two Portuguese commits are already on `main` (`ca738dc`, `f0048e2`) and are left alone, because rewriting published history on a public default branch is the human's call, not the agent's. The merged PR bodies of #11 and #12 are part of the public record and were rewritten in place. Q-08 is now partly answered; the prose documents remain mixed.
+
 ---
 
 ## §11 Open questions
@@ -306,7 +315,7 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 | Q-05 | ~~`verify` takes the beacon public key as a parameter.~~ **Resolved 2026-10-25 by T-007.** Accepted consequence, worth confirming: the contract trusts a single drand chain, so a quicknet key rotation means a new chain and a new contract. | — |
 | Q-06 | No toolchain pins exist (`rust-toolchain.toml`, `.nvmrc`). Which versions are the project's? | T-003 |
 | Q-07 | Who publishes the first roster, and under what authority? This is unresolved across three design documents. | — |
-| Q-08 | Documents are written in Portuguese; code identifiers are mixed Portuguese and English. What is the convention? | — |
+| Q-08 | **Partly answered 2026-10-25:** git is in English — commit messages and PR titles and bodies, always (DEC-007). Still open for the repository's prose: `THESIS.md`, `README.md`, `DESIGN.md`, `AGENTS.md`, `PLAN.md` and `docs/SPEC.md` are in English, while `docs/desenho-*.md`, `docs/evidencia-*.md` and `web/index.html` are in Portuguese, and code identifiers are mixed. | — |
 | Q-09 | `docs/whitepaper-v0.1.md` states the Soroban CPU ceiling as 100M. A measurement from a previous project of the human's, cited in conversation, gives 400M by bisection on testnet. The two have not been reconciled and no figure in §2 depends on either. | — |
 | Q-10 | ~~What is the one line?~~ **Answered 2026-10-25:** *"Verifiable jury selection for governance on Stellar."* Seven words, in the deck's own shape — category plus where. *"Nobody chooses who judges you."* is kept as the guarantee: it opens the pitch and sits under the landing hero, but it is not the one-liner, because it does not say what the thing is. | — |
 | Q-11 | Which track and which category is the submission? The eligibility question raised in the human's own research — Genesis describes itself as for builders with limited Stellar experience, and the human has a previously awarded Soroban contract — was never answered by the organisers. | T-009 |

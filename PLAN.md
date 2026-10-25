@@ -76,7 +76,7 @@ A judge clones it and runs two commands. Today the Python and JavaScript verifie
 
 | Order | Task | Issue | State | Why it matters |
 |---|---|---|---|---|
-| 3 | T-017 bring `web/index.html` onto the design tokens | [#7](https://github.com/ThaisFReis/pinakion/issues/7) | **`doing`**, uncommitted | the page a judge opens; finish it before starting anything new. Q-13 no longer blocks: the civic direction was settled in conversation and is recorded with T-017 itself (DEC-005, which lands with that task, not with this file) |
+| 3 | T-017 civic identity for the public page | [#7](https://github.com/ThaisFReis/pinakion/issues/7) | `review` | done and merged into the stack; the worked example now matches `docs/evidencia-testnet-sorteio.md` |
 | 4 | T-003 pin the toolchain | [#2](https://github.com/ThaisFReis/pinakion/issues/2) | `todo` | without `rust-toolchain.toml` and `.nvmrc`, "works from a clean checkout" is untested |
 | 5 | T-005 gate the Python verifier | [#4](https://github.com/ThaisFReis/pinakion/issues/4) | `todo` | INV-04 is asserted only from the Rust side; nothing catches the Python drifting |
 | 6 | T-006 gate the JavaScript verifier | [#5](https://github.com/ThaisFReis/pinakion/issues/5) | `todo` | replaces the G5 placeholder; `web/sorteio.mjs` was validated **outside** this repository and that validation is not reproducible here |
@@ -91,7 +91,7 @@ The deck names four deliverables. Two are written, one is half-built, one has no
 
 | Deliverable | State | Task |
 |---|---|---|
-| Landing page | `web/index.html` is a verifier tool being reshaped into a page | T-017, above |
+| Landing page | built: purpose, procedure, worked example, evidence and limits | T-017, done |
 | MVP spec — the demo path, nothing more | **not written as one path** | T-016 |
 | Video demo, 3 min | **not started** | T-016 |
 | Submission data | the name and one line exist; track still unknown (Q-11) | T-009 done, Q-11 open |

@@ -246,10 +246,12 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 | T-013 | Public repository | T-011, T-015 | §11 Q-04 | review | Live at [github.com/ThaisFReis/pinakion](https://github.com/ThaisFReis/pinakion), public, MIT, one clean commit on `main` |
 | T-014 | Spec tasks become issues | T-013 | §9 | review | Eight issues open, one per task still to do. Owners not yet assigned |
 | T-015 | Rewrite `README.md` | T-010 | §2 | review | Opens with the one-liner; how to run it; every claim traced to §2; limits stated before the instructions |
-| T-016 | Write the demo path and record the video ([#8](https://github.com/ThaisFReis/pinakion/issues/8)) | T-012, T-015 | §2 | todo | One flow, live on testnet, with the video as backup. 3 minutes in the deck's four parts |
+| T-016 | Write the demo path and record the video ([#8](https://github.com/ThaisFReis/pinakion/issues/8)) | T-012, T-015 | §2 | review | `docs/DEMO.md`: one live path, proven end to end on 2026-10-25, plus the 3-minute script in the deck's four parts and the limits to state out loud. **The recording itself is still to do.** |
 | T-018 | Write `PLAN.md`, the progress board | T-014 | §8, §9, §11 | review | Phases ordered by the clock; branch and PR state; what is out of scope before the ship date; §9 stays the authority on acceptance criteria (DEC-006) |
 
 | T-019 | Put the git record in English | T-018 | §0, §11 Q-08 | review | Commits not yet on `main` rewritten in English; PR titles and bodies in English; the convention recorded in §0 and DEC-007 |
+
+| T-020 | Make the live round reproducible | T-007 | §5, §7 | review | `scripts/rodada.py` fetches a round and decompresses its G1 signature to the `BytesN<96>` the contract takes; without it the headline demo cannot be reproduced from the repository |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
@@ -301,6 +303,12 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Decision:** Every commit message and every pull request title and body is written in English. The language of the conversation does not decide the language of the repository's git record.
 **Alternatives:** Bilingual messages — rejected as noise. Leaving it to each commit — rejected: that is how the inconsistency arose.
 **Consequences:** Five Portuguese commits that had not reached `main` were rewritten in English on a fresh branch, giving the same tree in three commits instead of seven. Two Portuguese commits are already on `main` (`ca738dc`, `f0048e2`) and are left alone, because rewriting published history on a public default branch is the human's call, not the agent's. The merged PR bodies of #11 and #12 are part of the public record and were rewritten in place. Q-08 is now partly answered; the prose documents remain mixed.
+
+### DEC-008: A second script, with a dependency (2026-10-25, T-020)
+**Context:** `verify` takes the signature as `BytesN<96>` — the G1 point uncompressed. drand publishes 48 compressed bytes. The decompression existed only as throwaway code in a conversation and as hard-coded arrays in the test file, so the project's headline claim — *a live drand round verifies on Stellar* — could not be reproduced by anyone reading the repository.
+**Decision:** Add `scripts/rodada.py`, which fetches a round and prints the uncompressed signature ready for the CLI. It depends on `py_ecc`.
+**Alternatives:** Implementing BLS12-381 decompression by hand to keep the zero-dependency rule — rejected for now: it is a square root in F_p with a sign rule, and getting it subtly wrong would produce a point that simply fails the pairing, which looks like a broken demo rather than a broken script. Worth doing later. Decompressing in the contract — rejected: it would spend CPU on something that is safe to do outside, since a wrong point fails the pairing anyway.
+**Consequences:** `scripts/verificar_sorteio.py` keeps its zero-dependency promise and is still the one that matters for the guarantee; `rodada.py` is a convenience for the demo and says so. The repository now has an optional Python dependency, declared in `docs/DEMO.md` and §6.
 
 ---
 

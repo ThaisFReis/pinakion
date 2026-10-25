@@ -4,13 +4,22 @@ One look, used by the contract's page, the landing page and the video. Derived f
 
 ---
 
-## The world
+## The institution we want to express
 
-A small bronze plaque, engraved with a name, slotted into pale limestone. Left in a courtyard where anyone walking past could read it. Surviving pinakia are **green**, not gold — bronze oxidises, and the patina is what two and a half thousand years look like.
+A contemporary public record: legible, open to examination, and calm enough to read when a decision matters. The audience includes communities, DAOs, grant programs, funds and regulated institutions. This shared direction follows the human's request on 2026-10-25 to avoid crypto clichés and design around what a governance needs to communicate.
 
-So the palette is **cool stone and oxidised bronze**, with fresh metal used sparingly. Not warm parchment, not gold.
+The interface should express:
 
-And the randomiser is already a colour system: **black and white balls** fell through the tube, white keeping a row in service and black dismissing it. Those are the project's semantic colours, and they mean exactly what they meant in 370 BC.
+- **Legitimacy through procedure.** Explain how the deciding panel is formed before presenting technical machinery.
+- **Equal standing.** Give roster entries the same visual weight; distinguish a selected position without ranking people by importance.
+- **Accountability.** Keep the result, the evidence link and the exact limits of the check together.
+- **Continuity.** Use a consistent visual language across the introduction, the form and the record.
+
+The material reference remains cool limestone and oxidised bronze. The historical slot motif becomes a quiet editorial illustration. It does not imply state authority, judicial certification or institutional endorsement.
+
+Avoid token imagery, neon, gradients, speculative price charts, wallet-first navigation, decorative security seals, gavels and courthouse columns. All illustrations are original geometric SVG; none represents a live roster.
+
+The user asked for all audiences rather than a single sector. Use one shared identity. Do not invent endorsements, adoption figures or institutions as social proof.
 
 ---
 
@@ -25,11 +34,14 @@ Every value is a token. Nothing uses a literal colour.
   --slab:    #F7F8F5;   /* cards, panels, inputs */
   --ink:     #1A1B17;   /* text */
   --muted:   #5A5E55;   /* secondary text, labels */
-  --line:    #D3D6CC;   /* rules, borders */
+  --line:    #C9CDC2;   /* rules, borders */
   --patina:  #2E6B5C;   /* primary accent — oxidised bronze */
   --bronze:  #8A6A3B;   /* secondary — fresh metal, used sparingly */
   --kept:    #FFFFFF;   /* white ball: seated, kept, verified */
   --cast:    #1A1B17;   /* black ball: dismissed, excluded, rejected */
+  --accent-surface: #E0E8E0;
+  --on-accent: #FFFFFF;
+  --error: #8B3E31;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -38,12 +50,15 @@ Every value is a token. Nothing uses a literal colour.
     --stone:  #16181A;
     --slab:   #1E2126;
     --ink:    #E9EAE4;
-    --muted:  #969A90;
-    --line:   #2F3338;
-    --patina: #63BBA4;
+    --muted:  #A5AA9F;
+    --line:   #41463E;
+    --patina: #8DC9B5;
     --bronze: #CBA468;
     --kept:   #F2F3EE;
     --cast:   #0C0D0F;
+    --accent-surface: #273B34;
+    --on-accent: #13231E;
+    --error: #F1A594;
     color-scheme: dark;
   }
 }
@@ -65,11 +80,11 @@ Every value is a token. Nothing uses a literal colour.
 | Role | Face | Why |
 |---|---|---|
 | Display | **Cormorant Garamond**, 600 | High contrast, sharp serifs. Reads as cut into a surface rather than printed on one. |
-| Body and UI | **Public Sans**, 400 / 500 / 700 | A typeface drawn for public institutions. The project is one. |
+| Body and UI | **Public Sans**, 400 / 500 / 600 / 700 | A typeface drawn for public institutions. The project is one. |
 | Data | **IBM Plex Mono**, 400 / 500 | Panels, hashes, round numbers. `font-variant-numeric: tabular-nums` wherever digits line up. |
 
 ```html
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Public+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 ```
 
 ```css
@@ -82,13 +97,13 @@ Every value is a token. Nothing uses a literal colour.
 
 | Token | Size | Use |
 |---|---|---|
-| `--t-hero` | `clamp(2.2rem, 6vw, 3.4rem)` | the one-liner, once per page |
-| `--t-display` | `clamp(1.5rem, 4vw, 2.1rem)` | section openers |
-| `--t-h2` | `1.3rem` | headings inside a section |
-| `--t-body` | `1rem` / 1.6 | running text, max 65 characters wide |
+| `--t-hero` | `clamp(3.25rem, 6.8vw, 6.25rem)` | the purpose statement, once per page |
+| `--t-display` | `clamp(2.2rem, 4vw, 3.5rem)` | section openers |
+| `--t-h2` | `1.6rem` | headings inside a section |
+| `--t-body` | `1rem` / 1.65 | running text, max 65 characters wide |
 | `--t-small` | `0.875rem` | notes, captions |
-| `--t-label` | `0.72rem`, `letter-spacing: 0.11em`, uppercase | eyebrows, field labels |
-| `--t-data` | `0.85rem` mono | panels, hashes, measurements |
+| `--t-label` | `0.6875rem`, `letter-spacing: 0.15em`, uppercase | eyebrows, field labels |
+| `--t-data` | `0.8125rem` mono | panels, hashes, measurements |
 
 Headings take `text-wrap: balance`. Cormorant is a display face: never below `--t-h2`.
 
@@ -99,32 +114,33 @@ Headings take `text-wrap: balance`. Cormorant is a display face: never below `--
 The kleroterion's slot column, with one slot drawn. It is the machine and the act at the same time, and it survives at 16px.
 
 ```svg
-<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pinakion">
-  <rect x="3.5" y="2.5" width="17" height="19" rx="2"
-        stroke="currentColor" stroke-width="1.5"/>
-  <rect x="7" y="6" width="10" height="2.4" rx="1.2"
-        stroke="currentColor" stroke-width="1.2"/>
-  <rect x="7" y="10.8" width="10" height="2.4" rx="1.2"
-        fill="currentColor"/>
-  <rect x="7" y="15.6" width="10" height="2.4" rx="1.2"
-        stroke="currentColor" stroke-width="1.2"/>
+<svg viewBox="0 0 24 28" fill="none" aria-hidden="true">
+  <rect x="2.5" y="2.5" width="19" height="23" rx="1" stroke="currentColor"/>
+  <path d="M7 8h10M7 20h10" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M7 14h10" stroke="currentColor" stroke-width="3"/>
 </svg>
 ```
 
 - Draws in `currentColor`, so it inherits `--ink` in text and `--patina` when the mark stands alone.
 - Clear space on every side: the height of one slot.
 - The filled slot is always the **second** of three. Not centred by accident — drawn.
-- Wordmark: *Pinakion* in Cormorant Garamond 600, `letter-spacing: 0.01em`. The Greek **πινάκιον** may appear once, as a subordinate line in `--muted`, never as the mark itself.
+- Wordmark: *Pinakion* in Cormorant Garamond 600, `letter-spacing: -0.035em`. The Greek **πινάκιον** may appear once, as a subordinate line in `--muted`, never as the mark itself.
 
 ---
 
 ## Layout
 
-- One column, `max-width: 68ch`, centred. The project is read, not operated.
-- Side gutter `max(16px, env(safe-area-inset-left, 0px))` and the same on the right, set once on the outer wrapper, with vertical padding via `padding-block`.
-- Spacing with flex or grid and `gap`, never per-element margins.
-- Cards get `--slab`, a `--line` border, `border-radius: 6px`. Used by role — the panel, the verdict, the form — never on every block.
-- Drawn positions render as a wrapping row of monospace chips, tabular. When a panel has been checked against an on-chain record, the chips take `--patina`.
+The page has a deliberate reading order: purpose → proposed procedure → working example → evidence and limitations. The testnet status appears inside the example. Proposed functionality is explicitly marked as under development.
+
+- An editorial shell with a maximum width of 1280px and 28px side gutters; 20px gutters on small screens. These are design choices, not product measurements.
+- A two-column introduction pairs the purpose with a restrained roster illustration. At 680px and below the content stacks; the figure becomes a compact horizontal composition.
+- Three procedural statements sit on rules rather than enclosed marketing cards. On small screens each becomes a numbered row.
+- The verification record places inputs beside the recomputed panel, then stacks them on small screens. The selected positions use equally sized cells and tabular numerals.
+- Signature, seed, comparison input and technical recipe are accessible through native disclosure controls. Evidence links and the limits of the check remain visible.
+- Shape and text accompany status colours. The success state says that panels match the supplied data; it does not certify an honest or fair process.
+- Native semantic elements, a skip link, visible focus, labelled inputs and a live status region support keyboard and assistive technology use.
+- Light and dark themes share the same hierarchy. Follow the system preference initially; a labelled theme button can override it for this page session.
+- Use `web/style.css` as the implemented token source. Literal colours belong only in theme token declarations.
 
 ---
 
@@ -140,8 +156,10 @@ The same rules as `CLAUDE.md`, applied to what the reader sees.
 
 ---
 
-## Where this is not applied yet
+## Implementation and limits
 
-`web/index.html` was built before this file existed. It uses Newsreader, Public Sans and IBM Plex Mono on a blue accent, with its own grey ramp. It works, and it diverges from everything above.
+T-017 applies this direction to `web/index.html` and `web/style.css`. The existing independent recomputation remains in `web/sorteio.mjs`.
 
-Bringing it onto these tokens is a task, not a rewrite: the fonts link, the `:root` block and the chip colours. Until that is done, this file is the intent and that page is the exception — which is exactly the kind of disagreement `CLAUDE.md` says to record rather than leave quiet.
+This is a local design revision for review. It is not a production deployment, and the page does not add roster management, case handling, cryptographic signature verification in the browser or a live read from Stellar. The example retains its documented original contract and transaction links; the method disclosure distinguishes that example from the later pinned-key contract.
+
+Typography loads from Google Fonts as it did before this revision, with local fallback fonts. The page remains readable if the font service is unavailable.

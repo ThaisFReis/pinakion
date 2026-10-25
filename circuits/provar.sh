@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SUPERADO por circuits/setup.sh e circuits/pinakion.mjs (T-036). Fica porque
+# reproduz a prova da evidência de testnet do spike (tests/prova-claim-spike.json).
+#
 # Spike de T-034: compila o circuito, faz um setup de TESTE e uma prova, e a
 # exporta no formato do verificador Soroban. GPL-3.0 (ver circuits/LICENSE).
 #

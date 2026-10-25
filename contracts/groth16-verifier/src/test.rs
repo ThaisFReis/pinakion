@@ -9,6 +9,10 @@ use std::borrow::ToOwned;
 /// do spike (`circuits/provar.sh`). Dados, não código.
 const PROVA: &str = include_str!("../../../tests/prova-claim-spike.json");
 
+/// A prova sob a chave do setup de T-036 (`circuits/setup/`), feita por
+/// `pinakion prove` (`circuits/gerar_fixture.mjs`).
+const PROVA_T036: &str = include_str!("../../../tests/prova-claim.json");
+
 /// Custo de um `verify` válido no host de teste, `(cpu, mem)`. Não é número
 /// de transação da testnet; esse está em docs/evidencia-testnet-spike.md.
 const CUSTO_VERIFY: (u64, u64) = (29_128_335, 229_165);
@@ -19,7 +23,11 @@ fn bytes<const N: usize>(env: &Env, hex_str: &str) -> BytesN<N> {
 }
 
 fn load(env: &Env) -> (VerificationKey, Proof, Vec<U256>) {
-    let j: serde_json::Value = serde_json::from_str(PROVA).unwrap();
+    load_de(env, PROVA)
+}
+
+fn load_de(env: &Env, fonte: &str) -> (VerificationKey, Proof, Vec<U256>) {
+    let j: serde_json::Value = serde_json::from_str(fonte).unwrap();
     let s = |v: &serde_json::Value| v.as_str().unwrap().to_owned();
     let mut ic = Vec::new(env);
     for p in j["vk"]["ic"].as_array().unwrap() {
@@ -139,4 +147,25 @@ fn numero_de_entradas_errado_e_recusado() {
     let (vk, proof, mut public) = load(&env);
     public.pop_back();
     cliente(&env, vk).verify(&proof, &public);
+}
+
+/// A chave do setup público (ptau da Hermez, fase 2 de uma parte com beacon
+/// drand) e uma prova da CLI: verifica, e com `y` trocado não verifica. O
+/// custo é o mesmo de uma verificação qualquer de quatro entradas públicas.
+#[test]
+fn prova_do_setup_de_t036_verifica() {
+    let env = Env::default();
+    let (vk, proof, public) = load_de(&env, PROVA_T036);
+    let c = cliente(&env, vk);
+    env.cost_estimate().budget().reset_unlimited();
+    assert!(c.verify(&proof, &public));
+    let b = env.cost_estimate().budget();
+    assert_eq!(
+        (b.cpu_instruction_cost(), b.memory_bytes_cost()),
+        CUSTO_VERIFY,
+        "verify (cpu, mem)"
+    );
+    let mut errado = public.clone();
+    errado.set(2, U256::from_u32(&env, 1));
+    assert!(!c.verify(&proof, &errado));
 }

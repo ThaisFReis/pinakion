@@ -34,3 +34,34 @@ export function raiz(eventos, hash2) {
   }
   return nivel.has(0) ? nivel.get(0) : z[PROFUNDIDADE];
 }
+
+// The Merkle path of leaf `indice`, as the circuit takes it (T-036):
+// pathElements[d] is the sibling at level d, pathIndices[d] is 1 when the
+// current node is the right child. Built from the same events as raiz().
+export function caminho(eventos, indice, hash2) {
+  const folhas = new Map();
+  for (const e of eventos) {
+    if (e.evento === "enroll") folhas.set(e.indice, BigInt(e.c));
+    else if (e.evento === "impede") folhas.set(e.indice, 0n);
+    else throw new Error(`evento desconhecido: ${e.evento}`);
+  }
+  const z = zeros(hash2);
+  let nivel = folhas;
+  let pos = indice;
+  const pathElements = [];
+  const pathIndices = [];
+  for (let d = 0; d < PROFUNDIDADE; d++) {
+    const irmao = pos ^ 1;
+    pathElements.push(nivel.has(irmao) ? nivel.get(irmao) : z[d]);
+    pathIndices.push(pos & 1);
+    const acima = new Map();
+    for (const i of new Set([...nivel.keys()].map((i) => i >> 1))) {
+      const esq = nivel.has(2 * i) ? nivel.get(2 * i) : z[d];
+      const dir = nivel.has(2 * i + 1) ? nivel.get(2 * i + 1) : z[d];
+      acima.set(i, hash2(esq, dir));
+    }
+    nivel = acima;
+    pos >>= 1;
+  }
+  return { pathElements, pathIndices, raiz: nivel.has(0) ? nivel.get(0) : z[PROFUNDIDADE] };
+}

@@ -263,6 +263,8 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 
 | T-023 | Gate the published numbers | T-005 | §8 | review | `test.rs` asserts the measured costs; G7 checks every document still prints them. Proven to fail from both sides |
 
+| T-027 | Publish the page, and point the README at it | T-017 | §2, §7 | review | GitHub Pages on `main`; the README's *Try it* resolves for a stranger. Checked live, including a cross-origin fetch of a drand round |
+
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
 ---
@@ -336,6 +338,12 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Decision:** `randomness` recompresses the point on-chain — the flag bits in X, `0x80` always and `0x20` when Y is the larger of the two roots — and hashes that. A test now asserts it equals the round's published randomness, so the two can never drift again.
 **Alternatives:** Adding a second function and leaving the first — rejected: it would keep a function whose name promises the beacon's randomness and does not deliver it. Seeding from the uncompressed hash everywhere instead — rejected: it would break every published panel and lose the property that the browser's seed matches drand's.
 **Consequences:** A public function changed behaviour. §5 declares no frozen interface yet, so no version bump is due, but it is recorded here as one. `(p-1)/2` is a new constant in the contract, checked against a real round before it was written down. Confirmed on testnet: `draw_round` at the minimum round reproduces the panel `docs/evidencia-testnet-sorteio.md` records.
+
+### DEC-012: The page is published from `main` (2026-10-25, T-027)
+**Context:** The README's first call to action — *try it in a browser* — pointed at a claude.ai artifact. Artifacts are private unless shared, so a reader following the repository's opening instruction could meet a sign-in wall; and that artifact was published before T-017 and T-024, so it was the old page, with the stale-comparison bug still in it.
+**Decision:** Enable GitHub Pages on `main` at the repository root and point the README and `docs/DEMO.md` at <https://thaisfreis.github.io/pinakion/web/index.html>. What is on `main` is what runs there, so the page cannot drift from the code the way a copy does.
+**Alternatives:** Re-sharing the artifact — rejected: it would still be a copy that ages. Telling the reader to run a local server — rejected as the headline path: *nothing to install* is the point, though the demo still prefers local, since one less network hop can fail on camera.
+**Consequences:** The repository's whole tree is served publicly, which it already was by being a public repository. Checked live: the page loads, the documented example matches, fetching a round from the browser works across origins, and the console is clean.
 
 ---
 

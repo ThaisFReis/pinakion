@@ -23,9 +23,13 @@
 //! conta de assento — ninguém entrega ao verificador um vetor pronto.
 //!
 //! A entropia vem da drand quicknet, verificada pelas funções de host da
-//! BLS12-381 (CAP-59); o embaralhamento é o PRNG do host. `verify`,
-//! `randomness` e `draw` são cópias literais do `beacon-verifier`, e os
-//! vetores de ouro mantêm as duas cópias honestas (DEC-014).
+//! BLS12-381 (CAP-59). `verify` e `randomness` são cópias literais do
+//! `beacon-verifier`. O sorteio é selado (T-038, DEC-015): `seal` fixa a
+//! semente e o limiar `T`; cada jurado com `y = Poseidon(seed, s) < T` prova
+//! assento de uma conta de assento sem dizer quem é; `finalize` senta os `k`
+//! menores `y`; depois de `revela_em`, cada um revela `s` e o painel fica
+//! recomputável entre os que revelaram. O Fisher-Yates aberto fica só no
+//! `beacon-verifier` (DEC-016).
 
 use pinakion_poseidon::Sponge;
 use soroban_sdk::{
@@ -140,6 +144,30 @@ pub enum Erro {
     JuradoDesconhecido = 13,
     /// O jurado já está impedido.
     JaImpedido = 14,
+    /// Ainda não há selo: nem semente nem limiar.
+    NaoSelado = 15,
+    /// `y` não está abaixo do limiar.
+    YAcimaDoLimiar = 16,
+    /// Este `y` já foi reivindicado, ou é de quem se recusou (INV-15).
+    YRepetido = 17,
+    /// A prova não vale contra a raiz, a semente, o `y` e a conta.
+    ProvaInvalida = 18,
+    /// A janela de reivindicação ainda está aberta.
+    JanelaAberta = 19,
+    /// O painel já saiu (INV-16).
+    JaFinalizado = 20,
+    /// O painel ainda não saiu.
+    NaoFinalizado = 21,
+    /// O ledger de revelação (`revela_em`) ainda não chegou.
+    CedoParaRevelar = 22,
+    /// `Poseidon(s)` não é o compromisso deste jurado.
+    SegredoNaoConfere = 23,
+    /// Este jurado já revelou.
+    JaRevelado = 24,
+    /// Este jurado já se recusou.
+    JaRecusado = 25,
+    /// A janela de reivindicação fechou.
+    JanelaFechada = 26,
 }
 
 /// O que `lock()` fixa, de uma vez por todas: quando, qual rodada do beacon
@@ -179,6 +207,83 @@ pub struct Impedido {
     pub indice: u32,
 }
 
+/// O que `seal` fixa: a semente, o limiar `T` e o último ledger em que se
+/// reivindica. `ampliado` diz se `finalize` já levou `T` ao campo inteiro.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Selo {
+    pub seed: U256,
+    pub limiar: U256,
+    pub prazo: u32,
+    pub ampliado: bool,
+}
+
+/// O painel: os `y` que sentam, em ordem, e se chegou a `k`.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Final {
+    pub painel: Vec<U256>,
+    pub completo: bool,
+    pub ledger: u32,
+}
+
+/// O que um `reveal` provou de um jurado.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Revelacao {
+    pub y: U256,
+    pub sentado: bool,
+    pub sem_bilhete: bool,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Selado {
+    pub seed: U256,
+    pub limiar: U256,
+    pub prazo: u32,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Ampliado {
+    pub limiar: U256,
+    pub prazo: u32,
+}
+
+/// Um assento reivindicado. Só o `y`: nenhum endereço ao lado dele (INV-17).
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Reivindicado {
+    pub y: U256,
+}
+
+/// Um jurado se recusou, às claras, antes do painel.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Recusado {
+    #[topic]
+    pub jurado: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Finalizado {
+    pub painel: Vec<U256>,
+    pub completo: bool,
+}
+
+/// Depois do veredito, o elo entre um jurado e seu `y` — de propósito.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Revelado {
+    #[topic]
+    pub jurado: Address,
+    pub y: U256,
+    pub sentado: bool,
+    pub sem_bilhete: bool,
+}
+
 /// O rol fechou com esta raiz, `n` autorizados, esta rodada e `k` assentos.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -211,6 +316,14 @@ pub trait Verificador {
 pub enum DataKey {
     Escrivao,
     Verificador,
+    Janela,
+    Selo,
+    /// Os `y` reivindicados, em ordem crescente.
+    Reivindicados,
+    /// Um `y` já usado: reivindicado, ou de quem se recusou.
+    YUsado(U256),
+    Recusou(Address),
+    Revelou(Address),
     Bilhete,
     Minimo,
     Rol,
@@ -236,16 +349,19 @@ impl Kleroterion {
     /// `escrivao` inscreve e fecha; `bilhete` é o SAC do ativo cujo admin
     /// este contrato passa a ser; `minimo` é o menor rol que pode fechar;
     /// `verificador` é o contrato Groth16 que confere as provas de assento,
-    /// fixado aqui para sempre (T-037).
+    /// fixado aqui para sempre (T-037); `janela` é quantos ledgers, depois
+    /// do selo, os jurados têm para reivindicar (T-038).
     pub fn __constructor(
         env: Env,
         escrivao: Address,
         bilhete: Address,
         minimo: u32,
         verificador: Address,
+        janela: u32,
     ) {
         let s = env.storage().instance();
         s.set(&DataKey::Escrivao, &escrivao);
+        s.set(&DataKey::Janela, &janela);
         s.set(&DataKey::Verificador, &verificador);
         s.set(&DataKey::Bilhete, &bilhete);
         s.set(&DataKey::Minimo, &minimo);
@@ -271,8 +387,7 @@ impl Kleroterion {
         if rol.contains(&jurado) {
             panic_with_error!(&env, Erro::JuradoRepetido);
         }
-        let r = U256::from_be_bytes(&env, &Bytes::from_array(&env, &R_BN254));
-        if c == U256::from_u32(&env, 0) || c >= r {
+        if c == U256::from_u32(&env, 0) || c >= Self::r(&env) {
             panic_with_error!(&env, Erro::CompromissoInvalido);
         }
         let p = env.storage().persistent();
@@ -397,48 +512,230 @@ impl Kleroterion {
         env.storage().instance().get(&DataKey::Verificador).unwrap()
     }
 
-    /// O painel, se já houve sorteio.
-    pub fn panel(env: Env) -> Option<Vec<Address>> {
+    /// O painel, se já saiu.
+    pub fn panel(env: Env) -> Option<Final> {
         env.storage().persistent().get(&DataKey::Painel)
     }
 
-    /// Sorteia os `k` assentos com a rodada que o fechamento fixou, uma vez
-    /// só (INV-13): verifica a assinatura dessa rodada, deriva a semente,
-    /// embaralha a ordem do rol e senta os `k` primeiros que têm bilhete e
-    /// autorização. Qualquer um pode chamar: não há o que escolher.
-    pub fn seal(env: Env, sig: BytesN<96>) -> Vec<Address> {
+    /// O selo, se já houve.
+    pub fn seal_state(env: Env) -> Option<Selo> {
+        env.storage().instance().get(&DataKey::Selo)
+    }
+
+    /// Os `y` reivindicados até agora, em ordem crescente.
+    pub fn claims(env: Env) -> Vec<U256> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Reivindicados)
+            .unwrap_or(Vec::new(&env))
+    }
+
+    /// O que o `reveal` de um jurado provou, se ele revelou.
+    pub fn revelation(env: Env, jurado: Address) -> Option<Revelacao> {
+        env.storage().persistent().get(&DataKey::Revelou(jurado))
+    }
+
+    /// Verifica a rodada que o fechamento fixou, uma vez só (INV-13), e fixa
+    /// a semente — a aleatoriedade da rodada deslocada 8 bits, para ser
+    /// elemento do campo — e o limiar `T = ⌊r·2k/N⌋`, o campo inteiro se
+    /// `2k ≥ N`. Abre a janela de reivindicação. Qualquer um pode chamar.
+    pub fn seal(env: Env, sig: BytesN<96>) -> Selo {
         let f = match Self::closing(env.clone()) {
             Some(f) => f,
             None => panic_with_error!(&env, Erro::RolAberto),
         };
-        if Self::panel(env.clone()).is_some() {
+        if Self::seal_state(env.clone()).is_some() {
             panic_with_error!(&env, Erro::JaSelado);
         }
         if !Self::verify(env.clone(), f.rodada, sig.clone()) {
             panic_with_error!(&env, Erro::AssinaturaInvalida);
         }
-        let seed = Self::randomness(env.clone(), sig);
-        let rol = Self::roster(env.clone());
-        let ordem = Self::draw(env.clone(), seed, rol.len(), rol.len());
+        let aleatorio: Bytes = Self::randomness(env.clone(), sig).into();
+        let seed = U256::from_be_bytes(&env, &aleatorio).shr(8);
+        let r = Self::r(&env);
+        let (n, dois_k) = (f.n, 2 * f.k);
+        let limiar = if dois_k >= n {
+            r
+        } else {
+            let n_ = U256::from_u32(&env, n);
+            let k_ = U256::from_u32(&env, dois_k);
+            r.div(&n_)
+                .mul(&k_)
+                .add(&r.rem_euclid(&n_).mul(&k_).div(&n_))
+        };
+        let janela: u32 = env.storage().instance().get(&DataKey::Janela).unwrap();
+        let selo = Selo {
+            seed,
+            limiar,
+            prazo: env.ledger().sequence() + janela,
+            ampliado: false,
+        };
+        env.storage().instance().set(&DataKey::Selo, &selo);
+        Selado {
+            seed: selo.seed.clone(),
+            limiar: selo.limiar.clone(),
+            prazo: selo.prazo,
+        }
+        .publish(&env);
+        selo
+    }
 
-        let bilhete = Self::bilhete(&env);
-        let sac = token::StellarAssetClient::new(&env, &bilhete);
-        let saldo = token::TokenClient::new(&env, &bilhete);
-        let mut painel: Vec<Address> = Vec::new(&env);
-        for i in ordem.iter() {
-            if painel.len() == f.k {
+    /// Reivindica um assento, da conta de assento que assina: `y` abaixo do
+    /// limiar, ainda não usado, e a prova de que `y = Poseidon(seed, s)` para
+    /// algum `s` cuja `Poseidon(s)` é folha da raiz (INV-15). O contrato monta
+    /// as entradas públicas; o evento leva só o `y` (INV-17).
+    pub fn claim(env: Env, assento: Address, prova: Prova, y: U256) {
+        assento.require_auth();
+        let selo = Self::selo_aberto(&env);
+        if env.ledger().sequence() > selo.prazo {
+            panic_with_error!(&env, Erro::JanelaFechada);
+        }
+        if y >= selo.limiar {
+            panic_with_error!(&env, Erro::YAcimaDoLimiar);
+        }
+        let p = env.storage().persistent();
+        if p.has(&DataKey::YUsado(y.clone())) {
+            panic_with_error!(&env, Erro::YRepetido);
+        }
+        if !Self::prova_de_assento_vale(&env, &prova, &selo.seed, &y, &assento) {
+            panic_with_error!(&env, Erro::ProvaInvalida);
+        }
+        p.set(&DataKey::YUsado(y.clone()), &true);
+        let ys = Self::claims(env.clone());
+        let mut pos = ys.len();
+        for (i, v) in ys.iter().enumerate() {
+            if y < v {
+                pos = i as u32;
                 break;
             }
-            let j = rol.get(i).unwrap();
-            if sac.authorized(&j) && saldo.balance(&j) >= UM_BILHETE {
-                painel.push_back(j);
+        }
+        let mut ys = ys;
+        ys.insert(pos, y.clone());
+        p.set(&DataKey::Reivindicados, &ys);
+        Reivindicado { y }.publish(&env);
+    }
+
+    /// Recusa às claras, antes do painel, pela conta principal: o jurado
+    /// mostra `s`; seu `y` sai da lista e não entra mais (INV-07, INV-08 no
+    /// modo selado: o próximo `y` da mesma lista toma o lugar).
+    pub fn recuse(env: Env, jurado: Address, s: U256) {
+        jurado.require_auth();
+        let selo = Self::selo_aberto(&env);
+        let p = env.storage().persistent();
+        if p.has(&DataKey::Recusou(jurado.clone())) {
+            panic_with_error!(&env, Erro::JaRecusado);
+        }
+        let y = Self::y_de(&env, &jurado, &s, &selo.seed);
+        let mut ys = Self::claims(env.clone());
+        if let Some(i) = ys.first_index_of(&y) {
+            ys.remove(i);
+            p.set(&DataKey::Reivindicados, &ys);
+        }
+        p.set(&DataKey::YUsado(y), &true);
+        p.set(&DataKey::Recusou(jurado.clone()), &true);
+        Recusado { jurado }.publish(&env);
+    }
+
+    /// Fecha a janela. Com `k` ou mais reivindicações, os `k` menores `y`
+    /// sentam. Com menos, na primeira vez o limiar vai ao campo inteiro e a
+    /// janela reabre (devolve `None`); na segunda, senta quem há e o painel
+    /// fica `completo = false`. Nunca um segundo sorteio. Depois disto nada
+    /// muda (INV-16). Qualquer um pode chamar.
+    pub fn finalize(env: Env) -> Option<Final> {
+        let mut selo = Self::selo_aberto(&env);
+        if env.ledger().sequence() <= selo.prazo {
+            panic_with_error!(&env, Erro::JanelaAberta);
+        }
+        let k = Self::closing(env.clone()).unwrap().k;
+        let ys = Self::claims(env.clone());
+        if ys.len() < k && !selo.ampliado {
+            let janela: u32 = env.storage().instance().get(&DataKey::Janela).unwrap();
+            selo.limiar = Self::r(&env);
+            selo.prazo = env.ledger().sequence() + janela;
+            selo.ampliado = true;
+            env.storage().instance().set(&DataKey::Selo, &selo);
+            Ampliado {
+                limiar: selo.limiar,
+                prazo: selo.prazo,
             }
+            .publish(&env);
+            return None;
         }
-        if painel.len() < f.k {
-            panic_with_error!(&env, Erro::ElegiveisInsuficientes);
+        let painel = ys.slice(0..ys.len().min(k));
+        let fim = Final {
+            completo: painel.len() == k,
+            painel,
+            ledger: env.ledger().sequence(),
+        };
+        env.storage().persistent().set(&DataKey::Painel, &fim);
+        Finalizado {
+            painel: fim.painel.clone(),
+            completo: fim.completo,
         }
-        env.storage().persistent().set(&DataKey::Painel, &painel);
-        painel
+        .publish(&env);
+        Some(fim)
+    }
+
+    /// Depois do painel e de `revela_em`, o jurado mostra `s`: o contrato
+    /// confere `Poseidon(s) = c` e calcula `y = Poseidon(seed, s)`, e registra
+    /// se aquele `y` sentou e se a conta ainda tem o bilhete (INV-12 no modo
+    /// selado). É prova, nunca correção: o painel não muda (INV-16).
+    pub fn reveal(env: Env, jurado: Address, s: U256) -> Revelacao {
+        jurado.require_auth();
+        let fim = match Self::panel(env.clone()) {
+            Some(f) => f,
+            None => panic_with_error!(&env, Erro::NaoFinalizado),
+        };
+        if env.ledger().sequence() < Self::closing(env.clone()).unwrap().revela_em {
+            panic_with_error!(&env, Erro::CedoParaRevelar);
+        }
+        let p = env.storage().persistent();
+        if p.has(&DataKey::Revelou(jurado.clone())) {
+            panic_with_error!(&env, Erro::JaRevelado);
+        }
+        let seed = Self::seal_state(env.clone()).unwrap().seed;
+        let y = Self::y_de(&env, &jurado, &s, &seed);
+        let sentado = fim.painel.contains(&y);
+        let saldo = token::TokenClient::new(&env, &Self::bilhete(&env)).balance(&jurado);
+        let r = Revelacao {
+            y: y.clone(),
+            sentado,
+            sem_bilhete: saldo < UM_BILHETE,
+        };
+        p.set(&DataKey::Revelou(jurado.clone()), &r);
+        Revelado {
+            jurado,
+            y,
+            sentado: r.sentado,
+            sem_bilhete: r.sem_bilhete,
+        }
+        .publish(&env);
+        r
+    }
+
+    /// O selo, se há e o painel ainda não saiu.
+    fn selo_aberto(env: &Env) -> Selo {
+        if Self::panel(env.clone()).is_some() {
+            panic_with_error!(env, Erro::JaFinalizado);
+        }
+        match Self::seal_state(env.clone()) {
+            Some(s) => s,
+            None => panic_with_error!(env, Erro::NaoSelado),
+        }
+    }
+
+    /// `Poseidon(seed, s)`, depois de conferir que `Poseidon(s)` é o
+    /// compromisso do jurado.
+    fn y_de(env: &Env, jurado: &Address, s: &U256, seed: &U256) -> U256 {
+        let c = Self::commitment(env.clone(), jurado.clone());
+        if c.is_none() || c.unwrap() != pinakion_poseidon::hash1(env, s) {
+            panic_with_error!(env, Erro::SegredoNaoConfere);
+        }
+        pinakion_poseidon::hash2(env, seed, s)
+    }
+
+    fn r(env: &Env) -> U256 {
+        U256::from_be_bytes(env, &Bytes::from_array(env, &R_BN254))
     }
 
     /// A primeira rodada publicada estritamente depois do instante `t`:
@@ -484,9 +781,7 @@ impl Kleroterion {
     /// A prova de assento vale? INV-15: contra a raiz que o fechamento
     /// guardou, com esta semente, este `y` e esta conta de assento. As
     /// entradas públicas são montadas aqui, na ordem do circuito. T-038 chama
-    /// isto de `claim`, com a semente de `seal` e a conta que assina.
-    // Called only by tests until T-038's `claim` calls it; the allow goes with it.
-    #[cfg_attr(not(test), allow(dead_code))]
+    /// `claim` chama isto com a semente de `seal` e a conta que assina.
     pub(crate) fn prova_de_assento_vale(
         env: &Env,
         prova: &Prova,
@@ -510,8 +805,6 @@ impl Kleroterion {
 
     /// `SHA-256(strkey da conta) >> 8`: um elemento do campo que amarra a
     /// prova à conta que vai enviá-la (DEC-024; `circuits/pinakion.mjs`).
-    // Called only by tests until T-038's `claim` calls it; the allow goes with it.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn claimer(env: &Env, assento: &Address) -> U256 {
         let h = env
             .crypto()
@@ -558,23 +851,6 @@ impl Kleroterion {
     /// a resposta é a mesma para todo mundo, para sempre.
     pub fn beacon(env: Env) -> BytesN<32> {
         BytesN::from_array(&env, &BEACON_CHAIN_HASH)
-    }
-
-    /// Sorteia `k` posições de um rol de tamanho `n`, usando a aleatoriedade
-    /// do beacon como semente. Fisher-Yates, determinístico e recomputável.
-    pub fn draw(env: Env, seed: BytesN<32>, n: u32, k: u32) -> soroban_sdk::Vec<u32> {
-        let prng = env.prng();
-        prng.seed(seed.into());
-        let mut roll: soroban_sdk::Vec<u32> = soroban_sdk::Vec::new(&env);
-        for i in 0..n {
-            roll.push_back(i);
-        }
-        prng.shuffle(&mut roll);
-        let mut out: soroban_sdk::Vec<u32> = soroban_sdk::Vec::new(&env);
-        for i in 0..k {
-            out.push_back(roll.get(i).unwrap());
-        }
-        out
     }
 
     /// A aleatoriedade da rodada, como a drand a publica: o sha256 da

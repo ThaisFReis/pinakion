@@ -13376,6 +13376,18 @@
                       "key": {
                         "vec": [
                           {
+                            "symbol": "Janela"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 100
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
                             "symbol": "Minimo"
                           }
                         ]

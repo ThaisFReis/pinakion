@@ -47,6 +47,9 @@ const RANDOMNESS_A: [u8; 32] = [
 /// Mínimo do rol usado nos testes. Sete, como a mesa de um júri pequeno.
 const MINIMO: u32 = 7;
 
+/// Janela de reivindicação, em ledgers, nos testes.
+const JANELA: u32 = 100;
+
 struct Mesa {
     env: Env,
     bilhete: Address,
@@ -73,7 +76,10 @@ fn mesa_com_minimo(minimo: u32) -> Mesa {
     sac.issuer().set_flag(IssuerFlags::RevocableFlag);
     let bilhete = sac.address();
     let verificador = env.register(groth16_verifier::Groth16Verifier, ());
-    let id = env.register(Kleroterion, (&escrivao, &bilhete, &minimo, &verificador));
+    let id = env.register(
+        Kleroterion,
+        (&escrivao, &bilhete, &minimo, &verificador, &JANELA),
+    );
     token::StellarAssetClient::new(&env, &bilhete).set_admin(&id);
     let c = KleroterionClient::new(&env, &id);
     Mesa {
@@ -191,7 +197,7 @@ fn inscrever_sem_escrivao_e_recusado() {
     let verificador = env.register(groth16_verifier::Groth16Verifier, ());
     let id = env.register(
         Kleroterion,
-        (&escrivao, &sac.address(), &MINIMO, &verificador),
+        (&escrivao, &sac.address(), &MINIMO, &verificador, &JANELA),
     );
     env.mock_all_auths();
     token::StellarAssetClient::new(&env, &sac.address()).set_admin(&id);
@@ -339,7 +345,7 @@ fn impedir_depois_de_fechar_e_recusado() {
     assert!(sac(&m).authorized(&js[0]), "continua autorizado");
 }
 
-// ---- sorteio -------------------------------------------------------------
+// ---- o selo (T-038) ------------------------------------------------------
 
 #[test]
 fn selar_antes_de_fechar_e_recusado() {
@@ -358,7 +364,7 @@ fn selar_com_outra_rodada_e_recusado() {
     let b = BytesN::from_array(&m.env, &SIG_B);
     assert!(m.c.verify(&ROUND_B, &b), "a assinatura B e autentica");
     assert_eq!(m.c.try_seal(&b), Err(Ok(Erro::AssinaturaInvalida.into())));
-    assert_eq!(m.c.panel(), None);
+    assert_eq!(m.c.seal_state(), None);
 }
 
 #[test]
@@ -370,96 +376,15 @@ fn assinatura_forjada_e_recusada() {
     assert_eq!(r, Err(Ok(Erro::AssinaturaInvalida.into())));
 }
 
-/// INV-13: não há segundo sorteio. O painel guardado não muda.
+/// INV-13: não há segundo selo; o que o primeiro fixou não muda.
 #[test]
 fn selar_duas_vezes_e_recusado() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
     fechar_para(&m, ROUND_A, K);
-    let painel = m.c.seal(&sig_a(&m));
+    let selo = m.c.seal(&sig_a(&m));
     assert_eq!(m.c.try_seal(&sig_a(&m)), Err(Ok(Erro::JaSelado.into())));
-    assert_eq!(m.c.panel(), Some(painel));
-}
-
-/// A ordem é o vetor de ouro "rol pequeno" (n = 7) do beacon-verifier:
-/// [0, 1, 4, 2, 6, 5, 3]. O painel são os endereços nessas posições.
-const ORDEM_DE_OURO: [u32; 7] = [0, 1, 4, 2, 6, 5, 3];
-
-#[test]
-fn painel_segue_a_ordem_de_ouro() {
-    let m = mesa();
-    let js = jurados(&m, 7);
-    inscrever_todos(&m, &js);
-    fechar_para(&m, ROUND_A, K);
-    let painel = m.c.seal(&sig_a(&m));
-    for i in 0..3 {
-        assert_eq!(
-            painel.get(i).unwrap(),
-            js[ORDEM_DE_OURO[i as usize] as usize],
-            "assento {}",
-            i
-        );
-    }
-}
-
-/// INV-07 e INV-08: um impedido não encolhe a mesa, e o substituto é o
-/// próximo da ordem sorteada — não há novo sorteio. O impedimento vem antes
-/// do fechamento (INV-14).
-#[test]
-fn impedido_e_substituido_e_o_painel_fica_do_mesmo_tamanho() {
-    let m = mesa();
-    let js = jurados(&m, 7);
-    inscrever_todos(&m, &js);
-    let primeiro = &js[ORDEM_DE_OURO[0] as usize];
-    m.c.impede(primeiro);
-    assert!(!sac(&m).authorized(primeiro));
-    fechar_para(&m, ROUND_A, K);
-
-    let painel = m.c.seal(&sig_a(&m));
-    assert_eq!(painel.len(), 3);
-    assert!(!painel.contains(primeiro), "impedido nao senta");
-    for i in 0..3 {
-        assert_eq!(
-            painel.get(i).unwrap(),
-            js[ORDEM_DE_OURO[i as usize + 1] as usize]
-        );
-    }
-}
-
-#[test]
-fn substituto_e_o_proximo_da_ordem() {
-    let m = mesa();
-    let js = jurados(&m, 7);
-    inscrever_todos(&m, &js);
-    // Impede o segundo da ordem: o painel pula só ele.
-    m.c.impede(&js[ORDEM_DE_OURO[1] as usize]);
-    fechar_para(&m, ROUND_A, K);
-    let painel = m.c.seal(&sig_a(&m));
-    let esperado = [ORDEM_DE_OURO[0], ORDEM_DE_OURO[2], ORDEM_DE_OURO[3]];
-    for i in 0..3 {
-        assert_eq!(painel.get(i).unwrap(), js[esperado[i as usize] as usize]);
-    }
-}
-
-/// INV-12: sem o bilhete na mão, não há assento — mesmo autorizado.
-#[test]
-fn sem_bilhete_nao_senta() {
-    let m = mesa();
-    let js = jurados(&m, 7);
-    inscrever_todos(&m, &js);
-    fechar_para(&m, ROUND_A, K);
-    let doador = &js[ORDEM_DE_OURO[0] as usize];
-    let receptor = &js[ORDEM_DE_OURO[6] as usize];
-    bilhete(&m).transfer(doador, receptor, &UM_BILHETE);
-    assert_eq!(bilhete(&m).balance(doador), 0);
-    assert!(
-        sac(&m).authorized(doador),
-        "continua autorizado, mas sem bilhete"
-    );
-
-    let painel = m.c.seal(&sig_a(&m));
-    assert!(!painel.contains(doador));
-    assert_eq!(painel.get(0).unwrap(), js[ORDEM_DE_OURO[1] as usize]);
+    assert_eq!(m.c.seal_state(), Some(selo));
 }
 
 /// N, no fechamento, conta só os autorizados: cinco impedidos de sete deixam
@@ -481,69 +406,480 @@ fn fechar_com_mais_assentos_que_autorizados_e_recusado() {
     );
 }
 
-/// Depois do fechamento um jurado ainda pode passar o bilhete adiante; se
-/// sobram menos de `k` com bilhete, o sorteio é recusado.
+/// Com 2k ≥ N o limiar é o campo inteiro: todo jurado está abaixo dele.
 #[test]
-fn elegiveis_insuficientes_e_recusado() {
+fn com_2k_maior_que_n_o_limiar_e_o_campo() {
     let m = mesa();
-    let js = jurados(&m, 7);
-    inscrever_todos(&m, &js);
-    fechar_para(&m, ROUND_A, 7);
-    bilhete(&m).transfer(&js[0], &js[1], &UM_BILHETE);
-    let r = m.c.try_seal(&sig_a(&m));
-    assert_eq!(r, Err(Ok(Erro::ElegiveisInsuficientes.into())));
-    assert_eq!(m.c.panel(), None);
+    inscrever_todos(&m, &jurados(&m, 7));
+    fechar_para(&m, ROUND_A, 4);
+    let selo = m.c.seal(&sig_a(&m));
+    assert_eq!(selo.limiar, u256(&m.env, R_DECIMAL));
 }
 
-#[test]
-fn com_dois_elegiveis_dois_assentos_sentam() {
-    let m = mesa();
-    let js = jurados(&m, 7);
-    inscrever_todos(&m, &js);
-    for j in &js[..5] {
-        m.c.impede(j);
+const R_DECIMAL: &str =
+    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
+
+// ---- o fluxo selado, N = 8, k = 3 (T-038) ----------------------------------
+
+/// tests/fluxo-n8.json: oito jurados, seus compromissos, contas de assento,
+/// `y` e uma prova de cada um, sob a chave de circuits/setup/ e a semente que
+/// `seal` deriva da rodada de teste (circuits/gerar_fluxo.mjs).
+const FLUXO: &str = include_str!("../../../tests/fluxo-n8.json");
+
+struct JuradoDoFluxo {
+    principal: Address,
+    assento: Address,
+    s: U256,
+    y: U256,
+    abaixo: bool,
+    prova: Prova,
+}
+
+struct Fluxo {
+    m: Mesa,
+    js: std::vec::Vec<JuradoDoFluxo>,
+    seed: U256,
+    limiar: U256,
+}
+
+fn fluxo() -> Fluxo {
+    let j: serde_json::Value = serde_json::from_str(FLUXO).unwrap();
+    let m = mesa_com_minimo(1);
+    let txt = |v: &serde_json::Value| v.as_str().unwrap().to_owned();
+    let mut js = std::vec::Vec::new();
+    for x in j["jurados"].as_array().unwrap() {
+        let principal = Address::generate(&m.env);
+        m.c.enroll(&principal, &u256(&m.env, &txt(&x["c"])));
+        let bn = |h: &str| hex::decode(h).unwrap();
+        js.push(JuradoDoFluxo {
+            principal,
+            assento: Address::from_str(&m.env, &txt(&x["assento"])),
+            s: u256(&m.env, &txt(&x["s"])),
+            y: u256(&m.env, &txt(&x["y"])),
+            abaixo: x["abaixo_do_limiar"].as_bool().unwrap(),
+            prova: Prova {
+                a: BytesN::from_array(&m.env, &bn(&txt(&x["proof"]["a"])).try_into().unwrap()),
+                b: BytesN::from_array(&m.env, &bn(&txt(&x["proof"]["b"])).try_into().unwrap()),
+                c: BytesN::from_array(&m.env, &bn(&txt(&x["proof"]["c"])).try_into().unwrap()),
+            },
+        });
     }
-    fechar_para(&m, ROUND_A, 2);
-    assert_eq!(m.c.seal(&sig_a(&m)).len(), 2);
+    let f = fechar_para(&m, ROUND_A, 3);
+    assert_eq!(f.raiz, u256(&m.env, &txt(&j["raiz"])), "a raiz do fixture");
+    m.env.ledger().with_mut(|l| l.sequence_number = 1000);
+    let seed = u256(&m.env, &txt(&j["seed"]));
+    let limiar = u256(&m.env, &txt(&j["limiar"]));
+    Fluxo {
+        m,
+        js,
+        seed,
+        limiar,
+    }
 }
 
-/// O quarto vetor de tests/vetores-de-ouro.json: sete endereços fixos, o
-/// primeiro da ordem impedido, painel de três. Os verificadores em Python e
-/// JavaScript devolvem estes mesmos endereços, nesta ordem.
-const ROL_DE_OURO: [&str; 7] = [
-    "CAR7NKBMHGHGH7NSGHE46UHR7DK6OFUKIJZ5LVGCF5LZ5BSLOOMFZKP2",
-    "CBNZ6GW7SJP4RWRMHXME65XUHZCTBVXA27PPO4KR7IDMJH2UZL7HPXPP",
-    "CBGK2LCVUESQU52MUQM2XYGAGBJ2GKTYAJUID4WQGMUD2ANMYTYNIYPH",
-    "CA222NMTAQQHVODIF3RSN476HUP7DW4NN6TXDKUMUCR35Z323Q6FURPR",
-    "CBYYRHFKSY5VVAACXXJS44HXYQ47CPF65JALEPTSUL7EHPCP5SCEL4TK",
-    "CAIQB4VFZUJH7LOCYT36YRZOH6ZMGK3WHVZX6JEOI7CTHPQONUI26AOG",
-    "CBSA33VZ5Q7FHWOGACNR6MXRFQIPCPCEXM3Z6ZE22OP2UM7FZHFQSUJI",
-];
+impl Fluxo {
+    fn selar(&self) -> Selo {
+        self.m.c.seal(&sig_a(&self.m))
+    }
+    fn reivindicar(&self, i: usize) {
+        let j = &self.js[i];
+        self.m.c.claim(&j.assento, &j.prova, &j.y);
+    }
+    fn tentar(&self, i: usize) -> Option<Erro> {
+        let j = &self.js[i];
+        match self.m.c.try_claim(&j.assento, &j.prova, &j.y) {
+            Ok(_) => None,
+            Err(Ok(e)) => Some(Erro::try_from(e).expect("erro do contrato")),
+            Err(Err(e)) => panic!("erro do host: {:?}", e),
+        }
+    }
+    fn passar_o_prazo(&self) {
+        let prazo = self.m.c.seal_state().unwrap().prazo;
+        self.m
+            .env
+            .ledger()
+            .with_mut(|l| l.sequence_number = prazo + 1);
+    }
+    fn chegar_a_revelacao(&self) {
+        self.m
+            .env
+            .ledger()
+            .with_mut(|l| l.sequence_number = l.sequence_number.max(REVELA_EM));
+    }
+    /// Os `k` menores `y` entre os jurados `is`, em ordem.
+    fn menores(&self, is: &[usize], k: usize) -> std::vec::Vec<U256> {
+        let mut ys: std::vec::Vec<U256> = is.iter().map(|&i| self.js[i].y.clone()).collect();
+        ys.sort();
+        ys.truncate(k);
+        ys
+    }
+}
+
+/// O selo fixa a semente — a aleatoriedade da rodada, deslocada 8 bits para
+/// caber no campo — e o limiar `T = ⌊r·2k/N⌋`, e abre a janela.
+#[test]
+fn o_selo_fixa_semente_limiar_e_prazo() {
+    let f = fluxo();
+    let selo = f.selar();
+    assert_eq!(selo.seed, f.seed, "randomness >> 8");
+    assert_eq!(selo.limiar, f.limiar, "floor(r*6/8)");
+    assert_eq!(selo.prazo, 1000 + JANELA);
+    assert!(!selo.ampliado);
+    let esperado = Selado {
+        seed: selo.seed.clone(),
+        limiar: selo.limiar.clone(),
+        prazo: selo.prazo,
+    };
+    assert_eq!(
+        f.m.env.events().all().filter_by_contract(&f.m.id),
+        [esperado.to_xdr(&f.m.env, &f.m.id)]
+    );
+}
 
 #[test]
-fn bate_com_o_vetor_de_enderecos() {
-    let m = mesa();
-    let js: std::vec::Vec<Address> = ROL_DE_OURO
+fn reivindicar_antes_do_selo_e_recusado() {
+    let f = fluxo();
+    assert_eq!(f.tentar(1), Some(Erro::NaoSelado));
+}
+
+/// INV-15: com a prova, o `y` entra na lista, em ordem crescente.
+#[test]
+fn reivindicacoes_entram_em_ordem() {
+    let f = fluxo();
+    f.selar();
+    for i in [7, 1, 3, 6] {
+        f.reivindicar(i);
+    }
+    assert_eq!(
+        f.m.c.claims(),
+        soroban_sdk::Vec::from_slice(&f.m.env, &f.menores(&[7, 1, 3, 6], 4))
+    );
+}
+
+#[test]
+fn y_acima_do_limiar_e_recusado() {
+    let f = fluxo();
+    f.selar();
+    assert!(!f.js[4].abaixo);
+    assert_eq!(f.tentar(4), Some(Erro::YAcimaDoLimiar));
+}
+
+/// INV-15: um `y` por folha. A mesma reivindicação duas vezes é recusada.
+#[test]
+fn y_repetido_e_recusado() {
+    let f = fluxo();
+    f.selar();
+    f.reivindicar(1);
+    assert_eq!(f.tentar(1), Some(Erro::YRepetido));
+}
+
+/// A prova de um jurado com o `y` de outro, ou enviada de outra conta, não
+/// vale.
+#[test]
+fn prova_com_outro_y_ou_de_outra_conta_e_recusada() {
+    let f = fluxo();
+    f.selar();
+    let (a, b) = (&f.js[1], &f.js[2]);
+    assert_eq!(
+        f.m.c.try_claim(&a.assento, &a.prova, &b.y),
+        Err(Ok(Erro::ProvaInvalida.into())),
+        "outro y"
+    );
+    assert_eq!(
+        f.m.c.try_claim(&b.assento, &a.prova, &a.y),
+        Err(Ok(Erro::ProvaInvalida.into())),
+        "outra conta"
+    );
+}
+
+#[test]
+fn reivindicar_depois_do_prazo_e_recusado() {
+    let f = fluxo();
+    f.selar();
+    f.passar_o_prazo();
+    assert_eq!(f.tentar(1), Some(Erro::JanelaFechada));
+}
+
+/// INV-17: o evento de uma reivindicação leva o `y` e nada mais — nenhum
+/// endereço ao lado dele.
+#[test]
+fn nenhum_evento_liga_y_a_endereco() {
+    let f = fluxo();
+    f.selar();
+    f.reivindicar(3);
+    let esperado = Reivindicado {
+        y: f.js[3].y.clone(),
+    };
+    assert_eq!(
+        f.m.env.events().all().filter_by_contract(&f.m.id),
+        [esperado.to_xdr(&f.m.env, &f.m.id)]
+    );
+}
+
+#[test]
+fn finalizar_antes_do_prazo_e_recusado() {
+    let f = fluxo();
+    f.selar();
+    f.reivindicar(1);
+    assert_eq!(f.m.c.try_finalize(), Err(Ok(Erro::JanelaAberta.into())));
+}
+
+/// Os `k` menores `y` sentam; o painel é público e imutável (INV-16).
+#[test]
+fn finalizar_senta_os_k_menores_e_nao_muda_mais() {
+    let f = fluxo();
+    f.selar();
+    let quem = [1, 2, 3, 5, 6];
+    for i in quem {
+        f.reivindicar(i);
+    }
+    f.passar_o_prazo();
+    let fim = f.m.c.finalize().unwrap();
+    assert!(fim.completo);
+    assert_eq!(
+        fim.painel,
+        soroban_sdk::Vec::from_slice(&f.m.env, &f.menores(&quem, 3))
+    );
+    assert_eq!(f.m.c.try_finalize(), Err(Ok(Erro::JaFinalizado.into())));
+    assert_eq!(f.tentar(7), Some(Erro::JaFinalizado));
+    assert_eq!(f.m.c.panel(), Some(fim));
+}
+
+/// Menos de `k` reivindicações: o limiar vai para o campo inteiro, uma vez, e
+/// a janela reabre; quem estava acima do limiar pode entrar.
+#[test]
+fn com_menos_de_k_o_limiar_se_amplia_uma_vez() {
+    let f = fluxo();
+    f.selar();
+    f.reivindicar(1);
+    f.reivindicar(2);
+    f.passar_o_prazo();
+    assert_eq!(f.m.c.finalize(), None, "ampliou, nao finalizou");
+    let selo = f.m.c.seal_state().unwrap();
+    assert!(selo.ampliado);
+    assert_eq!(selo.limiar, u256(&f.m.env, R_DECIMAL));
+    f.reivindicar(4);
+    f.passar_o_prazo();
+    let fim = f.m.c.finalize().unwrap();
+    assert!(fim.completo);
+    assert_eq!(fim.painel.len(), 3);
+}
+
+/// Ampliado e ainda menos de `k`: o painel sai com quem há, marcado
+/// incompleto — nunca um segundo sorteio.
+#[test]
+fn ampliado_e_ainda_menos_de_k_fica_incompleto() {
+    let f = fluxo();
+    f.selar();
+    f.reivindicar(1);
+    f.passar_o_prazo();
+    assert_eq!(f.m.c.finalize(), None);
+    f.passar_o_prazo();
+    let fim = f.m.c.finalize().unwrap();
+    assert!(!fim.completo);
+    assert_eq!(fim.painel.len(), 1);
+}
+
+/// INV-07 e INV-08 no modo selado: quem se recusa sai e o próximo `y` da
+/// mesma lista senta — o painel fica com `k`, sem novo sorteio.
+#[test]
+fn recusar_tira_o_y_e_o_proximo_senta() {
+    let f = fluxo();
+    f.selar();
+    let quem = [1, 2, 3, 5, 6, 7];
+    for i in quem {
+        f.reivindicar(i);
+    }
+    let menores = f.menores(&quem, 3);
+    let saindo = quem
         .iter()
-        .map(|s| Address::from_str(&m.env, s))
-        .collect();
-    inscrever_todos(&m, &js);
-    m.c.impede(&js[ORDEM_DE_OURO[0] as usize]);
-    fechar_para(&m, ROUND_A, K);
-    let painel = m.c.seal(&sig_a(&m));
-    let esperado = [
-        "CBNZ6GW7SJP4RWRMHXME65XUHZCTBVXA27PPO4KR7IDMJH2UZL7HPXPP",
-        "CBYYRHFKSY5VVAACXXJS44HXYQ47CPF65JALEPTSUL7EHPCP5SCEL4TK",
-        "CBGK2LCVUESQU52MUQM2XYGAGBJ2GKTYAJUID4WQGMUD2ANMYTYNIYPH",
-    ];
-    for (i, s) in esperado.iter().enumerate() {
+        .copied()
+        .find(|&i| f.js[i].y == menores[0])
+        .unwrap();
+    let j = &f.js[saindo];
+    f.m.c.recuse(&j.principal, &j.s);
+    let esperado = Recusado {
+        jurado: j.principal.clone(),
+    };
+    assert_eq!(
+        f.m.env.events().all().filter_by_contract(&f.m.id),
+        [esperado.to_xdr(&f.m.env, &f.m.id)]
+    );
+    f.passar_o_prazo();
+    let fim = f.m.c.finalize().unwrap();
+    let restantes: std::vec::Vec<usize> = quem.iter().copied().filter(|&i| i != saindo).collect();
+    assert_eq!(
+        fim.painel,
+        soroban_sdk::Vec::from_slice(&f.m.env, &f.menores(&restantes, 3))
+    );
+}
+
+#[test]
+fn recusa_com_segredo_errado_ou_fora_de_hora_e_recusada() {
+    let f = fluxo();
+    let j = &f.js[1];
+    assert_eq!(
+        f.m.c.try_recuse(&j.principal, &j.s),
+        Err(Ok(Erro::NaoSelado.into())),
+        "antes do selo"
+    );
+    f.selar();
+    assert_eq!(
+        f.m.c.try_recuse(&j.principal, &f.js[2].s),
+        Err(Ok(Erro::SegredoNaoConfere.into()))
+    );
+    f.m.c.recuse(&j.principal, &j.s);
+    assert_eq!(
+        f.m.c.try_recuse(&j.principal, &j.s),
+        Err(Ok(Erro::JaRecusado.into()))
+    );
+    assert_eq!(
+        f.tentar(1),
+        Some(Erro::YRepetido),
+        "recusado nao reivindica"
+    );
+    // Ninguém reivindicou: o primeiro finalize amplia, o segundo fecha.
+    f.passar_o_prazo();
+    assert_eq!(f.m.c.finalize(), None);
+    f.passar_o_prazo();
+    assert!(!f.m.c.finalize().unwrap().completo);
+    let k = &f.js[2];
+    assert_eq!(
+        f.m.c.try_recuse(&k.principal, &k.s),
+        Err(Ok(Erro::JaFinalizado.into())),
+        "depois do painel"
+    );
+}
+
+#[test]
+fn revelar_antes_do_painel_ou_do_prazo_e_recusado() {
+    let f = fluxo();
+    f.selar();
+    f.reivindicar(1);
+    let j = &f.js[1];
+    assert_eq!(
+        f.m.c.try_reveal(&j.principal, &j.s),
+        Err(Ok(Erro::NaoFinalizado.into()))
+    );
+    f.passar_o_prazo();
+    f.m.c.finalize();
+    f.passar_o_prazo();
+    f.m.c.finalize();
+    assert!(f.m.env.ledger().sequence() < REVELA_EM);
+    assert_eq!(
+        f.m.c.try_reveal(&j.principal, &j.s),
+        Err(Ok(Erro::CedoParaRevelar.into()))
+    );
+}
+
+/// `reveal` confere `Poseidon(s) = c` e `Poseidon(seed, s) = y`, e diz se
+/// aquele `y` sentou. É prova, nunca correção: o painel não muda (INV-16).
+#[test]
+fn revelar_confere_c_e_y_e_nao_muda_o_painel() {
+    let f = fluxo();
+    f.selar();
+    for i in [1, 2, 3, 5] {
+        f.reivindicar(i);
+    }
+    f.passar_o_prazo();
+    let fim = f.m.c.finalize().unwrap();
+    f.chegar_a_revelacao();
+    for i in [1, 2, 3, 5, 0] {
+        let j = &f.js[i];
         assert_eq!(
-            painel.get(i as u32).unwrap(),
-            Address::from_str(&m.env, s),
-            "assento {}",
-            i
+            f.m.c.try_reveal(&j.principal, &f.js[(i + 1) % 8].s),
+            Err(Ok(Erro::SegredoNaoConfere.into())),
+            "segredo de outro"
+        );
+        let r = f.m.c.reveal(&j.principal, &j.s);
+        assert_eq!(r.y, j.y);
+        assert_eq!(r.sentado, fim.painel.contains(&j.y), "jurado {}", i);
+        assert!(!r.sem_bilhete);
+        assert_eq!(
+            f.m.c.try_reveal(&j.principal, &j.s),
+            Err(Ok(Erro::JaRevelado.into()))
         );
     }
+    assert_eq!(f.m.c.panel(), Some(fim));
+}
+
+/// INV-12 no modo selado (decisão da humana, 2026-10-25): senta quem estava
+/// autorizado no fechamento; o saldo não pode ser conferido sem identificar o
+/// jurado. Quem sentou e já não tinha o bilhete fica registrado no `reveal`.
+#[test]
+fn sentou_sem_bilhete_fica_registrado_no_reveal() {
+    let f = fluxo();
+    f.selar();
+    for i in [1, 2, 3] {
+        f.reivindicar(i);
+    }
+    f.passar_o_prazo();
+    let fim = f.m.c.finalize().unwrap();
+    assert!(fim.completo);
+    let j = &f.js[2];
+    bilhete(&f.m).transfer(&j.principal, &f.js[0].principal, &UM_BILHETE);
+    f.chegar_a_revelacao();
+    let r = f.m.c.reveal(&j.principal, &j.s);
+    assert!(r.sentado && r.sem_bilhete);
+    let esperado = Revelado {
+        jurado: j.principal.clone(),
+        y: j.y.clone(),
+        sentado: true,
+        sem_bilhete: true,
+    };
+    assert_eq!(
+        f.m.env.events().all().filter_by_contract(&f.m.id),
+        [esperado.to_xdr(&f.m.env, &f.m.id)]
+    );
+}
+
+/// O fluxo inteiro, N = 8, k = 3: o jurado 0 está abaixo do limiar e não
+/// reivindica; o 4 está acima e é recusado; os outros seis reivindicam; um
+/// se recusa; o painel sai com os três menores dos que ficaram; todos revelam
+/// menos um. O que a cadeia guarda basta para dizer, de cada um: sentou,
+/// revelou, não revelou, sorteado e ausente (T-039 recompõe isto).
+#[test]
+fn fluxo_completo_n8_k3() {
+    let f = fluxo();
+    let selo = f.selar();
+    assert_eq!(selo.limiar, f.limiar);
+    assert!(f.js[0].abaixo, "o 0 poderia, e nao reivindica");
+    assert_eq!(f.tentar(4), Some(Erro::YAcimaDoLimiar));
+    let quem = [1, 2, 3, 5, 6, 7];
+    for i in quem {
+        f.reivindicar(i);
+    }
+    let recusa = 6;
+    f.m.c.recuse(&f.js[recusa].principal, &f.js[recusa].s);
+    f.passar_o_prazo();
+    let fim = f.m.c.finalize().unwrap();
+    let ficaram: std::vec::Vec<usize> = quem.iter().copied().filter(|&i| i != recusa).collect();
+    let esperado = f.menores(&ficaram, 3);
+    assert!(fim.completo);
+    assert_eq!(
+        fim.painel,
+        soroban_sdk::Vec::from_slice(&f.m.env, &esperado)
+    );
+
+    f.chegar_a_revelacao();
+    let silencioso = ficaram
+        .iter()
+        .copied()
+        .find(|&i| esperado.contains(&f.js[i].y))
+        .unwrap();
+    let mut sentados_revelados = 0;
+    for i in [0, 1, 2, 3, 4, 5, 7] {
+        if i == silencioso {
+            continue;
+        }
+        let r = f.m.c.reveal(&f.js[i].principal, &f.js[i].s);
+        if r.sentado {
+            sentados_revelados += 1;
+        }
+    }
+    assert_eq!(sentados_revelados, 2, "tres sentados, um em silencio");
+    assert_eq!(f.m.c.revelation(&f.js[silencioso].principal), None);
+    assert_eq!(f.m.c.panel(), Some(fim), "INV-16");
 }
 
 // ---- compromissos e árvore (T-035) ---------------------------------------
@@ -874,7 +1210,7 @@ fn o_verificador_e_o_do_construtor() {
 
 /// Custo, no host de teste, de conferir uma prova pelo kleroterion: montar
 /// as entradas, o SHA-256 do endereço e a chamada ao verificador.
-const CUSTO_PROVA: (u64, u64) = (29_195_235, 271_071);
+const CUSTO_PROVA: (u64, u64) = (29_200_539, 273_827);
 
 #[test]
 fn custo_medido_da_prova() {
@@ -887,46 +1223,7 @@ fn custo_medido_da_prova() {
     assert_eq!(custo, CUSTO_PROVA, "prova (cpu, mem)");
 }
 
-// ---- as cópias do beacon-verifier ---------------------------------------
-
-/// As mesmas asserções de beacon-verifier::bate_com_a_recomputacao_fora_da_cadeia,
-/// contra tests/vetores-de-ouro.json. Se uma cópia divergir, isto acusa.
-#[test]
-fn bate_com_a_recomputacao_fora_da_cadeia() {
-    let m = mesa();
-    let semente = BytesN::from_array(&m.env, &RANDOMNESS_A);
-
-    let a = m.c.draw(&semente, &200u32, &25u32);
-    let esperado_a: [u32; 25] = [
-        15, 179, 44, 133, 177, 1, 168, 104, 157, 62, 43, 63, 57, 23, 86, 50, 165, 64, 26, 27, 148,
-        96, 120, 13, 29,
-    ];
-    for (i, v) in esperado_a.iter().enumerate() {
-        assert_eq!(a.get(i as u32).unwrap(), *v, "divergiu na posicao {}", i);
-    }
-
-    let zeros = BytesN::from_array(&m.env, &[0u8; 32]);
-    let b = m.c.draw(&zeros, &50u32, &7u32);
-    let esperado_b: [u32; 7] = [28, 10, 18, 23, 41, 36, 26];
-    for (i, v) in esperado_b.iter().enumerate() {
-        assert_eq!(
-            b.get(i as u32).unwrap(),
-            *v,
-            "semente zero divergiu em {}",
-            i
-        );
-    }
-
-    let d = m.c.draw(&semente, &7u32, &7u32);
-    for (i, v) in ORDEM_DE_OURO.iter().enumerate() {
-        assert_eq!(
-            d.get(i as u32).unwrap(),
-            *v,
-            "rol pequeno divergiu em {}",
-            i
-        );
-    }
-}
+// ---- as cópias do beacon-verifier: verify e randomness -------------------
 
 #[test]
 fn a_aleatoriedade_e_a_que_a_drand_publica() {
@@ -945,9 +1242,9 @@ fn rodada_real_verifica() {
 /// a inscrição do 64.º jurado (o caminho inteiro da árvore e as três chamadas
 /// ao SAC), um impedimento e o fechamento. Mudou, fica vermelho (G2); G7
 /// confere que docs/SPEC.md ainda diz estes números.
-const CUSTO_ENROLL: (u64, u64) = (10_473_619, 1_722_555);
-const CUSTO_IMPEDE: (u64, u64) = (8_676_833, 1_045_476);
-const CUSTO_LOCK: (u64, u64) = (599_498, 287_601);
+const CUSTO_ENROLL: (u64, u64) = (10_481_144, 1_725_965);
+const CUSTO_IMPEDE: (u64, u64) = (8_684_358, 1_048_886);
+const CUSTO_LOCK: (u64, u64) = (606_903, 291_011);
 
 #[test]
 fn custo_medido_de_enroll_impede_lock() {
@@ -966,8 +1263,49 @@ fn custo_medido_de_enroll_impede_lock() {
     let lock = medir(&|| {
         fechar_para(&m, ROUND_A, K);
     });
-    std::println!("enroll {:?} impede {:?} lock {:?}", enroll, impede, lock);
     assert_eq!(enroll, CUSTO_ENROLL, "enroll (cpu, mem)");
     assert_eq!(impede, CUSTO_IMPEDE, "impede (cpu, mem)");
     assert_eq!(lock, CUSTO_LOCK, "lock (cpu, mem)");
+}
+
+/// Custo no host de teste, `(cpu, mem)`, das chamadas do fluxo selado com
+/// N = 8, k = 3: o selo (verificação BLS12-381 e o limiar), a sexta
+/// reivindicação (a prova e a inserção), uma recusa, o `finalize` e um
+/// `reveal`. Mudou, fica vermelho (G2); G7 confere docs/SPEC.md.
+const CUSTO_SEAL: (u64, u64) = (26_894_868, 229_645);
+const CUSTO_CLAIM: (u64, u64) = (29_514_466, 376_981);
+const CUSTO_RECUSE: (u64, u64) = (2_832_768, 303_478);
+const CUSTO_FINALIZE: (u64, u64) = (184_731, 100_873);
+const CUSTO_REVEAL: (u64, u64) = (2_942_518, 370_368);
+
+#[test]
+fn custo_medido_do_fluxo_selado() {
+    let f = fluxo();
+    let medir = |g: &dyn Fn()| {
+        f.m.env.cost_estimate().budget().reset_unlimited();
+        g();
+        let b = f.m.env.cost_estimate().budget();
+        (b.cpu_instruction_cost(), b.memory_bytes_cost())
+    };
+    let seal = medir(&|| {
+        f.selar();
+    });
+    for i in [1, 2, 3, 5, 6] {
+        f.reivindicar(i);
+    }
+    let claim = medir(&|| f.reivindicar(7));
+    let recuse = medir(&|| f.m.c.recuse(&f.js[6].principal, &f.js[6].s));
+    f.passar_o_prazo();
+    let finalize = medir(&|| {
+        f.m.c.finalize();
+    });
+    f.chegar_a_revelacao();
+    let reveal = medir(&|| {
+        f.m.c.reveal(&f.js[1].principal, &f.js[1].s);
+    });
+    assert_eq!(seal, CUSTO_SEAL, "seal");
+    assert_eq!(claim, CUSTO_CLAIM, "claim");
+    assert_eq!(recuse, CUSTO_RECUSE, "recuse");
+    assert_eq!(finalize, CUSTO_FINALIZE, "finalize");
+    assert_eq!(reveal, CUSTO_REVEAL, "reveal");
 }

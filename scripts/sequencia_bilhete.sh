@@ -18,8 +18,9 @@
 #      the contract updates the commitment tree
 #   7. impede the first juror of the enrolment order    (art. 463; refused after lock)
 #   8. lock(k = 3, reveal_after ledger): ledger, timestamp, the drand round, k, root, N
-#   9. wait for that round, then seal with its signature (once; no round is chosen)
-#  10. recompute the panel off-chain, no dependencies
+#   9. wait for that round, then seal with its signature (once; no round is chosen):
+#      the seed and the threshold T are fixed
+#  10. print what seal fixed; claims, finalize and reveals are T-040
 set -euo pipefail
 N="--network testnet"
 ISSUER=$1; CLERK=$2; shift 2; JURORS=("$@")
@@ -39,7 +40,7 @@ SAC=$(stellar contract asset deploy --asset "PINAKION:$EMISSOR" --source "$ISSUE
 
 log "3. deploy the Groth16 verifier (key embedded), then kleroterion (clerk, SAC, minimum ${#JURORS[@]}, verifier)"
 VERIF=$(stellar contract deploy --wasm target/wasm32v1-none/release/groth16_verifier.wasm --source "$CLERK" $N 2>/dev/null | tail -1); echo "verifier $VERIF"
-KLERO=$(stellar contract deploy --wasm "$WASM" --source "$CLERK" $N -- --escrivao "$ESCRIVAO" --bilhete "$SAC" --minimo "${#JURORS[@]}" --verificador "$VERIF" 2>/dev/null | tail -1); echo "contract $KLERO"
+KLERO=$(stellar contract deploy --wasm "$WASM" --source "$CLERK" $N -- --escrivao "$ESCRIVAO" --bilhete "$SAC" --minimo "${#JURORS[@]}" --verificador "$VERIF" --janela "${JANELA:-120}" 2>/dev/null | tail -1); echo "contract $KLERO"
 
 log "4. SAC admin -> kleroterion"
 stellar contract invoke --id "$SAC" --source "$ISSUER" $N -- set_admin --new_admin "$KLERO" 2>&1 | grep -o 'tx/[0-9a-f]*' | sed 's#tx/#tx #'
@@ -78,17 +79,18 @@ stellar contract invoke --id "$KLERO" --source "$CLERK" $N -- lock --k 3 --revel
 FECHAMENTO=$(stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=no -- closing 2>/dev/null | tail -1); echo "$FECHAMENTO"
 RODADA=$(printf '%s' "$FECHAMENTO" | python3 -c "import sys,json;print(json.load(sys.stdin)['rodada'])")
 
-log "9. wait for round $RODADA, then seal with its signature"
+log "9. wait for round $RODADA, then seal: the seed and the threshold T"
 QUANDO=$(( 1692803367 + (RODADA - 1) * 3 )); ESPERA=$(( QUANDO - $(date +%s) + 3 ))
 [ "$ESPERA" -gt 0 ] && { echo "round $RODADA is published at $QUANDO; waiting ${ESPERA}s"; sleep "$ESPERA"; }
 SIG=$(python3 scripts/rodada.py "$RODADA" | awk '/^signature/{print $2}')
 echo "round    $RODADA"
 stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=yes -- seal --sig "$SIG" 2>&1 | grep -E 'tx/|^\[' | sed 's#.*tx/#tx #'
 
-log "10. the same panel, recomputed off-chain"
-SEMENTE=$(curl -s "https://api.drand.sh/52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971/public/$RODADA" | python3 -c "import sys,json;print(json.load(sys.stdin)['randomness'])")
-stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=no -- roster 2>/dev/null | tail -1 > /tmp/rol.json
-python3 scripts/verificar_painel.py "$SEMENTE" 3 /tmp/rol.json --fora "$PRIMEIRO"
+log "10. what seal fixed"
+stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=no -- seal_state 2>/dev/null | tail -1
+# Claims from fresh seat accounts (circuits/pinakion.mjs prove), finalize,
+# reveals and recusal are T-040; the open-draw recomputation that used to
+# follow here no longer applies — kleroterion draws sealed since T-038.
 
 log "the roster, as any Horizon client sees it"
 curl -s "https://horizon-testnet.stellar.org/accounts?asset=PINAKION:$EMISSOR&limit=200" | python3 -c "

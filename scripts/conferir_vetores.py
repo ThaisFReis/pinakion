@@ -24,9 +24,12 @@ import exportar_constantes_poseidon as constantes  # noqa: E402
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 VETORES = RAIZ / "tests" / "vetores-de-ouro.json"
+# Since T-038 kleroterion draws sealed (DEC-015, DEC-016): the open
+# Fisher-Yates and its vectors stay with beacon-verifier alone. The address
+# vector (the fourth) is still checked by the Python and JS recomputations;
+# T-039 replaces it with sealed-flow vectors.
 TESTES_RUST = [
     RAIZ / "contracts" / "beacon-verifier" / "src" / "test.rs",
-    RAIZ / "contracts" / "kleroterion" / "src" / "test.rs",
 ]
 
 
@@ -101,6 +104,26 @@ def main():
     falhas += erradas
     if not erradas:
         print(f"  ok    Poseidon: {len(poseidon)} vetores da circomlib")
+    # ... the sealed-flow fixture (T-038) is what Poseidon says it is ...
+    fluxo = json.loads((RAIZ / "tests" / "fluxo-n8.json").read_text())
+    from poseidon import R  # noqa: E402
+    erros = []
+    k, n = fluxo["k"], fluxo["n"]
+    limiar = R if 2 * k >= n else R * 2 * k // n
+    if int(fluxo["limiar"]) != limiar:
+        erros.append("limiar")
+    seed = int(fluxo["seed"])
+    for j in fluxo["jurados"]:
+        s_ = int(j["s"])
+        if hash1(s_) != int(j["c"]):
+            erros.append(f"c do jurado {j['indice']}")
+        if hash2(seed, s_) != int(j["y"]) or (int(j["y"]) < limiar) != j["abaixo_do_limiar"]:
+            erros.append(f"y do jurado {j['indice']}")
+    eventos = [{"evento": "enroll", "indice": j["indice"], "c": j["c"]} for j in fluxo["jurados"]]
+    if str(raiz(eventos)) != fluxo["raiz"]:
+        erros.append("raiz")
+    falhas += len(erros)
+    print(f"  {'FALHA' if erros else 'ok   '} fluxo N = {n}: c, y, raiz e limiar" + (f" — {erros}" if erros else ""))
     # ... and the root rebuilt from the events is the one in the vectors.
     arvores = json.loads((RAIZ / "tests" / "vetores-arvore.json").read_text())
     if [str(z) for z in zeros()] == arvores["zeros"]:

@@ -700,6 +700,8 @@ fn recusar_tira_o_y_e_o_proximo_senta() {
     f.m.c.recuse(&j.principal, &j.s);
     let esperado = Recusado {
         jurado: j.principal.clone(),
+        s: j.s.clone(),
+        y: j.y.clone(),
     };
     assert_eq!(
         f.m.env.events().all().filter_by_contract(&f.m.id),
@@ -823,6 +825,7 @@ fn sentou_sem_bilhete_fica_registrado_no_reveal() {
     assert!(r.sentado && r.sem_bilhete);
     let esperado = Revelado {
         jurado: j.principal.clone(),
+        s: j.s.clone(),
         y: j.y.clone(),
         sentado: true,
         sem_bilhete: true,
@@ -1274,9 +1277,9 @@ fn custo_medido_de_enroll_impede_lock() {
 /// `reveal`. Mudou, fica vermelho (G2); G7 confere docs/SPEC.md.
 const CUSTO_SEAL: (u64, u64) = (26_894_868, 229_645);
 const CUSTO_CLAIM: (u64, u64) = (29_514_466, 376_981);
-const CUSTO_RECUSE: (u64, u64) = (2_832_768, 303_478);
+const CUSTO_RECUSE: (u64, u64) = (2_832_906, 303_526);
 const CUSTO_FINALIZE: (u64, u64) = (184_731, 100_873);
-const CUSTO_REVEAL: (u64, u64) = (2_942_518, 370_368);
+const CUSTO_REVEAL: (u64, u64) = (2_942_915, 370_392);
 
 #[test]
 fn custo_medido_do_fluxo_selado() {
@@ -1308,4 +1311,117 @@ fn custo_medido_do_fluxo_selado() {
     assert_eq!(recuse, CUSTO_RECUSE, "recuse");
     assert_eq!(finalize, CUSTO_FINALIZE, "finalize");
     assert_eq!(reveal, CUSTO_REVEAL, "reveal");
+}
+
+// ---- o vetor de ouro selado (T-039) --------------------------------------
+
+const OURO: &str = include_str!("../../../tests/vetores-de-ouro.json");
+
+/// O vetor selado de tests/vetores-de-ouro.json é a lista exata de eventos
+/// que este contrato emite no fluxo completo: refaz o fluxo e confere cada
+/// evento. Os verificadores independentes (G5, G6) partem desses eventos.
+#[test]
+fn bate_com_o_vetor_selado() {
+    let ouro: serde_json::Value = serde_json::from_str(OURO).unwrap();
+    let vetor = &ouro["selados"][0];
+    let eventos = vetor["eventos"].as_array().unwrap();
+    let fluxo: serde_json::Value = serde_json::from_str(FLUXO).unwrap();
+    let fj = fluxo["jurados"].as_array().unwrap();
+
+    let m = mesa_com_minimo(1);
+    let env = &m.env;
+    let txt = |v: &serde_json::Value| v.as_str().unwrap().to_owned();
+    let n = |v: &serde_json::Value| u256(env, &txt(v));
+    let addr = |v: &serde_json::Value| Address::from_str(env, &txt(v));
+    let bn = |v: &serde_json::Value| hex::decode(txt(v)).unwrap();
+    let mut e = eventos.iter();
+    let confere = |m: &Mesa, esperado: soroban_sdk::xdr::ContractEvent, o_que: &str| {
+        assert_eq!(
+            m.env.events().all().filter_by_contract(&m.id),
+            [esperado],
+            "{}",
+            o_que
+        );
+    };
+    let mut proximo = || e.next().unwrap().clone();
+
+    for _ in 0..8 {
+        let v = proximo();
+        let jurado = addr(&v["jurado"]);
+        m.c.enroll(&jurado, &n(&v["c"]));
+        let esperado = Inscrito {
+            jurado,
+            indice: v["indice"].as_u64().unwrap() as u32,
+            c: n(&v["c"]),
+        };
+        confere(&m, esperado.to_xdr(env, &m.id), "Inscrito");
+    }
+    let v = proximo();
+    let f = fechar_para(&m, ROUND_A, v["k"].as_u64().unwrap() as u32);
+    let esperado = Fechado {
+        raiz: n(&v["raiz"]),
+        n: v["n"].as_u64().unwrap() as u32,
+        rodada: v["rodada"].as_u64().unwrap(),
+        k: f.k,
+        revela_em: v["revela_em"].as_u64().unwrap() as u32,
+    };
+    confere(&m, esperado.to_xdr(env, &m.id), "Fechado");
+
+    m.env.ledger().with_mut(|l| l.sequence_number = 1000);
+    let v = proximo();
+    m.c.seal(&sig_a(&m));
+    let esperado = Selado {
+        seed: n(&v["seed"]),
+        limiar: n(&v["limiar"]),
+        prazo: v["prazo"].as_u64().unwrap() as u32,
+    };
+    confere(&m, esperado.to_xdr(env, &m.id), "Selado");
+
+    for i in [1usize, 2, 3, 5, 6, 7] {
+        let v = proximo();
+        let j = &fj[i];
+        let prova = Prova {
+            a: BytesN::from_array(env, &bn(&j["proof"]["a"]).try_into().unwrap()),
+            b: BytesN::from_array(env, &bn(&j["proof"]["b"]).try_into().unwrap()),
+            c: BytesN::from_array(env, &bn(&j["proof"]["c"]).try_into().unwrap()),
+        };
+        m.c.claim(&addr(&j["assento"]), &prova, &n(&v["y"]));
+        let esperado = Reivindicado { y: n(&v["y"]) };
+        confere(&m, esperado.to_xdr(env, &m.id), "Reivindicado");
+    }
+    let v = proximo();
+    m.c.recuse(&addr(&v["jurado"]), &n(&v["s"]));
+    let esperado = Recusado {
+        jurado: addr(&v["jurado"]),
+        s: n(&v["s"]),
+        y: n(&v["y"]),
+    };
+    confere(&m, esperado.to_xdr(env, &m.id), "Recusado");
+
+    let prazo = m.c.seal_state().unwrap().prazo;
+    m.env.ledger().with_mut(|l| l.sequence_number = prazo + 1);
+    let v = proximo();
+    m.c.finalize();
+    let mut painel = soroban_sdk::Vec::new(env);
+    for y in v["painel"].as_array().unwrap() {
+        painel.push_back(n(y));
+    }
+    let esperado = Finalizado {
+        painel,
+        completo: v["completo"].as_bool().unwrap(),
+    };
+    confere(&m, esperado.to_xdr(env, &m.id), "Finalizado");
+
+    m.env.ledger().with_mut(|l| l.sequence_number = REVELA_EM);
+    for v in e.by_ref() {
+        m.c.reveal(&addr(&v["jurado"]), &n(&v["s"]));
+        let esperado = Revelado {
+            jurado: addr(&v["jurado"]),
+            s: n(&v["s"]),
+            y: n(&v["y"]),
+            sentado: v["sentado"].as_bool().unwrap(),
+            sem_bilhete: v["sem_bilhete"].as_bool().unwrap(),
+        };
+        confere(&m, esperado.to_xdr(env, &m.id), "Revelado");
+    }
 }

@@ -118,3 +118,107 @@ export async function aleatoriedadeDaAssinatura(sigHex) {
   const d = await crypto.subtle.digest("SHA-256", hexToBytes(sigHex));
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+// ---- the sealed draw (T-038 onwards, T-039) --------------------------------
+//
+// verificarSelado(registro, P, raiz): recomputes a kleroterion panel from the
+// contract's events and the drand randomness alone, without trusting the
+// contract — the same checks as scripts/verificar_painel.py. `P` is
+// criarPoseidon(constantes) from ./poseidon.mjs and `raiz` is raiz() from
+// ./arvore.mjs, passed in so this file keeps no imports of its own.
+//
+// registro = { aleatoriedade: hex, eventos: [...] }, events named as the
+// contract names them. Returns { estados, painel, completo, semRevelacao,
+// conferencias: [[name, ok], ...] }.
+export function verificarSelado(registro, P, raiz) {
+  const { eventos } = registro;
+  const conferencias = [];
+  const confere = (nome, ok) => conferencias.push([nome, Boolean(ok)]);
+  const um = (nome) => eventos.find((e) => e.evento === nome);
+
+  const jurados = new Map();
+  const ordem = [];
+  const impedidos = new Set();
+  const folhas = [];
+  for (const e of eventos) {
+    if (e.evento === "Inscrito") {
+      jurados.set(e.jurado, { indice: e.indice, c: BigInt(e.c) });
+      ordem.push(e.jurado);
+      folhas.push({ evento: "enroll", indice: e.indice, c: e.c });
+    } else if (e.evento === "Impedido") {
+      impedidos.add(e.jurado);
+      folhas.push({ evento: "impede", indice: e.indice });
+    }
+  }
+  const vazio = { estados: new Map(), painel: [], completo: false, semRevelacao: 0, conferencias };
+
+  const fechado = um("Fechado");
+  confere("houve fechamento", fechado);
+  if (!fechado) return vazio;
+  confere("a raiz do fechamento e a dos compromissos", String(raiz(folhas, P.hash2)) === fechado.raiz);
+  const n = BigInt(fechado.n);
+  const k = fechado.k;
+  confere("N e quem estava autorizado", fechado.n === ordem.length - impedidos.size);
+
+  const seed = BigInt("0x" + registro.aleatoriedade) >> 8n;
+  let limiar = 2n * BigInt(k) >= n ? P.R : (P.R * 2n * BigInt(k)) / n;
+  const selado = um("Selado");
+  confere("houve selo", selado);
+  if (!selado) return vazio;
+  confere("a semente e a da rodada drand >> 8", BigInt(selado.seed) === seed);
+  confere("o limiar e floor(r*2k/N)", BigInt(selado.limiar) === limiar);
+
+  const reivindicados = [];
+  const recusados = new Map();
+  const revelados = new Map();
+  for (const e of eventos) {
+    if (e.evento === "Ampliado") {
+      limiar = P.R;
+      confere("a ampliacao leva o limiar ao campo", BigInt(e.limiar) === P.R);
+    } else if (e.evento === "Reivindicado") {
+      const y = BigInt(e.y);
+      confere(`reivindicacao ${y} abaixo do limiar`, y < limiar);
+      confere(`reivindicacao ${y} unica`, !reivindicados.includes(y));
+      reivindicados.push(y);
+    } else if (e.evento === "Recusado" || e.evento === "Revelado") {
+      const s = BigInt(e.s);
+      const y = BigInt(e.y);
+      const c = jurados.get(e.jurado)?.c;
+      confere(`${e.evento} de ${e.jurado}: Poseidon(s) = c`, c !== undefined && P.hash1(s) === c);
+      confere(`${e.evento} de ${e.jurado}: y = Poseidon(seed, s)`, P.hash2(seed, s) === y);
+      if (e.evento === "Recusado") recusados.set(e.jurado, y);
+      else revelados.set(e.jurado, e);
+    }
+  }
+
+  const fora = new Set(recusados.values());
+  const restantes = reivindicados.filter((y) => !fora.has(y)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const painel = restantes.slice(0, k);
+  const final = um("Finalizado");
+  confere("houve painel", final);
+  if (final) {
+    confere(
+      "o painel sao os k menores y que ficaram",
+      final.painel.length === painel.length && final.painel.every((v, i) => BigInt(v) === painel[i]),
+    );
+    confere("completo se e so se chegou a k", final.completo === (painel.length === k));
+  }
+  for (const [quem, e] of revelados) {
+    confere(`Revelado de ${quem}: sentado confere`, e.sentado === painel.includes(BigInt(e.y)));
+  }
+
+  const estados = new Map();
+  for (const quem of ordem) {
+    if (impedidos.has(quem)) estados.set(quem, "impedido");
+    else if (recusados.has(quem)) estados.set(quem, "recusado");
+    else if (!revelados.has(quem)) estados.set(quem, "nao revelou");
+    else {
+      const y = BigInt(revelados.get(quem).y);
+      if (painel.includes(y)) estados.set(quem, "sentou");
+      else if (y < limiar && !reivindicados.includes(y)) estados.set(quem, "sorteado e ausente");
+      else estados.set(quem, "revelou, nao sentou");
+    }
+  }
+  const sentou = [...estados.values()].filter((e) => e === "sentou").length;
+  return { estados, painel, completo: painel.length === k, semRevelacao: painel.length - sentou, conferencias };
+}

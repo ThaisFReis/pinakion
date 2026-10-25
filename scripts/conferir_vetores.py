@@ -139,12 +139,35 @@ def main():
             falhas += 1
             print(f"  FALHA arvore: {a['nome']}\n        esperado {a['raiz']}\n        obtido   {obtida}")
 
+    # T-039: the sealed vectors, from the events and the drand randomness alone.
+    from verificar_painel import verificar  # noqa: E402
+    for v in dados.get("selados", []):
+        estados, meu_painel, completo, sem_revelacao, conferencias = verificar(v)
+        ruins = [nome for nome, ok in conferencias if not ok]
+        esperado = v["esperado"]
+        certo = (
+            not ruins
+            and estados == esperado["jurados"]
+            and [str(y) for y in meu_painel] == esperado["painel"]
+            and completo == esperado["completo"]
+            and sem_revelacao == esperado["assentos_sem_revelacao"]
+        )
+        if certo:
+            print(f"  ok    {v['nome']}: {len(conferencias)} conferencias")
+        else:
+            falhas += 1
+            print(f"  FALHA {v['nome']}")
+            for nome in ruins:
+                print(f"        nao confere: {nome}")
+            if estados != esperado["jurados"]:
+                print("        os estados dos jurados divergem")
+
     if falhas:
         print(f"\n{falhas} falha(s).")
         return 1
     print(
         f"\n{len(vetores)} vetores conferidos, {len(poseidon)} de Poseidon, "
-        f"{len(arvores['arvores'])} arvores."
+        f"{len(arvores['arvores'])} arvores, {len(dados.get('selados', []))} selado(s)."
     )
     return 0
 

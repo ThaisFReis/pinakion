@@ -258,12 +258,16 @@ pub struct Reivindicado {
     pub y: U256,
 }
 
-/// Um jurado se recusou, às claras, antes do painel.
+/// Um jurado se recusou, às claras, antes do painel. Recusar é revelar: o
+/// evento leva `s` e o `y` que saiu, para que quem lê o ledger confira
+/// `Poseidon(s) = c` e `y = Poseidon(seed, s)` sem confiar no contrato (T-039).
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Recusado {
     #[topic]
     pub jurado: Address,
+    pub s: U256,
+    pub y: U256,
 }
 
 #[contractevent]
@@ -273,12 +277,14 @@ pub struct Finalizado {
     pub completo: bool,
 }
 
-/// Depois do veredito, o elo entre um jurado e seu `y` — de propósito.
+/// Depois do veredito, o elo entre um jurado e seu `y` — de propósito. Leva
+/// `s`, para que a recomputação não dependa do contrato (T-039).
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Revelado {
     #[topic]
     pub jurado: Address,
+    pub s: U256,
     pub y: U256,
     pub sentado: bool,
     pub sem_bilhete: bool,
@@ -631,9 +637,9 @@ impl Kleroterion {
             ys.remove(i);
             p.set(&DataKey::Reivindicados, &ys);
         }
-        p.set(&DataKey::YUsado(y), &true);
+        p.set(&DataKey::YUsado(y.clone()), &true);
         p.set(&DataKey::Recusou(jurado.clone()), &true);
-        Recusado { jurado }.publish(&env);
+        Recusado { jurado, s, y }.publish(&env);
     }
 
     /// Fecha a janela. Com `k` ou mais reivindicações, os `k` menores `y`
@@ -705,6 +711,7 @@ impl Kleroterion {
         p.set(&DataKey::Revelou(jurado.clone()), &r);
         Revelado {
             jurado,
+            s,
             y,
             sentado: r.sentado,
             sem_bilhete: r.sem_bilhete,

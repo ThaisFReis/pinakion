@@ -16,7 +16,7 @@ Source of truth for this repository. Written by Bootstrap on 2026-10-25 from wha
   |---|---|---|
   | `THESIS.md` | **the root** — one line, who it is for, the problem, why Stellar. Change it here first, then the others | present (T-010) |
   | `SPEC.md` | what to build and how to check it works | this file |
-  | `DESIGN.md` | colours, type, logo, for every screen | present (T-012); `web/index.html` still diverges (T-017) |
+  | `DESIGN.md` | colours, type, logo, for every screen | present (T-012) |
   | `AGENTS.md` | the mission, ground rules, scope, tools, working style, done-when | present (T-011) |
   | `README.md` | how to run it; says what it is in line 1 | present, rewritten for Pinakion (T-015) |
   | `PLAN.md` | the order and state of the work; this file keeps the acceptance criteria | present (DEC-006) |
@@ -241,12 +241,11 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 | T-010 | Write `THESIS.md` | T-009 | §1 | review | Present at the repository root: the guarantee, who it is for, the problem with two documented cases, why Stellar with measured figures, what is proven and what is not |
 | T-011 | Write `AGENTS.md` | T-010 | §0 | review | Present at the root, in the deck's six sections. Defers to `CLAUDE.md` where the two disagree, and to §9 here for scope |
 | T-012 | Write `DESIGN.md` | T-010 | — | review | Present at the root: tokens for both themes, three type roles with a scale, the mark as inline SVG, layout and voice. Derived from the thesis — cool stone, oxidised bronze, and the machine's own black and white balls as the semantic pair |
-| T-017 | Civic design for the public page ([#7](https://github.com/ThaisFReis/pinakion/issues/7)) | T-012 | `DESIGN.md`, §2, §3 B-02 | doing | User expanded the design brief on 2026-10-25: express governance legitimacy for all audiences and avoid crypto clichés. Update DESIGN.md and the page hierarchy; use shared tokens, responsive light/dark layouts and accessible controls; retain independent recomputation and evidence links; make the scope of the comparison visible. No contract changes |
+| T-017 | Bring `web/index.html` onto the design tokens ([#7](https://github.com/ThaisFReis/pinakion/issues/7)) | T-012 | `DESIGN.md` | todo | The page uses the `DESIGN.md` fonts and `:root` tokens; no literal colours; both themes checked. Declared divergence in `DESIGN.md` is removed |
 | T-013 | Public repository | T-011, T-015 | §11 Q-04 | review | Live at [github.com/ThaisFReis/pinakion](https://github.com/ThaisFReis/pinakion), public, MIT, one clean commit on `main` |
 | T-014 | Spec tasks become issues | T-013 | §9 | review | Eight issues open, one per task still to do. Owners not yet assigned |
 | T-015 | Rewrite `README.md` | T-010 | §2 | review | Opens with the one-liner; how to run it; every claim traced to §2; limits stated before the instructions |
 | T-016 | Write the demo path and record the video ([#8](https://github.com/ThaisFReis/pinakion/issues/8)) | T-012, T-015 | §2 | todo | One flow, live on testnet, with the video as backup. 3 minutes in the deck's four parts |
-
 | T-018 | Write `PLAN.md`, the progress board | T-014 | §8, §9, §11 | review | Phases ordered by the clock; branch and PR state; what is out of scope before the ship date; §9 stays the authority on acceptance criteria (DEC-006) |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
@@ -279,11 +278,6 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Alternatives:** A settable key behind an admin — rejected: it reintroduces the same party with an extra step. A set of accepted keys — rejected as unneeded complexity before a second beacon exists.
 **Consequences:** The contract trusts exactly one drand chain. A quicknet group-key rotation is a new chain with a new hash and requires a new contract; changing the key without changing the contract is precisely the power this pinning removes. Verification cost rose by 887 instructions, the constant being loaded rather than passed. INV-10 is now enforced; §7 and Q-05 updated. `beacon()` is a new public function and §5 declares no frozen interface yet.
 
-### DEC-005: A civic editorial identity for all governance audiences (2026-10-25, T-017)
-**Context:** The human requested a stronger design focused on what governance should convey, avoiding crypto clichés, and specified that all listed audiences matter.
-**Decision:** Use the existing stone/patina palette and serif/sans/data type roles in an editorial layout. Lead with procedure and people. Keep the runnable verification record, its evidence and its limitations together. Progressive disclosure holds technical inputs. The claim on a matching result is limited to the supplied comparison data.
-**Consequences:** T-017 now includes page hierarchy and copy presentation in addition to token adoption. This specific design work is authorised by the conversation; the general spec approval in §0 remains pending. The existing algorithm and contract are unchanged. Visual and functional checks are recorded in the task handoff; this is a local preview, not a published page.
-
 ### DEC-006: A separate `PLAN.md` for order and state (2026-10-25, post-T-014)
 **Context:** §9 holds both the acceptance criteria and the status of every task, plus the event's deliverables. Reading it to answer "what is next, and what is waiting on whom" means reading three tables and two prose paragraphs, and the branch and PR state is not in it at all.
 **Decision:** `PLAN.md` at the root carries the order, the phases, the branch and PR state, and what is deliberately out of scope before the ship date. §9 keeps the acceptance criteria and remains the authority on them.
@@ -308,4 +302,4 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 | Q-10 | ~~What is the one line?~~ **Answered 2026-10-25:** *"Verifiable jury selection for governance on Stellar."* Seven words, in the deck's own shape — category plus where. *"Nobody chooses who judges you."* is kept as the guarantee: it opens the pitch and sits under the landing hero, but it is not the one-liner, because it does not say what the thing is. | — |
 | Q-11 | Which track and which category is the submission? The eligibility question raised in the human's own research — Genesis describes itself as for builders with limited Stellar experience, and the human has a previously awarded Soroban contract — was never answered by the organisers. | T-009 |
 | Q-12 | ~~`AGENTS.md` versus `CLAUDE.md`.~~ **Resolved 2026-10-25 as proposed:** `AGENTS.md` carries the deck's six sections and states that `CLAUDE.md` wins where the two disagree. Neither duplicates the other. Confirm you are happy with that precedence. | — |
-| Q-13 | **Addressed by the design request on 2026-10-25:** T-017 applies Cormorant Garamond and the stone/patina system within the civic direction described in DEC-005. The implementation is for human review. | T-017 |
+| Q-13 | `DESIGN.md` chooses Cormorant Garamond for display, replacing the Newsreader used by `web/index.html`. That page was built first and now diverges from the system. Confirm the direction before T-017 changes a page that works. | T-017 |

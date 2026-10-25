@@ -238,7 +238,7 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 | T-010 | Write `THESIS.md` | T-009 | §1 | review | Present at the repository root: the guarantee, who it is for, the problem with two documented cases, why Stellar with measured figures, what is proven and what is not |
 | T-011 | Write `AGENTS.md` | T-010 | §0 | review | Present at the root, in the deck's six sections. Defers to `CLAUDE.md` where the two disagree, and to §9 here for scope |
 | T-012 | Write `DESIGN.md` | T-010 | — | review | Present at the root: tokens for both themes, three type roles with a scale, the mark as inline SVG, layout and voice. Derived from the thesis — cool stone, oxidised bronze, and the machine's own black and white balls as the semantic pair |
-| T-017 | Bring `web/index.html` onto the design tokens ([#7](https://github.com/ThaisFReis/pinakion/issues/7)) | T-012 | `DESIGN.md` | todo | The page uses the `DESIGN.md` fonts and `:root` tokens; no literal colours; both themes checked. Declared divergence in `DESIGN.md` is removed |
+| T-017 | Civic design for the public page ([#7](https://github.com/ThaisFReis/pinakion/issues/7)) | T-012 | `DESIGN.md`, §2, §3 B-02 | review | User expanded the design brief on 2026-10-25: express governance legitimacy for all audiences and avoid crypto clichés. DESIGN.md and page hierarchy updated; responsive light/dark tokens applied; independent recomputation and evidence links retained; scope of comparison made visible. Local review only; see DEC-005 |
 | T-013 | Public repository | T-011, T-015 | §11 Q-04 | review | Live at [github.com/ThaisFReis/pinakion](https://github.com/ThaisFReis/pinakion), public, MIT, one clean commit on `main` |
 | T-014 | Spec tasks become issues | T-013 | §9 | review | Eight issues open, one per task still to do. Owners not yet assigned |
 | T-015 | Rewrite `README.md` | T-010 | §2 | review | Opens with the one-liner; how to run it; every claim traced to §2; limits stated before the instructions |
@@ -276,6 +276,15 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 
 ---
 
+### DEC-005: Civic editorial identity for all governance audiences (2026-10-25, T-017)
+**Context:** The human requested a stronger design focused on what governance should convey, avoiding crypto clichés, and specified that all listed audiences matter.
+**Decision:** Use the stone/patina palette and serif/sans/data type roles in an editorial layout. Lead with procedure and people. Place the working comparison, its evidence and its limitations together. Put technical inputs behind native disclosure controls. A matching result describes agreement with the supplied data.
+**Correction made while finishing the task:** the page's worked example pointed at contract `CCLWP7WO…` and two transactions that no document in this repository records. Both are real on testnet, but they belong to the pre-T-007 deployment, whose beacon key was still a call parameter. The example is now round 33382274 on `CBPHNZLG…`, with the two transactions `docs/evidencia-testnet-sorteio.md` lists.
+**Consequences:** T-017 includes hierarchy and copy presentation as authorised in the conversation; general approval in §0 remains pending. No contract or independent algorithm change. The page is a local preview, not a public deployment. Empty signature input clears the previous result so an obsolete success state is not displayed.
+**Validation (observed 2026-10-25):** G1–G4 passed with their §8 commands, including 12 Rust tests. G5 fails as the placeholder `docs/SPEC.md` §8 declares, which T-006 replaces — an earlier note here said `npm` was absent from PATH; it is present (v24.14.1, via nvm) and the failure is the declared one, not a missing tool. Browser checks at 800px and 375px, light and dark: the documented panel recomputes and matches, a deliberately altered panel is refused, no console errors, no horizontal overflow. These checks do not replace T-006 or establish new contract guarantees.
+
+---
+
 ## §11 Open questions
 
 | ID | Question | Blocks |
@@ -292,4 +301,4 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 | Q-10 | ~~What is the one line?~~ **Answered 2026-10-25:** *"Verifiable jury selection for governance on Stellar."* Seven words, in the deck's own shape — category plus where. *"Nobody chooses who judges you."* is kept as the guarantee: it opens the pitch and sits under the landing hero, but it is not the one-liner, because it does not say what the thing is. | — |
 | Q-11 | Which track and which category is the submission? The eligibility question raised in the human's own research — Genesis describes itself as for builders with limited Stellar experience, and the human has a previously awarded Soroban contract — was never answered by the organisers. | T-009 |
 | Q-12 | ~~`AGENTS.md` versus `CLAUDE.md`.~~ **Resolved 2026-10-25 as proposed:** `AGENTS.md` carries the deck's six sections and states that `CLAUDE.md` wins where the two disagree. Neither duplicates the other. Confirm you are happy with that precedence. | — |
-| Q-13 | `DESIGN.md` chooses Cormorant Garamond for display, replacing the Newsreader used by `web/index.html`. That page was built first and now diverges from the system. Confirm the direction before T-017 changes a page that works. | T-017 |
+| Q-13 | **Addressed by the design request on 2026-10-25:** T-017 applies Cormorant Garamond and the stone/patina system in the civic direction of DEC-005. The implementation is for human review. | T-017 |

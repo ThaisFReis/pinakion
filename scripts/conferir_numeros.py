@@ -20,6 +20,14 @@ import sys
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 TESTE_RUST = RAIZ / "contracts" / "beacon-verifier" / "src" / "test.rs"
+# T-034: (cpu, mem) tuples, `const NOME: (u64, u64) = (cpu, mem);`.
+TUPLAS = {
+    "groth16": (RAIZ / "contracts" / "groth16-verifier" / "src" / "test.rs", ["CUSTO_VERIFY"]),
+    "poseidon": (
+        RAIZ / "contracts" / "poseidon" / "src" / "test.rs",
+        ["CUSTO_HASH1", "CUSTO_HASH2", "CUSTO_ARVORE_6"],
+    ),
+}
 
 # Which figures each document publishes, by the name used below.
 ONDE = {
@@ -34,6 +42,11 @@ ONDE = {
     "docs/SPEC.md": ["verify_cpu", "verify_mem"],
     "docs/SOURCES.md": ["verify_cpu", "verify_mem"],
     "docs/DEMO.md": ["verify_cpu"],
+    "docs/evidencia-testnet-spike.md": [
+        "groth16_custo_verify_cpu", "groth16_custo_verify_mem",
+        "poseidon_custo_hash1_cpu", "poseidon_custo_hash2_cpu",
+        "poseidon_custo_arvore_6_cpu", "poseidon_custo_arvore_6_mem",
+    ],
 }
 
 
@@ -57,6 +70,21 @@ def numeros_do_teste_rust(fonte):
     return vals
 
 
+def numeros_das_tuplas():
+    """The (cpu, mem) constants of the T-034 crates, as groth16_custo_verify_cpu etc."""
+    vals = {}
+    for prefixo, (caminho, nomes) in TUPLAS.items():
+        fonte = caminho.read_text()
+        for nome in nomes:
+            m = re.search(rf"const {nome}: \(u64, u64\) = \(([\d_]+), ([\d_]+)\);", fonte)
+            if not m:
+                raise SystemExit(f"constante {nome} não achada em {caminho.relative_to(RAIZ)}")
+            base = f"{prefixo}_{nome.lower()}"
+            vals[base + "_cpu"] = int(m.group(1).replace("_", ""))
+            vals[base + "_mem"] = int(m.group(2).replace("_", ""))
+    return vals
+
+
 def sem_separadores(texto):
     """26.719.483 and 26,719,483 both become 26719483."""
     return re.sub(r"(?<=\d)[.,](?=\d{3}\b)", "", texto)
@@ -64,6 +92,7 @@ def sem_separadores(texto):
 
 def main():
     vals = numeros_do_teste_rust(TESTE_RUST.read_text())
+    vals.update(numeros_das_tuplas())
     falhas = 0
 
     for doc, nomes in ONDE.items():

@@ -1,0 +1,18 @@
+[package]
+name = "pinakion-poseidon"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT AND Apache-2.0"
+description = "Poseidon(1) and Poseidon(2) over BN254, circomlib-compatible, on the CAP-75 host permutation"
+
+[lib]
+crate-type = ["rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true, features = ["hazmat-crypto"] }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["hazmat-crypto", "testutils"] }
+serde_json = "1"

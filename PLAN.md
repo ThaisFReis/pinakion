@@ -151,3 +151,9 @@ Full list in `docs/SPEC.md` §11. These are the ones with something waiting on t
 | Q-07 | Who publishes the first roster, and under what authority? Unresolved across three design documents | Phase 4 |
 | Q-08 | Documents are in Portuguese, root documents in English, code identifiers mixed. What is the convention? | nothing yet, but it gets worse with every file |
 | Q-09 | The Soroban CPU ceiling: 100M in one document, 400M measured by bisection in a previous project. Unreconciled | nothing in §2 depends on either |
+
+---
+
+## Phase 5 — M1, Plan B: sealed sortition · **todo, after the event**
+
+Decided 2026-10-25 (DEC-015 to DEC-019). Tasks T-033 to T-042 in `docs/SPEC.md` §9; the ordered plan, with days per item and the kill criterion, in the doc *Pinakion — Plano B: sortição selada* (https://claude.ai/artifact/9WDXFX9eSJWjhWUdRmrh2N). About 10 days of work (estimate); it does not ship on 26 Oct. What the 26 Oct submission can say is in that doc's last section. Branch: `t-033-sealed-sortition-plan` (this entry; no code).

@@ -6,7 +6,9 @@ Source of truth for this repository. Written by Bootstrap on 2026-10-25 from wha
 
 ## §0 Rules for agents
 
-**Approved:** _(not yet — the human writes `Approved: YYYY-MM-DD` here)_
+**Approved: 2026-10-25**
+
+  Written after the fact, and the record says so: T-001 to T-024 were built before this line existed, each one on an explicit instruction. The rule in `CLAUDE.md` is that the agent does not choose the direction unasked; it was not relaxed and it was not quite followed either, and Q-14 records that rather than tidying it away.
 
 - `CLAUDE.md` at the repository root governs how work is done. This file governs what is built.
 - Only the human sets a task to `done` and approves this spec.
@@ -348,3 +350,4 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 | Q-11 | Which track and which category is the submission? The eligibility question raised in the human's own research — Genesis describes itself as for builders with limited Stellar experience, and the human has a previously awarded Soroban contract — was never answered by the organisers. | T-009 |
 | Q-12 | ~~`AGENTS.md` versus `CLAUDE.md`.~~ **Resolved 2026-10-25 as proposed:** `AGENTS.md` carries the deck's six sections and states that `CLAUDE.md` wins where the two disagree. Neither duplicates the other. Confirm you are happy with that precedence. | — |
 | Q-13 | **Addressed by the design request on 2026-10-25:** T-017 applies Cormorant Garamond and the stone/patina system in the civic direction of DEC-005. The implementation is for human review. | T-017 |
+| Q-14 | The §0 approval line was written on 2026-10-25, after the work it governs. Everything was done on an explicit request, so the intent of the rule held, but the order it prescribes did not. Worth deciding before the next milestone whether the gate is a real gate or should be dropped from `CLAUDE.md`. | — |

@@ -107,6 +107,9 @@ docs/SOURCES.md every external fact checked, with its date
 
 contracts/beacon-verifier/   the beacon: verify, randomness, draw
 contracts/kleroterion/       the roster as an asset: enroll, impede, lock, seal
+contracts/poseidon/          Poseidon over BN254 on the host permutation (T-034 spike, not wired in)
+contracts/groth16-verifier/  a BN254 Groth16 verifier (T-034 spike, not wired in)
+circuits/                    the seat-claim circuit and its test-only prover — GPL-3.0
 scripts/verificar_sorteio.py an independent recomputation, no dependencies
 scripts/verificar_painel.py  the same, from a roster to a panel of addresses
 scripts/sequencia_bilhete.sh the classic sequence on testnet, end to end
@@ -125,3 +128,7 @@ The design is written down before it is built, and the documents say which is wh
 - [`docs/avaliacao-genesis-unlocked.md`](docs/avaliacao-genesis-unlocked.md) — the project scored against the hackathon rubric, by its builder, with the objection a judge will raise
 
 Built for HackMeridian 2026.
+
+## Licence
+
+MIT (`LICENSE`), except `circuits/`, which is GPL-3.0 (`circuits/LICENSE`) because it builds on circomlib. `contracts/poseidon/` also carries Apache-2.0 code from Stellar's `rs-soroban-poseidon` (`contracts/poseidon/LICENSE-APACHE`). See DEC-021.

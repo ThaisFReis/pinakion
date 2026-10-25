@@ -149,10 +149,10 @@ None declared yet. `[INFERRED]` candidate: nothing is stable enough to freeze be
 | Component | Version | Source |
 |---|---|---|
 | `soroban-sdk` | 29.0.1 | `Cargo.toml` workspace |
-| rustc / cargo | 1.97.1 | installed toolchain; **no pin file in the repo** (§11 Q-06) |
-| wasm target | `wasm32v1-none` | installed; `stellar contract build` requires it |
-| Stellar CLI | 28.1.0 | installed; **not pinned** (§11 Q-06) |
-| Node | 24.14.1 | installed; **no `.nvmrc`** (§11 Q-06) |
+| rustc / cargo | 1.97.1 | **pinned** in `rust-toolchain.toml`, with `rustfmt`, `clippy` and the `wasm32v1-none` target |
+| wasm target | `wasm32v1-none` | **pinned** in `rust-toolchain.toml`; `stellar contract build` requires it |
+| Stellar CLI | 28.1.0 | **not pinned** — it is a separate binary with no manifest rustup or nvm reads; the version is recorded here and in `README.md` (§11 Q-06) |
+| Node | 24.14.1 | **pinned** in `.nvmrc`. No npm dependencies: `npm test` runs on builtins alone |
 | `rand` (inside the Soroban host) | 0.8.5 | pinned by `rs-soroban-env`; the off-chain verifiers depend on this |
 | `rand_chacha` (inside the host) | 0.3.1 | same |
 | `py_ecc` | optional | only for `scripts/rodada.py`, which decompresses a drand signature for the demo. No gate depends on it, and `scripts/verificar_sorteio.py` keeps its zero-dependency promise |
@@ -184,7 +184,7 @@ Testnet only. No mainnet target exists and none is in scope for this milestone.
 
 ## §8 Gates
 
-Run from a clean checkout. The baseline below was recorded on 2026-10-25 **before any change**, per `CLAUDE.md` Bootstrap step 3.
+Run from a clean checkout — **verified**: on 2026-10-25 a fresh clone ran G1 to G6 and all six passed, with `rust-toolchain.toml` making rustup select the pinned toolchain by itself. The baseline below was recorded on 2026-10-25 **before any change**, per `CLAUDE.md` Bootstrap step 3.
 
 | # | Command | Baseline (25 Oct, before any change) | Now | Note |
 |---|---|---|---|---|
@@ -228,7 +228,7 @@ Run from a clean checkout. The baseline below was recorded on 2026-10-25 **befor
 | T-000 | Bootstrap: spec, sources, gate baseline | — | — | review | SPEC.md and SOURCES.md exist; baseline recorded; branch `t-000-spec` |
 | T-001 | Decide the fate of the withdrawn generation | T-000 | §1, §11 Q-03 | review | Moved to `../Cautela-geracao-retirada/` with a note; removed from this tree; §1, §3, §6 and §8 updated |
 | T-002 | License the repository | T-000 | §11 Q-01 | review | MIT. `LICENSE` present; `package.json` renamed to `pinakion` and declares MIT |
-| T-003 | Pin the toolchain ([#2](https://github.com/ThaisFReis/pinakion/issues/2)) | T-000 | §6, §11 Q-06 | todo | `rust-toolchain.toml` and `.nvmrc` present; G1–G4 pass from a clean checkout |
+| T-003 | Pin the toolchain ([#2](https://github.com/ThaisFReis/pinakion/issues/2)) | T-000 | §6, §11 Q-06 | review | `rust-toolchain.toml` and `.nvmrc` present; **G1–G6 run from a clean clone**, checked 2026-10-25, with rustup selecting the pinned toolchain on its own |
 | T-004 | Green the baseline: fmt and clippy ([#3](https://github.com/ThaisFReis/pinakion/issues/3)) | — | §8 | review | G1 and G3 pass. Aliases renamed to `Bls12381G1Affine` / `Bls12381G2Affine`; rustfmt applied. No behaviour change: the golden vectors still match |
 | T-005 | Test the Python verifier in the repository ([#4](https://github.com/ThaisFReis/pinakion/issues/4)) | T-003 | §4 INV-04 | review | G6 runs `scripts/conferir_vetores.py` against `tests/vetores-de-ouro.json` and also ties those numbers to `test.rs`; proven to fail when a vector is altered |
 | T-006 | Test the JavaScript verifier in the repository ([#5](https://github.com/ThaisFReis/pinakion/issues/5)) | T-005 | §3 B-02 | review | `npm test` runs `web/test.mjs` against the same file and stops being a placeholder; proven to fail when a vector is altered |
@@ -329,7 +329,7 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 | Q-03 | ~~What happens to the withdrawn generation?~~ **Answered 2026-10-25:** moved out of the repository to `../Cautela-geracao-retirada/`, with a note explaining that the thesis changed and the work did not fail. Nothing deleted; the Groth16 verifier still has green tests and a testnet deployment there. | — |
 | Q-04 | ~~The active project has no name, and where does it live?~~ **Answered 2026-10-25: Pinakion**, in a new public repository at `ThaisFReis/pinakion`; the Cautela tree stays where it was. The πινάκιον was the bronze ticket bearing a citizen's name, slotted into the kleroterion before an Athenian jury draw. Chosen over *Kleroterion* because `kleros` is the root of an existing onchain jury protocol. | — |
 | Q-05 | ~~`verify` takes the beacon public key as a parameter.~~ **Resolved 2026-10-25 by T-007.** Accepted consequence, worth confirming: the contract trusts a single drand chain, so a quicknet key rotation means a new chain and a new contract. | — |
-| Q-06 | No toolchain pins exist (`rust-toolchain.toml`, `.nvmrc`). Which versions are the project's? | T-003 |
+| Q-06 | **Answered 2026-10-25 by T-003:** rustc 1.97.1 and Node 24.14.1, the versions everything here was built and checked with, pinned in `rust-toolchain.toml` and `.nvmrc`. The Stellar CLI (28.1.0) stays unpinned because no pin file governs it; that gap is stated rather than hidden. | — |
 | Q-07 | Who publishes the first roster, and under what authority? This is unresolved across three design documents. | — |
 | Q-08 | **Partly answered 2026-10-25:** git is in English — commit messages and PR titles and bodies, always (DEC-007). Still open for the repository's prose: `THESIS.md`, `README.md`, `DESIGN.md`, `AGENTS.md`, `PLAN.md` and `docs/SPEC.md` are in English, while `docs/desenho-*.md`, `docs/evidencia-*.md` and `web/index.html` are in Portuguese, and code identifiers are mixed. | — |
 | Q-09 | `docs/whitepaper-v0.1.md` states the Soroban CPU ceiling as 100M. A measurement from a previous project of the human's, cited in conversation, gives 400M by bisection on testnet. The two have not been reconciled and no figure in §2 depends on either. | — |

@@ -1,0 +1,8 @@
+# The toolchain this repository is built and checked with.
+# rustup reads this file and installs the exact version, so `cargo test`,
+# `cargo clippy` and `stellar contract build` behave the same for everyone.
+[toolchain]
+channel = "1.97.1"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32v1-none"]
+profile = "minimal"

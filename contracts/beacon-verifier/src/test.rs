@@ -107,11 +107,14 @@ fn assinatura_trocada_falha() {
 }
 
 #[test]
-fn aleatoriedade_e_sha256_da_assinatura() {
+fn aleatoriedade_e_a_que_a_drand_publica() {
     let (env, c) = setup();
     let r = c.randomness(&BytesN::from_array(&env, &SIG_A));
-    std::println!("randomness: {:?}", r);
-    let _ = RANDOMNESS_A;
+    assert_eq!(
+        r,
+        BytesN::from_array(&env, &RANDOMNESS_A),
+        "a aleatoriedade tem de ser a publicada pela drand, nao outro sha256"
+    );
 }
 
 fn semente(env: &Env) -> BytesN<32> {
@@ -228,4 +231,50 @@ fn a_chave_do_beacon_nao_e_parametro() {
     let (env, c) = setup();
     // O contrato declara em que beacon confia, e ninguem pode trocar.
     assert_eq!(c.beacon(), BytesN::from_array(&env, &CHAIN_QUICKNET));
+}
+
+/// INV-06, a metade que dá para verificar hoje: um sorteio não pode usar uma
+/// rodada anterior à que o rol fixou. Sem isso, quem já conhece o resultado de
+/// uma rodada passada monta o rol depois e escolhe a rodada que lhe convém.
+#[test]
+fn sorteio_com_rodada_anterior_a_minima_e_recusado() {
+    let (env, c) = setup();
+    let sig = BytesN::from_array(&env, &SIG_A);
+    let r = c.try_draw_round(&(ROUND_A + 1), &ROUND_A, &sig, &200u32, &25u32);
+    assert_eq!(
+        r,
+        Err(Ok(Erro::RodadaAnteriorAoRol.into())),
+        "rodada anterior a minima tinha de ser recusada"
+    );
+}
+
+#[test]
+fn sorteio_com_a_propria_rodada_minima_e_aceito() {
+    let (env, c) = setup();
+    let sig = BytesN::from_array(&env, &SIG_A);
+    let painel = c.draw_round(&ROUND_A, &ROUND_A, &sig, &200u32, &25u32);
+    let direto = c.draw(&semente(&env), &200u32, &25u32);
+    assert_eq!(painel, direto, "o painel tem de ser o mesmo de draw()");
+}
+
+#[test]
+fn sorteio_com_rodada_posterior_e_aceito() {
+    let (env, c) = setup();
+    let sig = BytesN::from_array(&env, &SIG_B);
+    let painel = c.draw_round(&ROUND_A, &ROUND_B, &sig, &50u32, &7u32);
+    assert_eq!(painel.len(), 7);
+}
+
+/// A rodada mínima sozinha não basta: a assinatura ainda precisa ser a da
+/// quicknet. Caso contrário bastaria inventar uma rodada alta.
+#[test]
+fn sorteio_com_assinatura_forjada_e_recusado() {
+    let (env, c) = setup();
+    let sig = BytesN::from_array(&env, &SIG_FORJADA);
+    let r = c.try_draw_round(&1u64, &1000000u64, &sig, &200u32, &25u32);
+    assert_eq!(
+        r,
+        Err(Ok(Erro::AssinaturaInvalida.into())),
+        "assinatura de outra chave nao pode sortear"
+    );
 }

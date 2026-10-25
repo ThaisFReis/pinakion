@@ -115,7 +115,7 @@ Numbered; each with the test that enforces it, or marked `[proposed]` where noth
 | INV-03 | A panel never repeats a position | `sorteio_sem_repeticao` |
 | INV-04 | The on-chain panel equals the independent off-chain recomputation | `bate_com_a_recomputacao_fora_da_cadeia` (golden vectors) |
 | INV-05 | `randomness = sha256(signature)` | `aleatoriedade_e_sha256_da_assinatura` |
-| INV-06 | No draw uses a beacon round earlier than the roster's definitive ledger | `[proposed]` |
+| INV-06 | No draw uses a beacon round earlier than the roster's definitive ledger | **half enforced** by `draw_round` (T-026): the contract refuses a round below the minimum it is given. That the minimum *is* the roster's cannot be checked without a roster contract — see §11 Q-15 |
 | INV-07 | The attendance count never decreases because of an impediment (art. 463 §2) | `[proposed]` |
 | INV-08 | A substitute always comes from the already-drawn order; there is no re-draw for substitution | `[proposed]` |
 | INV-09 | The contract refuses to operate below the minimum roster size | `[proposed]` |
@@ -191,7 +191,7 @@ Run from a clean checkout — **verified**: on 2026-10-25 a fresh clone ran G1 t
 | # | Command | Baseline (25 Oct, before any change) | Now | Note |
 |---|---|---|---|---|
 | G1 | `cargo fmt --all --check` | FAIL | **PASS** | fixed by T-004 |
-| G2 | `cargo test --locked --workspace` | PASS, 10 tests | **PASS, 12 tests** | +2 from T-007 |
+| G2 | `cargo test --locked --workspace` | PASS, 10 tests | **PASS, 16 tests** | +2 from T-007, +4 from T-026 |
 | G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | FAIL, 5 deprecated aliases | **PASS** | fixed by T-004 |
 | G4 | `stellar contract build` | PASS | **PASS** | beacon-verifier, 2,576 B optimised |
 | G5 | `npm test` | FAIL | **PASS, 3 vectors** | was a placeholder; T-006 replaced it with `web/test.mjs` |
@@ -238,7 +238,7 @@ Run from a clean checkout — **verified**: on 2026-10-25 a fresh clone ran G1 t
 | T-005 | Test the Python verifier in the repository ([#4](https://github.com/ThaisFReis/pinakion/issues/4)) | T-003 | §4 INV-04 | review | G6 runs `scripts/conferir_vetores.py` against `tests/vetores-de-ouro.json` and also ties those numbers to `test.rs`; proven to fail when a vector is altered |
 | T-006 | Test the JavaScript verifier in the repository ([#5](https://github.com/ThaisFReis/pinakion/issues/5)) | T-005 | §3 B-02 | review | `npm test` runs `web/test.mjs` against the same file and stops being a placeholder; proven to fail when a vector is altered |
 | T-007 | Pin the beacon public key ([#1](https://github.com/ThaisFReis/pinakion/issues/1)) | — | §4 INV-10, §7 | review | Key pinned; `verify` takes no key; `beacon()` publishes the trusted chain hash; a forged signature from a real adversary keypair is rejected on testnet |
-| T-008 | Enforce the roster's minimum round ([#6](https://github.com/ThaisFReis/pinakion/issues/6)) | T-007 | §4 INV-06 | todo | A draw against a round earlier than the roster's definitive ledger is rejected |
+| T-008 | Enforce the roster's minimum round ([#6](https://github.com/ThaisFReis/pinakion/issues/6)) | T-007 | §4 INV-06 | review | `draw_round` refuses a round below the minimum and binds the seed to a verified signature. Proven on testnet: refusal is `Error(Contract, #1)`; the accepted draw reproduces the documented panel. The roster half stays open as Q-15 |
 
 ### Event track — from the Speedrun SHIP deck
 
@@ -331,6 +331,12 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Alternatives:** Generating the documents' numbers from the tests — rejected: it would turn prose into a template for one figure. Asserting in the test against the documents — rejected: the contract crate is `no_std`, the same reason DEC-009 gives.
 **Consequences:** A cost change turns G2 red and tells the author to update the documents; a document edited by hand turns G7 red. The contract's optimised size is still ungated, and §8 says so. Seven gates now.
 
+### DEC-011: `randomness` returns what drand publishes (2026-10-25, T-026)
+**Context:** Building `draw_round` exposed that the contract's `randomness` was `sha256` of the **uncompressed** signature, while drand publishes `sha256` of the **compressed** one. Different values. Everything else in the project — the page, both verifiers, every documented panel — seeds from drand's value, so the contract's own function agreed with nothing and was used nowhere. Its only test printed the result without asserting it.
+**Decision:** `randomness` recompresses the point on-chain — the flag bits in X, `0x80` always and `0x20` when Y is the larger of the two roots — and hashes that. A test now asserts it equals the round's published randomness, so the two can never drift again.
+**Alternatives:** Adding a second function and leaving the first — rejected: it would keep a function whose name promises the beacon's randomness and does not deliver it. Seeding from the uncompressed hash everywhere instead — rejected: it would break every published panel and lose the property that the browser's seed matches drand's.
+**Consequences:** A public function changed behaviour. §5 declares no frozen interface yet, so no version bump is due, but it is recorded here as one. `(p-1)/2` is a new constant in the contract, checked against a real round before it was written down. Confirmed on testnet: `draw_round` at the minimum round reproduces the panel `docs/evidencia-testnet-sorteio.md` records.
+
 ---
 
 ## §11 Open questions
@@ -351,3 +357,4 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 | Q-12 | ~~`AGENTS.md` versus `CLAUDE.md`.~~ **Resolved 2026-10-25 as proposed:** `AGENTS.md` carries the deck's six sections and states that `CLAUDE.md` wins where the two disagree. Neither duplicates the other. Confirm you are happy with that precedence. | — |
 | Q-13 | **Addressed by the design request on 2026-10-25:** T-017 applies Cormorant Garamond and the stone/patina system in the civic direction of DEC-005. The implementation is for human review. | T-017 |
 | Q-14 | The §0 approval line was written on 2026-10-25, after the work it governs. Everything was done on an explicit request, so the intent of the rule held, but the order it prescribes did not. Worth deciding before the next milestone whether the gate is a real gate or should be dropped from `CLAUDE.md`. | — |
+| Q-15 | `draw_round` takes `rodada_minima` as an argument, so the caller states it. Nothing checks that it is the roster's own minimum — that needs the roster on-chain. Until then INV-06 is enforced against the caller's claim, not against the roster. | T-008's other half |

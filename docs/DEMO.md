@@ -169,7 +169,7 @@ Close on the guarantee, the repository link, and nothing else.
 Part of the deliverable, not an appendix:
 
 - The page recomputes and compares. It does **not** read the chain and does **not** verify the beacon signature in the browser.
-- `verify` proves the round is authentic. It does **not** prove the roster was committed before the round — that is [issue #6](https://github.com/ThaisFReis/pinakion/issues/6), INV-06, unbuilt.
+- `verify` proves the round is authentic. `draw_round` additionally refuses a round below a minimum the caller gives it — but nothing checks that the minimum is the roster's own, because there is no roster on-chain. Half of INV-06; the other half is [issue #6](https://github.com/ThaisFReis/pinakion/issues/6) and §11 Q-15.
 - There is no roster contract. `draw` takes a size, not a list of people.
 - The costs are measured in the test host, not extracted from these transactions.
 

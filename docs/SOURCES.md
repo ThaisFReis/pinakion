@@ -19,7 +19,7 @@ Every external fact this project relies on, and every piece of code copied in. A
 | 2026-10-25 | That salt | `7ac33997…45a979` = `sha256("Public Global Stellar Network ; September 2015")` | — | same; derivation verified locally |
 | 2026-10-25 | PRNG crates pinned by the host | `rand` 0.8.5, `rand_chacha` 0.3.1 | — | `soroban-env-host/Cargo.toml` |
 | 2026-10-25 | BLS12-381 point encodings on Soroban | G1 uncompressed 96 B `be(X)‖be(Y)`; G2 uncompressed 192 B `be(X_c1)‖be(X_c0)‖be(Y_c1)‖be(Y_c0)` | soroban-sdk 29 | `rs-soroban-sdk/soroban-sdk/src/crypto/bls12_381.rs` |
-| 2026-10-25 | Cost of one beacon verification | 26,718,596 CPU instructions; 161,546 memory bytes | — | **measured** in the Soroban test host, `cargo test -p beacon-verifier` |
+| 2026-10-25 | Cost of one beacon verification, key pinned | 26,719,483 CPU instructions; 161,818 memory bytes | — | **measured** in the Soroban test host, `cargo test -p beacon-verifier`. The earlier 26,718,596 was measured before T-007, with the key passed as an argument |
 | 2026-10-25 | Cost of one draw | 128,952 (roster 50) · 347,784 (200) · 2,274,884 (1000) | — | **measured**, same |
 | 2026-10-25 | CAP-85 host functions | `create_executable_tag`, `create_external_ref_contract`, `update_current_contract_executable_ref`; mainnet since Protocol 28 | — | `stellar-protocol/core/cap-0085.md` |
 | 2026-10-25 | CAP-85 leaves access control to the owner contract; `del_contract_data` on a tag key panics | — | — | same |

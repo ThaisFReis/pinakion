@@ -54,7 +54,7 @@ The guarantee that was missing is old and has a name: the deciding body is deter
 
 Not "because blockchain". Three specific things, each measured or read from source:
 
-**The beacon verification is affordable on-chain.** A drand round is a BLS12-381 signature. Stellar's host functions verify it for **26,718,596 CPU instructions** — measured in the Soroban test host, and executed on testnet in [transaction `9de19747…`](https://stellar.expert/explorer/testnet/tx/9de197478cd68e93a1f2d7a16c9b3f997580584239c0e5e83fddc0c322a2238d). The draw itself costs 2,274,884 for a roster of a thousand.
+**The beacon verification is affordable on-chain.** A drand round is a BLS12-381 signature. Stellar's host functions verify it for **26,719,483 CPU instructions** — measured in the Soroban test host, and executed on testnet in [transaction `c74150ee…`](https://stellar.expert/explorer/testnet/tx/c74150eeb7b73d0a196d20b44ed851a140812b3ac67e579b670b87ee2c3ffeea). The draw itself costs 2,274,884 for a roster of a thousand.
 
 **The draw is exactly reproducible off-chain.** The Soroban host derives its PRNG seed with `HMAC-SHA256` under a fixed salt, and the host's own source states that this salt is part of the protocol and must be identical in every implementation. The shuffle is Fisher-Yates from pinned crate versions. That declaration is the reason a browser can recompute a panel at all — and we did: an implementation written from scratch, with no dependencies, reproduces the on-chain panel exactly.
 
@@ -81,7 +81,6 @@ Not "because blockchain". Three specific things, each measured or read from sour
 ## What is not
 
 - The case lifecycle, the roster cycle and the recusal rules are designed (`docs/desenho-rol-sorteio-recusas.md`) and **not built**.
-- The beacon public key is still a call parameter rather than a pinned constant. Until that changes, anyone can pass their own key and have any round verify.
 - Nothing has been audited. Nothing has run on mainnet.
 - Below a roster of about sixteen the draw guarantees nothing, and the contract should refuse to operate rather than pretend (`docs/limite-inferior-do-rol.md`).
 

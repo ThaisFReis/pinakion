@@ -23,13 +23,13 @@ Today is **25 Oct**. Everything in Phase 3 below is submission-critical; everyth
 
 ## State of the tree
 
-Everything through **T-033** is on `main` (`c226483`). **Open pull request:** #29, this file. #9 to #28 and #40 are merged. #24 to #27 were each merged into their stacked base branch, not into `main`; their commits reached `main` only because #28 was cut from the top of that stack. Same trap as #13 and #15: the merge bar has to say *into main*, or the stack has to be merged from the top.
+Everything through **T-033** is on `main` (`c226483`). **Open pull requests:** [#41](https://github.com/ThaisFReis/pinakion/pull/41), T-034, and the one carrying this update. #9 to #29 and #40 are merged; #29's last commit, the T-033 line, reached `main` only through this later PR. #24 to #27 were each merged into their stacked base branch, not into `main`; their commits reached `main` only because #28 was cut from the top of that stack. Same trap as #13 and #15: the merge bar has to say *into main*, or the stack has to be merged from the top.
 
 Open issues: [#8](https://github.com/ThaisFReis/pinakion/issues/8), the recording, and [#30](https://github.com/ThaisFReis/pinakion/issues/30) to [#39](https://github.com/ThaisFReis/pinakion/issues/39), one per M1 task (Phase 5). [#6](https://github.com/ThaisFReis/pinakion/issues/6) was closed on 2026-10-25, answered by T-029.
 
 ### Gates right now — all seven green on `main`
 
-Unchanged since T-032: #28 touched documents only, and G7 was re-run on it.
+As on `main` after #40. #41 (T-034), once merged, brings G2 to 52 tests and G7 to 24 figures in 7 documents.
 
 | # | Command | State |
 |---|---|---|
@@ -146,15 +146,13 @@ Full list in `docs/SPEC.md` §11. These are the ones with something waiting on t
 | ID | Question | Blocks |
 |---|---|---|
 | Q-17 | The portal records this participant on **Scale**; DEC-013 submits on **Genesis** + *Stellar Unlocked*. Nothing public says a path may be changed. Ask `meridian@growwithguava.com` | the submission |
-| Q-22 | CAP-75 exposes the Poseidon **permutation**, not the hash: the sponge built in the contract must match circomlib byte for byte | T-034 — the kill-or-go |
-| Q-23 | The per-transaction CPU ceiling: 100 M (old whitepaper) against 400 M (Tessera, cited). No fraction of it is published until it is read from the docs | T-034 |
 | Q-24 | The default for `reveal_after`: "after the verdict" or something else? With 0 the seal buys only the claim window | T-038, T-041 |
 | Q-25 | Tessera's voter-list format for the export | T-042 |
 | Q-07 | Who publishes the first roster, and under what authority? Unresolved across three design documents | Phase 4 |
 | Q-08 | Documents are in Portuguese, root documents in English, code identifiers mixed. What is the convention? | nothing yet, but it gets worse with every file |
 | Q-02 | Is the milestone goal in §1 correct as written? Still `[INFERRED]`; M1 adds non-goals to it | — |
 
-Answered since the last update: Q-11 (the path is Genesis, DEC-013, superseding the Scale reading), Q-16 (moot under Genesis), Q-21 (closed by T-033, #40), Q-09 (folded into Q-23).
+Answered since the last update: Q-11 (the path is Genesis, DEC-013, superseding the Scale reading), Q-16 (moot under Genesis), Q-21 (closed by T-033, #40), Q-09 and Q-23 (400 M instructions per transaction on testnet, read from the network config — T-034, #41), Q-22 (22 circomlibjs vectors match the contract's sponge — T-034, #41).
 
 ---
 
@@ -169,7 +167,7 @@ Decided 2026-10-25 (DEC-015 to DEC-019): the juror registers a commitment at `en
 | Order | Task | Deps | Days (est.) | Issue | Branch / PR | State |
 |---|---|---|---|---|---|---|
 | 13 | T-033 close the two doors: round and `k` fixed at `lock`, `draw_round` replaced by a one-shot `seal(sig)` (DEC-020), no `enroll`/`impede` after lock | T-029 | 0.5 | [#30](https://github.com/ThaisFReis/pinakion/issues/30) | [#40](https://github.com/ThaisFReis/pinakion/pull/40) on `t-033-close-the-doors` | merged — §9 still `review` until the human sets `done` |
-| 13 | T-034 **spike, kill-or-go**: ≥ 20 Poseidon vectors host × circomlib; one proof verified on testnet, cost measured; CPU ceiling read from the docs | T-033 | 1.5 | [#31](https://github.com/ThaisFReis/pinakion/issues/31) | — | todo |
+| 13 | T-034 **spike, kill-or-go**: ≥ 20 Poseidon vectors host × circomlib; one proof verified on testnet, cost measured; CPU ceiling read from the docs | T-033 | 1.5 | [#31](https://github.com/ThaisFReis/pinakion/issues/31) | [#41](https://github.com/ThaisFReis/pinakion/pull/41) on `t-034-spike-kill-or-go` | review — **go** (DEC-022): 22/22 vectors, proof `true` on testnet at 7.7 % of the 400 M ceiling |
 | 13 | T-041 first page and guarantee sentence — cheap, and what a judge reads; finished after T-040 | T-033 | 1, split | [#38](https://github.com/ThaisFReis/pinakion/issues/38) | — | todo |
 | 14 | T-035 commitment at `enroll`, `used_c`, Poseidon tree built by the contract, root frozen at `lock` | T-034 | 1 | [#32](https://github.com/ThaisFReis/pinakion/issues/32) | — | todo |
 | 14 | T-036 circuit ported, public ptau, single-party phase 2, `vk`, CLI `pinakion prove` | T-034 | 1 | [#33](https://github.com/ThaisFReis/pinakion/issues/33) | — | todo |

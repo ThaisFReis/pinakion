@@ -183,13 +183,13 @@ Testnet only. No mainnet target exists and none is in scope for this milestone.
 
 Run from a clean checkout. The baseline below was recorded on 2026-10-25 **before any change**, per `CLAUDE.md` Bootstrap step 3.
 
-| # | Command | Baseline | Note |
-|---|---|---|---|
-| G1 | `cargo fmt --all --check` | **FAIL** | `contracts/beacon-verifier/src/test.rs` is not rustfmt-clean (generated code) |
-| G2 | `cargo test --locked --workspace` | **PASS** | 10 tests, all in beacon-verifier |
-| G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | **FAIL** | 5 uses of deprecated aliases `G1Affine` / `G2Affine` in `contracts/beacon-verifier/src/lib.rs` |
-| G4 | `stellar contract build` | **PASS** | beacon-verifier, 2,182 B optimised |
-| G5 | `npm test` | **FAIL** | deliberate placeholder until T-006 replaces it |
+| # | Command | Baseline (25 Oct, before any change) | Now | Note |
+|---|---|---|---|---|
+| G1 | `cargo fmt --all --check` | FAIL | **PASS** | fixed by T-004 |
+| G2 | `cargo test --locked --workspace` | PASS, 10 tests | **PASS, 12 tests** | +2 from T-007 |
+| G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | FAIL, 5 deprecated aliases | **PASS** | fixed by T-004 |
+| G4 | `stellar contract build` | PASS | **PASS** | beacon-verifier, 2,576 B optimised |
+| G5 | `npm test` | FAIL | FAIL | deliberate placeholder until T-006 replaces it |
 
 **Missing gates** (proposed as tasks, not added silently):
 
@@ -222,7 +222,7 @@ Run from a clean checkout. The baseline below was recorded on 2026-10-25 **befor
 | T-001 | Decide the fate of the withdrawn generation | T-000 | §1, §11 Q-03 | review | Moved to `../Cautela-geracao-retirada/` with a note; removed from this tree; §1, §3, §6 and §8 updated |
 | T-002 | License the repository | T-000 | §11 Q-01 | review | MIT. `LICENSE` present; `package.json` renamed to `pinakion` and declares MIT |
 | T-003 | Pin the toolchain ([#2](https://github.com/ThaisFReis/pinakion/issues/2)) | T-000 | §6, §11 Q-06 | todo | `rust-toolchain.toml` and `.nvmrc` present; G1–G4 pass from a clean checkout |
-| T-004 | Green the baseline: fmt and clippy ([#3](https://github.com/ThaisFReis/pinakion/issues/3)) | T-003 | §8 | todo | G1 and G3 pass; no behaviour change; deprecated aliases replaced |
+| T-004 | Green the baseline: fmt and clippy ([#3](https://github.com/ThaisFReis/pinakion/issues/3)) | — | §8 | review | G1 and G3 pass. Aliases renamed to `Bls12381G1Affine` / `Bls12381G2Affine`; rustfmt applied. No behaviour change: the golden vectors still match |
 | T-005 | Test the Python verifier in the repository ([#4](https://github.com/ThaisFReis/pinakion/issues/4)) | T-003 | §4 INV-04 | todo | A gate runs `scripts/verificar_sorteio.py` against the golden vectors and fails if they diverge |
 | T-006 | Test the JavaScript verifier in the repository ([#5](https://github.com/ThaisFReis/pinakion/issues/5)) | T-005 | §3 B-02 | todo | A gate runs `web/sorteio.mjs` against the same vectors; `npm test` stops being a placeholder (replaces G5) |
 | T-007 | Pin the beacon public key ([#1](https://github.com/ThaisFReis/pinakion/issues/1)) | — | §4 INV-10, §7 | review | Key pinned; `verify` takes no key; `beacon()` publishes the trusted chain hash; a forged signature from a real adversary keypair is rejected on testnet |

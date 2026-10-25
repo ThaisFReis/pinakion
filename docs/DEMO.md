@@ -18,6 +18,12 @@ Three claims, in this order, because each one is useless without the one before 
 
 ---
 
+## Timing, measured
+
+The command path took **11 seconds end to end** on 2026-10-25 — 2 s for the round, 7 s for the on-chain `verify`, 1 s each for `beacon` and `draw`, under 1 s for the recomputation. The 90-second demo window is not the constraint; narrating it is.
+
+---
+
 ## Before recording
 
 ```bash
@@ -91,7 +97,24 @@ Run on 2026-10-25, round `33383146`, both sides:
  3, 142, 74, 88, 66, 178, 60, 92, 160]
 ```
 
-Then the browser, so it is not a programmer's trick: paste the round into the page and watch it say **the panels match**. Change one number and it says they diverge.
+### 5 · And again in a browser, so it is not a programmer's trick
+
+Serve the page and open it:
+
+```bash
+python3 -m http.server 8731 --directory web
+```
+
+In this order — it matters:
+
+1. open **Assinatura e dados de conferência**
+2. click **Buscar última rodada**. The page fetches the round, computes the seed itself, and says whether its seed matches the one drand published. It also clears the comparison field, because the panel there belonged to the previous round.
+3. paste the panel step 3 printed into **Painel informado para comparação**
+4. → **Os painéis coincidem**, and the numbers take the accent colour
+
+Then change one digit and it says they diverge. That is the whole guarantee, done by someone who installed nothing.
+
+Rehearsed on 2026-10-25 with round 33383606: the page recomputed the same panel the contract drew.
 
 ---
 

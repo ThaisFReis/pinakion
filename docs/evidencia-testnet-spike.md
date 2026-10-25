@@ -51,7 +51,7 @@ What the network recorded for the valid call. These values were read with `stell
 - **Instructions declared by the transaction:** 30,837,655. Simulation sets this number, and it is what the fee pays for. It is not a separate measurement of what was executed.
 - **Fee charged:** 11,737 stroops (0.0011737 XLM). Of that, 11,637 is the resource fee and 100 the inclusion fee.
 
-**Measured on the test host:** one valid `verify` costs **29,128,335** CPU instructions and **229,165** memory bytes. This is asserted in `contracts/groth16-verifier/src/test.rs`. The unit tests also check these failures:
+**Measured on the test host**, at the spike's commit `dbce1eb`: one valid `verify` cost 29,128,335 CPU instructions and 229,165 memory bytes, with the key read from storage. Since T-037 the verifier embeds the key, and the same verification through the contract costs **29,105,202** instructions and **208,994** memory bytes, asserted in `contracts/groth16-verifier/src/test.rs`. The unit tests also check these failures:
 
 - a changed `y` fails;
 - a changed `claimer` fails;

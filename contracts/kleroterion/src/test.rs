@@ -5,6 +5,7 @@ use soroban_sdk::testutils::{
     Address as _, Events as _, IssuerFlags, Ledger as _, MockAuth, MockAuthInvoke,
 };
 use soroban_sdk::{token, Address, Bytes, BytesN, Env, Event, IntoVal, U256};
+use std::borrow::ToOwned;
 use std::cell::Cell;
 
 // Vetores partilhados com contracts/beacon-verifier/src/test.rs. Mesma rodada,
@@ -71,7 +72,8 @@ fn mesa_com_minimo(minimo: u32) -> Mesa {
     sac.issuer().set_flag(IssuerFlags::RequiredFlag);
     sac.issuer().set_flag(IssuerFlags::RevocableFlag);
     let bilhete = sac.address();
-    let id = env.register(Kleroterion, (&escrivao, &bilhete, &minimo));
+    let verificador = env.register(groth16_verifier::Groth16Verifier, ());
+    let id = env.register(Kleroterion, (&escrivao, &bilhete, &minimo, &verificador));
     token::StellarAssetClient::new(&env, &bilhete).set_admin(&id);
     let c = KleroterionClient::new(&env, &id);
     Mesa {
@@ -186,7 +188,11 @@ fn inscrever_sem_escrivao_e_recusado() {
     let escrivao = Address::generate(&env);
     let sac = env.register_stellar_asset_contract_v2(escrivao.clone());
     sac.issuer().set_flag(IssuerFlags::RequiredFlag);
-    let id = env.register(Kleroterion, (&escrivao, &sac.address(), &MINIMO));
+    let verificador = env.register(groth16_verifier::Groth16Verifier, ());
+    let id = env.register(
+        Kleroterion,
+        (&escrivao, &sac.address(), &MINIMO, &verificador),
+    );
     env.mock_all_auths();
     token::StellarAssetClient::new(&env, &sac.address()).set_admin(&id);
     let c = KleroterionClient::new(&env, &id);
@@ -716,6 +722,171 @@ fn fechar_publica_raiz_n_rodada_k() {
     );
 }
 
+// ---- a prova de assento (T-037) ----------------------------------------
+
+/// tests/prova-claim.json: uma prova de `pinakion prove` para o jurado 3 da
+/// árvore de 17 de tests/vetores-arvore.json, sob a chave de circuits/setup/.
+const PROVA: &str = include_str!("../../../tests/prova-claim.json");
+
+struct ProvaDeAssento {
+    prova: Prova,
+    seed: U256,
+    y: U256,
+    claimer: U256,
+    assento: Address,
+}
+
+fn prova_da_cli(env: &Env) -> ProvaDeAssento {
+    let j: serde_json::Value = serde_json::from_str(PROVA).unwrap();
+    let b64 = |h: &str| -> BytesN<64> {
+        BytesN::from_array(env, &hex::decode(h).unwrap().try_into().unwrap())
+    };
+    let b128 = |h: &str| -> BytesN<128> {
+        BytesN::from_array(env, &hex::decode(h).unwrap().try_into().unwrap())
+    };
+    let txt = |v: &serde_json::Value| v.as_str().unwrap().to_owned();
+    let assento = j["_"].as_str().unwrap();
+    let assento = &assento[assento.find("seat account ").unwrap() + 13..][..56];
+    ProvaDeAssento {
+        prova: Prova {
+            a: b64(&txt(&j["proof"]["a"])),
+            b: b128(&txt(&j["proof"]["b"])),
+            c: b64(&txt(&j["proof"]["c"])),
+        },
+        seed: u256(env, &txt(&j["decimal"]["seed"])),
+        y: u256(env, &txt(&j["decimal"]["y"])),
+        claimer: u256(env, &txt(&j["decimal"]["claimer"])),
+        assento: Address::from_str(env, assento),
+    }
+}
+
+/// A mesa da árvore de 17 dos vetores: os mesmos compromissos, o mesmo
+/// impedido, fechada. A raiz é a da prova.
+fn mesa_da_arvore_de_17() -> Mesa {
+    let j: serde_json::Value = serde_json::from_str(ARVORES).unwrap();
+    let caso = j["arvores"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|a| a["n"] == 17)
+        .unwrap()
+        .clone();
+    let m = mesa_com_minimo(1);
+    let js = jurados(&m, 17);
+    for ev in caso["eventos"].as_array().unwrap() {
+        let i = ev["indice"].as_u64().unwrap() as usize;
+        match ev["evento"].as_str().unwrap() {
+            "enroll" => m.c.enroll(&js[i], &u256(&m.env, ev["c"].as_str().unwrap())),
+            _ => m.c.impede(&js[i]),
+        }
+    }
+    fechar_para(&m, ROUND_A, K);
+    m
+}
+
+fn vale(m: &Mesa, p: &Prova, seed: &U256, y: &U256, assento: &Address) -> bool {
+    m.env.as_contract(&m.id, || {
+        Kleroterion::prova_de_assento_vale(&m.env, p, seed, y, assento)
+    })
+}
+
+/// `claimer = SHA-256(strkey) >> 8`, o mesmo que `circuits/pinakion.mjs`
+/// calcula fora da cadeia (DEC-024).
+#[test]
+fn claimer_e_o_da_cli() {
+    let m = mesa();
+    let p = prova_da_cli(&m.env);
+    let c = m
+        .env
+        .as_contract(&m.id, || Kleroterion::claimer(&m.env, &p.assento));
+    assert_eq!(c, p.claimer);
+}
+
+/// INV-15: a prova vale contra a raiz que o contrato guarda, com a semente
+/// dada e a conta de onde vem a chamada; as entradas públicas são montadas
+/// pelo contrato, nunca recebidas prontas.
+#[test]
+fn a_prova_da_cli_vale_contra_a_raiz_do_contrato() {
+    let m = mesa_da_arvore_de_17();
+    let p = prova_da_cli(&m.env);
+    assert!(vale(&m, &p.prova, &p.seed, &p.y, &p.assento));
+}
+
+#[test]
+fn outro_y_outra_semente_ou_outra_conta_nao_vale() {
+    let m = mesa_da_arvore_de_17();
+    let p = prova_da_cli(&m.env);
+    let um = U256::from_u32(&m.env, 1);
+    assert!(!vale(&m, &p.prova, &p.seed, &p.y.add(&um), &p.assento), "y");
+    assert!(
+        !vale(&m, &p.prova, &p.seed.add(&um), &p.y, &p.assento),
+        "seed"
+    );
+    let outra = Address::generate(&m.env);
+    assert!(!vale(&m, &p.prova, &p.seed, &p.y, &outra), "conta");
+    // seed e y trocados de lugar
+    assert!(!vale(&m, &p.prova, &p.y, &p.seed, &p.assento), "permutadas");
+}
+
+#[test]
+fn um_byte_da_prova_alterado_nao_vale() {
+    let m = mesa_da_arvore_de_17();
+    let p = prova_da_cli(&m.env);
+    let mut c = p.prova.c.to_array();
+    c[63] ^= 0x01;
+    let alterada = Prova {
+        c: BytesN::from_array(&m.env, &c),
+        ..p.prova.clone()
+    };
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        vale(&m, &alterada, &p.seed, &p.y, &p.assento)
+    }));
+    assert!(!r.unwrap_or(false));
+}
+
+/// Outra raiz — o mesmo rol sem o impedimento — e a mesma prova não vale.
+#[test]
+fn a_prova_nao_vale_em_outro_rol() {
+    let m = mesa_com_minimo(1);
+    inscrever_todos(&m, &jurados(&m, 17));
+    fechar_para(&m, ROUND_A, K);
+    let p = prova_da_cli(&m.env);
+    assert!(!vale(&m, &p.prova, &p.seed, &p.y, &p.assento));
+}
+
+#[test]
+fn antes_de_fechar_nao_ha_raiz_para_provar() {
+    let m = mesa();
+    let p = prova_da_cli(&m.env);
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        vale(&m, &p.prova, &p.seed, &p.y, &p.assento)
+    }));
+    assert!(r.is_err(), "sem fechamento, recusa");
+}
+
+#[test]
+fn o_verificador_e_o_do_construtor() {
+    let m = mesa();
+    let v = m.c.verifier();
+    let vk = groth16_verifier::Groth16VerifierClient::new(&m.env, &v).vk();
+    assert_eq!(vk.ic.len(), 5, "quatro entradas publicas");
+}
+
+/// Custo, no host de teste, de conferir uma prova pelo kleroterion: montar
+/// as entradas, o SHA-256 do endereço e a chamada ao verificador.
+const CUSTO_PROVA: (u64, u64) = (29_195_235, 271_071);
+
+#[test]
+fn custo_medido_da_prova() {
+    let m = mesa_da_arvore_de_17();
+    let p = prova_da_cli(&m.env);
+    m.env.cost_estimate().budget().reset_unlimited();
+    assert!(vale(&m, &p.prova, &p.seed, &p.y, &p.assento));
+    let b = m.env.cost_estimate().budget();
+    let custo = (b.cpu_instruction_cost(), b.memory_bytes_cost());
+    assert_eq!(custo, CUSTO_PROVA, "prova (cpu, mem)");
+}
+
 // ---- as cópias do beacon-verifier ---------------------------------------
 
 /// As mesmas asserções de beacon-verifier::bate_com_a_recomputacao_fora_da_cadeia,
@@ -774,9 +945,9 @@ fn rodada_real_verifica() {
 /// a inscrição do 64.º jurado (o caminho inteiro da árvore e as três chamadas
 /// ao SAC), um impedimento e o fechamento. Mudou, fica vermelho (G2); G7
 /// confere que docs/SPEC.md ainda diz estes números.
-const CUSTO_ENROLL: (u64, u64) = (10_472_755, 1_714_763);
-const CUSTO_IMPEDE: (u64, u64) = (8_656_396, 1_039_588);
-const CUSTO_LOCK: (u64, u64) = (587_464, 283_073);
+const CUSTO_ENROLL: (u64, u64) = (10_473_619, 1_722_555);
+const CUSTO_IMPEDE: (u64, u64) = (8_676_833, 1_045_476);
+const CUSTO_LOCK: (u64, u64) = (599_498, 287_601);
 
 #[test]
 fn custo_medido_de_enroll_impede_lock() {

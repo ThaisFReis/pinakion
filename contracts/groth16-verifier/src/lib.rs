@@ -3,7 +3,10 @@
 //!
 //! Ported from the author's withdrawn generation (`groth16-verifier`, written
 //! 2026-10-25 13:02 UTC, inside the hacking window; DEC-017). Unchanged in
-//! logic; T-037 gives it Pinakion's `vk` and wires it to `kleroterion`.
+//! logic. Since T-037 the verification key is embedded (`vk.rs`, generated
+//! from `circuits/setup/vk.json`): the contract verifies proofs of
+//! `pinakion_claim` and of nothing else, and nobody deploying it can hand it
+//! another key — the same reason the beacon key is pinned (INV-10).
 //!
 //! Checks e(-A, B) · e(alpha, beta) · e(vk_x, gamma) · e(C, delta) == 1,
 //! where vk_x = IC[0] + Σ public[i] · IC[i + 1].
@@ -52,23 +55,32 @@ pub struct Proof {
     pub c: BytesN<64>,
 }
 
-#[contracttype]
-enum DataKey {
-    Vk,
-}
+mod vk;
 
 #[contract]
 pub struct Groth16Verifier;
 
 #[contractimpl]
 impl Groth16Verifier {
-    pub fn __constructor(env: Env, vk: VerificationKey) {
-        env.storage().instance().set(&DataKey::Vk, &vk);
+    /// Checks a proof of `pinakion_claim` with public inputs
+    /// `[root, seed, y, claimer]`, in that order.
+    pub fn verify(env: Env, proof: Proof, public: Vec<U256>) -> bool {
+        verify_proof(&env, &Self::vk(env.clone()), &proof, &public)
     }
 
-    pub fn verify(env: Env, proof: Proof, public: Vec<U256>) -> bool {
-        let vk: VerificationKey = env.storage().instance().get(&DataKey::Vk).unwrap();
-        verify_proof(&env, &vk, &proof, &public)
+    /// The embedded key, for anyone to compare with `circuits/setup/vk.json`.
+    pub fn vk(env: Env) -> VerificationKey {
+        let mut ic = Vec::new(&env);
+        for p in vk::IC.iter() {
+            ic.push_back(BytesN::from_array(&env, p));
+        }
+        VerificationKey {
+            alpha: BytesN::from_array(&env, &vk::ALPHA),
+            beta: BytesN::from_array(&env, &vk::BETA),
+            gamma: BytesN::from_array(&env, &vk::GAMMA),
+            delta: BytesN::from_array(&env, &vk::DELTA),
+            ic,
+        }
     }
 }
 

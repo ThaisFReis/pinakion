@@ -32,11 +32,11 @@ Two issues remain: [#8](https://github.com/ThaisFReis/pinakion/issues/8), the re
 | # | Command | State |
 |---|---|---|
 | G1 | `cargo fmt --all --check` | PASS |
-| G2 | `cargo test --locked --workspace` | PASS, 16 tests |
+| G2 | `cargo test --locked --workspace` | PASS, 38 tests |
 | G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS |
 | G4 | `stellar contract build` | PASS |
-| G5 | `npm test` | PASS, 3 vectors |
-| G6 | `python3 scripts/conferir_vetores.py` | PASS, 3 vectors + the tie to `test.rs` |
+| G5 | `npm test` | PASS, 4 vectors |
+| G6 | `python3 scripts/conferir_vetores.py` | PASS, 4 vectors + the tie to both `test.rs` |
 | G7 | `python3 scripts/conferir_numeros.py` | PASS, 18 figures in 6 documents |
 
 ---
@@ -101,13 +101,26 @@ The flow runs live on testnet in 11 seconds, measured on 2026-10-25. What is lef
 
 ---
 
+## Phase 3b — the ticket as an asset · **built, in review**
+
+Decided on 25 Oct, the clock set aside, so that the project fits *Stellar Unlocked* on the track's own terms (DEC-014). Four tasks, four stacked branches under [#23](https://github.com/ThaisFReis/pinakion/pull/23) (T-028, the research), all green on the seven gates. **Merge each one into `main`** — the merge bar defaults to the stacked base, which is how #13 and #15 happened last time.
+
+| Order | Task | Branch | State |
+|---|---|---|---|
+| 9 | T-029 `kleroterion`: enroll, lock, impede, draw_round over a classic asset | [#24](https://github.com/ThaisFReis/pinakion/pull/24) on `t-029-bilhete-como-ativo` | review — 22 tests written first |
+| 10 | T-030 the verifiers recompute the panel from the roster; fourth golden vector | [#25](https://github.com/ThaisFReis/pinakion/pull/25) on `t-030-verificadores-do-painel` | review |
+| 11 | T-031 the classic sequence on testnet, every hash in `docs/evidencia-testnet-bilhete.md` | [#26](https://github.com/ThaisFReis/pinakion/pull/26) on `t-031-sequencia-classica-na-testnet` | review — off-chain panel equals on-chain, address for address |
+| 12 | T-032 THESIS, README, DEMO, the page and this file say so | [#27](https://github.com/ThaisFReis/pinakion/pull/27) on `t-032-o-bilhete-em-todo-lugar` | review |
+
+What it closes: INV-06's roster half (Q-15), INV-07, 08, 09; INV-11 and 12 are new. What it does not: the case lifecycle, roster renewal, `AUTH_IMMUTABLE`, costs of the new calls.
+
 ## Phase 4 — after the event
 
 Not before 26 Oct. These need contracts that do not exist yet.
 
 | Task | Issue | Blocked on |
 |---|---|---|
-| T-008, the roster half of INV-06 | [#6](https://github.com/ThaisFReis/pinakion/issues/6) | the caller's half is enforced by `draw_round` (T-026); checking the minimum is the roster's own still needs a roster contract — Q-15 |
+| ~~T-008, the roster half of INV-06~~ | [#6](https://github.com/ThaisFReis/pinakion/issues/6) | **closed by T-029**: `kleroterion::lock` computes the minimum from the ledger clock — Q-15 answered |
 | The case lifecycle, the roster cycle, the recusal rules | — | designed in three documents, **587 lines of design with no implementation** |
 | Confidential case files | — | `docs/desenho-sorteio-e-sigilo.md`; threshold decryption per access |
 

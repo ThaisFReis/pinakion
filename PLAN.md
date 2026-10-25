@@ -76,7 +76,7 @@ A judge clones it and runs two commands. Today the Python and JavaScript verifie
 
 | Order | Task | Issue | State | Why it matters |
 |---|---|---|---|---|
-| 3 | T-017 bring `web/index.html` onto the design tokens | [#7](https://github.com/ThaisFReis/pinakion/issues/7) | **`doing`**, uncommitted | the page a judge opens; finish it before starting anything new. Q-13 was answered by the civic direction in DEC-005, so it no longer blocks |
+| 3 | T-017 bring `web/index.html` onto the design tokens | [#7](https://github.com/ThaisFReis/pinakion/issues/7) | **`doing`**, uncommitted | the page a judge opens; finish it before starting anything new. Q-13 no longer blocks: the civic direction was settled in conversation and is recorded with T-017 itself (DEC-005, which lands with that task, not with this file) |
 | 4 | T-003 pin the toolchain | [#2](https://github.com/ThaisFReis/pinakion/issues/2) | `todo` | without `rust-toolchain.toml` and `.nvmrc`, "works from a clean checkout" is untested |
 | 5 | T-005 gate the Python verifier | [#4](https://github.com/ThaisFReis/pinakion/issues/4) | `todo` | INV-04 is asserted only from the Rust side; nothing catches the Python drifting |
 | 6 | T-006 gate the JavaScript verifier | [#5](https://github.com/ThaisFReis/pinakion/issues/5) | `todo` | replaces the G5 placeholder; `web/sorteio.mjs` was validated **outside** this repository and that validation is not reproducible here |
@@ -140,7 +140,7 @@ Full list in `docs/SPEC.md` §11. These are the ones with something waiting on t
 | Q-02 | Is the milestone goal in §1 correct as written, and are the non-goals right? | spec approval |
 | Q-06 | Which toolchain versions are the project's? | T-003 |
 | Q-11 | Which track and category is the submission? Genesis eligibility was never answered by the organisers | T-009's last step |
-| Q-13 | **Answered** by the civic direction (DEC-005). The T-017 implementation itself is still for human review | nothing |
+| Q-13 | **Answered** by the civic direction, recorded with T-017. The implementation itself is still for human review | nothing |
 | Q-07 | Who publishes the first roster, and under what authority? Unresolved across three design documents | Phase 4 |
 | Q-08 | Documents are in Portuguese, root documents in English, code identifiers mixed. What is the convention? | nothing yet, but it gets worse with every file |
 | Q-09 | The Soroban CPU ceiling: 100M in one document, 400M measured by bisection in a previous project. Unreconciled | nothing in §2 depends on either |

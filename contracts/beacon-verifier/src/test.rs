@@ -13,6 +13,17 @@ const SIG_A: [u8; 96] = [
     0xed, 0xd0, 0x29, 0xd0, 0xdf, 0x34, 0x51, 0x99, 0x96, 0x3d, 0x75, 0xba, 0x93, 0xb5, 0xa0, 0x2a,
 ];
 const ROUND_B: u64 = 33380727;
+// Custos publicados em docs/evidencia-testnet-sorteio.md, README.md e THESIS.md.
+// Estes testes falham se o custo mudar; scripts/conferir_numeros.py falha se um
+// documento deixar de dizer o mesmo. Os dois lados juntos é que fecham a porta.
+const CUSTO_VERIFY_CPU: u64 = 26_719_483;
+const CUSTO_VERIFY_MEM: u64 = 161_818;
+const CUSTO_DRAW: [(u32, u64, u64); 3] = [
+    (50, 128_952, 26_379),
+    (200, 347_784, 192_579),
+    (1000, 2_274_884, 4_118_979),
+];
+
 const SIG_B: [u8; 96] = [
     0x11, 0x08, 0xdb, 0x9e, 0x91, 0x7f, 0x1c, 0xd5, 0x7f, 0x15, 0x33, 0x90, 0xdd, 0xb5, 0x35, 0x3c,
     0xd1, 0x1f, 0xe3, 0x6b, 0x05, 0x1c, 0x71, 0xf9, 0x97, 0x81, 0x86, 0xea, 0xdc, 0xa2, 0x50, 0x6f,
@@ -56,9 +67,19 @@ fn rodada_real_verifica_e_mede_custo() {
     let (env, c) = setup();
     env.cost_estimate().budget().reset_unlimited();
     let ok = c.verify(&ROUND_A, &BytesN::from_array(&env, &SIG_A));
+    let cpu = env.cost_estimate().budget().cpu_instruction_cost();
+    let mem = env.cost_estimate().budget().memory_bytes_cost();
     std::println!("--- custo de verify() para a rodada {} ---", ROUND_A);
-    std::println!("{:?}", env.cost_estimate().budget());
+    std::println!("cpu {} mem {}", cpu, mem);
     assert!(ok, "a rodada real do drand deveria verificar");
+    assert_eq!(
+        cpu, CUSTO_VERIFY_CPU,
+        "o custo de cpu mudou; atualize os documentos e esta constante"
+    );
+    assert_eq!(
+        mem, CUSTO_VERIFY_MEM,
+        "o custo de memoria mudou; atualize os documentos e esta constante"
+    );
 }
 
 #[test]
@@ -134,11 +155,18 @@ fn sorteio_sem_repeticao() {
 #[test]
 fn custo_do_sorteio_por_tamanho_de_rol() {
     let (env, c) = setup();
-    for n in [50u32, 200u32, 1000u32] {
+    for (n, cpu_esperado, mem_esperado) in CUSTO_DRAW {
         env.cost_estimate().budget().reset_unlimited();
         let _ = c.draw(&semente(&env), &n, &25u32);
-        std::println!("--- sorteio com rol de {} ---", n);
-        std::println!("{:?}", env.cost_estimate().budget());
+        let cpu = env.cost_estimate().budget().cpu_instruction_cost();
+        let mem = env.cost_estimate().budget().memory_bytes_cost();
+        std::println!("--- sorteio com rol de {} --- cpu {} mem {}", n, cpu, mem);
+        assert_eq!(cpu, cpu_esperado, "cpu do sorteio com rol de {} mudou", n);
+        assert_eq!(
+            mem, mem_esperado,
+            "memoria do sorteio com rol de {} mudou",
+            n
+        );
     }
 }
 

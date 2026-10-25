@@ -43,6 +43,7 @@ The stack is linear: #9 merges first, then #10. `CLAUDE.md` forbids the agent me
 | G4 | `stellar contract build` | PASS |
 | G5 | `npm test` | PASS, 3 vectors |
 | G6 | `python3 scripts/conferir_vetores.py` | PASS, 3 vectors + the tie to `test.rs` |
+| G7 | `python3 scripts/conferir_numeros.py` | PASS, 18 figures in 6 documents |
 
 ---
 

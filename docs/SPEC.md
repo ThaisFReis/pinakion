@@ -194,13 +194,16 @@ Run from a clean checkout. The baseline below was recorded on 2026-10-25 **befor
 | G4 | `stellar contract build` | PASS | **PASS** | beacon-verifier, 2,576 B optimised |
 | G5 | `npm test` | FAIL | **PASS, 3 vectors** | was a placeholder; T-006 replaced it with `web/test.mjs` |
 | G6 | `python3 scripts/conferir_vetores.py` | did not exist | **PASS, 3 vectors + the tie to `test.rs`** | added by T-005 |
+| G7 | `python3 scripts/conferir_numeros.py` | did not exist | **PASS, 18 figures in 6 documents** | added by T-023 |
+
+**Published numbers.** The cost figures are asserted in `test.rs` against constants, so a change in cost turns G2 red; G7 then checks that the six documents still print those same constants, so a document drifting turns G7 red. Both directions were proven to fail (checked 2026-10-25).
 
 **Golden vectors.** `tests/vetores-de-ouro.json` holds them, and three implementations are held to it: the contract (G2, hard-coded in `test.rs`), the Python verifier (G6) and the JavaScript one (G5). G6 also checks that the JSON and `test.rs` still carry the same numbers, so the two cannot drift apart while each stays green on its own. Both gates were proven to fail: altering one number turns G5 and G6 red, with exit code 1 (checked 2026-10-25).
 
 **Missing gates** (proposed as tasks, not added silently):
 
-- `CLAUDE.md` requires every published number to be reproducible by a gate. The figures in `docs/evidencia-testnet-sorteio.md` are produced by G2 but are not checked against the document.
 - Nothing runs `scripts/rodada.py`; it needs the network and an optional dependency, so it is exercised by the demo, not by a gate.
+- The optimised contract size (2,576 B) is published in `docs/evidencia-testnet-sorteio.md` and in §8 above, and no gate checks it — it would need the build output, which G7 deliberately does not depend on.
 
 ---
 
@@ -255,6 +258,8 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 | T-019 | Put the git record in English | T-018 | §0, §11 Q-08 | review | Commits not yet on `main` rewritten in English; PR titles and bodies in English; the convention recorded in §0 and DEC-007 |
 
 | T-020 | Make the live round reproducible | T-007 | §5, §7 | review | `scripts/rodada.py` fetches a round and decompresses its G1 signature to the `BytesN<96>` the contract takes; without it the headline demo cannot be reproduced from the repository |
+
+| T-023 | Gate the published numbers | T-005 | §8 | review | `test.rs` asserts the measured costs; G7 checks every document still prints them. Proven to fail from both sides |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
@@ -317,6 +322,12 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Decision:** `tests/vetores-de-ouro.json` is the one set of numbers. G6 runs the Python verifier against it, `npm test` runs the JavaScript one, and G6 additionally parses `test.rs` and fails if its asserted panels and the JSON have diverged.
 **Alternatives:** Generating the JSON from the Rust test — rejected: it needs a build step before a gate can run. Having the Rust test read the JSON — rejected for now: the contract crate is `no_std` and parsing JSON there costs more than the drift check does. Three separate copies of the vectors — rejected, since that is the failure being prevented.
 **Consequences:** G5 stops being a deliberate failure and the §8 baseline records that. A host change to the PRNG or the shuffle now turns three gates red instead of one. `tests/` is a new directory holding data, not code.
+
+### DEC-010: The published numbers are gated from both sides (2026-10-25, T-023)
+**Context:** `CLAUDE.md` requires a published number to be reproducible by a gate. The cost figures were produced by G2 as console output that nothing read, and repeated by hand in six documents. Either side could change without the other noticing.
+**Decision:** The tests assert the measured costs against constants in `test.rs`, and `scripts/conferir_numeros.py` (G7) checks that each document still prints those constants. Digit separators are stripped, because the same figure appears as `26.719.483` and as `26,719,483`.
+**Alternatives:** Generating the documents' numbers from the tests — rejected: it would turn prose into a template for one figure. Asserting in the test against the documents — rejected: the contract crate is `no_std`, the same reason DEC-009 gives.
+**Consequences:** A cost change turns G2 red and tells the author to update the documents; a document edited by hand turns G7 red. The contract's optimised size is still ungated, and §8 says so. Seven gates now.
 
 ---
 

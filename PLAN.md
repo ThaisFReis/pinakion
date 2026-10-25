@@ -4,7 +4,7 @@ Where the work stands, and in what order it happens next.
 
 **What this file is for.** `docs/SPEC.md` §9 holds each task's acceptance criteria — what *done* means. This file holds the **order and the state** — what is finished, what is in flight, what is waiting on whom. Where the two disagree about criteria, the spec wins and this file is stale; fix it here and say so.
 
-Last updated **2026-10-25**, from `git log`, `gh issue list` and `gh pr list`. Every line below is checkable with those three commands.
+Last updated **2026-10-25**, after T-024 merged, from `git log`, `gh issue list` and `gh pr list`. Every line below is checkable with those three commands.
 
 ---
 
@@ -23,23 +23,17 @@ Today is **25 Oct**. Everything in Phase 3 below is submission-critical; everyth
 
 ## State of the tree
 
-`main` has two commits. Nothing has been merged into it since the repository was published.
+Everything through T-024 is on `main`. **No open pull requests.** PRs #9 to #19 are merged; #11, #12, #14 and #16 were first merged into their own base branches rather than `main`, which is why #13 and #15 exist — worth remembering next time: the merge bar has to say *into main*.
 
-| Branch | Ahead of `main` | PR | State |
-|---|---|---|---|
-| `t-007-pin-beacon-key` | 1 commit | [#9](https://github.com/ThaisFReis/pinakion/pull/9) → `main` | open, **awaiting human review** |
-| `t-004-green-gates` | 2 commits | [#10](https://github.com/ThaisFReis/pinakion/pull/10) → `t-007-pin-beacon-key` | open, stacked on #9 |
-| `t-017-civic-design` | 2 commits | — | **in flight, uncommitted**: `web/index.html` modified, `web/style.css` new |
+Two issues remain: [#8](https://github.com/ThaisFReis/pinakion/issues/8), the recording, and [#6](https://github.com/ThaisFReis/pinakion/issues/6), which is Phase 4.
 
-The stack is linear: #9 merges first, then #10. `CLAUDE.md` forbids the agent merging its own PRs, so both wait on the human.
-
-### Gates right now
+### Gates right now — all seven green on `main`
 
 | # | Command | State |
 |---|---|---|
-| G1 | `cargo fmt --all --check` | PASS (on `t-004-green-gates`) |
+| G1 | `cargo fmt --all --check` | PASS |
 | G2 | `cargo test --locked --workspace` | PASS, 12 tests |
-| G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS (on `t-004-green-gates`) |
+| G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS |
 | G4 | `stellar contract build` | PASS |
 | G5 | `npm test` | PASS, 3 vectors |
 | G6 | `python3 scripts/conferir_vetores.py` | PASS, 3 vectors + the tie to `test.rs` |
@@ -47,19 +41,15 @@ The stack is linear: #9 merges first, then #10. `CLAUDE.md` forbids the agent me
 
 ---
 
-## Phase 0 — the gate that blocks everything
+## Phase 0 — the gate that blocked everything · **done**
 
-| | |
-|---|---|
-| **Who** | the human, in `docs/SPEC.md` §0 |
-| **What** | write `Approved: 2026-10-25` on the approval line |
-| **Why it blocks** | `CLAUDE.md` Bootstrap step 5: *no feature work until the human approves the spec* |
+`docs/SPEC.md` §0 carries **Approved: 2026-10-25**.
 
-Done when: the line is written. Everything below is formally blocked until then.
+Written after the work it governs, not before. Every task was done on an explicit instruction, so the intent of the rule held — the agent did not choose the direction unasked — but the order `CLAUDE.md` prescribes did not. §11 Q-14 records that instead of tidying it away, and it is a real question for the next milestone: either the gate means something or it should leave the file.
 
 ---
 
-## Phase 1 — land what is already proven
+## Phase 1 — land what is already proven · **done**
 
 Four testnet transactions already show the thing working. None of that is on `main`.
 
@@ -68,11 +58,11 @@ Four testnet transactions already show the thing working. None of that is on `ma
 | 1 | T-007 pin the beacon key | [#1](https://github.com/ThaisFReis/pinakion/issues/1) | `review` → merge #9 | the key is a constant; a forged signature from a real adversary keypair is rejected on testnet |
 | 2 | T-004 green fmt and clippy | [#3](https://github.com/ThaisFReis/pinakion/issues/3) | `review` → merge #10 | five deprecated aliases renamed, `rustfmt` applied; golden vectors still match, so no behaviour changed |
 
-Done when: `main` carries both, and G1–G4 pass on `main`.
+Done: `main` carries both, and G1–G4 pass there.
 
 ---
 
-## Phase 2 — make the repository survive a stranger
+## Phase 2 — make the repository survive a stranger · **done**
 
 A judge clones it and runs two commands. Today the Python and JavaScript verifiers — the whole basis of the claim *anyone can recompute the panel* — are exercised by **nothing**.
 
@@ -87,24 +77,25 @@ Done when: G1–G6 all pass, and each of the three implementations is checked ag
 
 ---
 
-## Phase 3 — the submission
+## Phase 3 — the submission · **one thing left**
 
 The deck names four deliverables. Two are written, one is half-built, one has not been started.
 
 | Deliverable | State | Task |
 |---|---|---|
-| Landing page | built: purpose, procedure, worked example, evidence and limits | T-017, done |
-| MVP spec — the demo path, nothing more | **not written as one path** | T-016 |
-| Video demo, 3 min | **not started** | T-016 |
+| Landing page | built, and the stale-comparison bug the rehearsal found is fixed | T-017, T-024, done |
+| MVP spec — the demo path, nothing more | written and proven: `docs/DEMO.md` | T-016 |
+| Video demo, 3 min | script written in `docs/DEMO.md`; **the recording is not made** | T-016 |
 | Submission data | the name and one line exist; track still unknown (Q-11) | T-009 done, Q-11 open |
 
 | Order | Task | Issue | State |
 |---|---|---|---|
-| 7 | T-016 write the demo path and record the video | [#8](https://github.com/ThaisFReis/pinakion/issues/8) | `todo` |
+| 7 | T-016 write the demo path | [#8](https://github.com/ThaisFReis/pinakion/issues/8) | `review` — `docs/DEMO.md`, rehearsed end to end in 11 s |
+| 8 | **record the video** | [#8](https://github.com/ThaisFReis/pinakion/issues/8) | **not started — the only thing left before the submission** |
 
 The video's four parts, from the deck: `0:00` the problem · `0:30` live demo on testnet · `2:00` why Stellar · `2:30` what is next.
 
-Done when: one flow runs live on testnet, with the recording as backup, in three minutes.
+The flow runs live on testnet in 11 seconds, measured on 2026-10-25. What is left is the recording itself, which is the human's to make.
 
 **This is the highest-value item with zero work done.** The deck's own line is *judges score demos, not ideas*.
 
@@ -139,8 +130,8 @@ Full list in `docs/SPEC.md` §11. These are the ones with something waiting on t
 
 | ID | Question | Blocks |
 |---|---|---|
-| Q-02 | Is the milestone goal in §1 correct as written, and are the non-goals right? | spec approval |
-| Q-06 | Which toolchain versions are the project's? | T-003 |
+| Q-02 | Is the milestone goal in §1 correct as written, and are the non-goals right? Still `[INFERRED]`, and the spec is now approved around it | — |
+| Q-06 | **Answered**: rustc 1.97.1 and Node 24.14.1, pinned. The Stellar CLI stays unpinned and §6 says why | — |
 | Q-11 | Which track and category is the submission? Genesis eligibility was never answered by the organisers | T-009's last step |
 | Q-13 | **Answered** by the civic direction, recorded with T-017. The implementation itself is still for human review | nothing |
 | Q-07 | Who publishes the first roster, and under what authority? Unresolved across three design documents | Phase 4 |

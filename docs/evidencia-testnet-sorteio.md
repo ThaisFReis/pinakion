@@ -6,11 +6,12 @@
 
 | | |
 |---|---|
-| Contrato | `CCLWP7WOESC46JLHKGASYQ5R7XKBHEBIJCKWT74R7GPO7P5ZW3N5PCGN` |
-| Hash do Wasm | `fc7f70473fb1e44c937b72d140bae0d7db52328970044c063a17efeea39cabaa` |
-| Tamanho | 2.182 bytes otimizado |
-| Funções | `verify`, `draw`, `randomness` |
+| Contrato | `CBPHNZLGQIUEC4BEC53ZP7P65LLIBT5JTWTHMZVAMCGZCEN3PSUHTPQN` |
+| Tamanho | 2.576 bytes otimizado |
+| Funções | `verify`, `beacon`, `randomness`, `draw` |
 | Fonte | `contracts/beacon-verifier/` |
+
+A chave pública do beacon é **constante pinada no contrato**, não argumento de chamada (T-007). `beacon()` publica o hash da chain em que o contrato confia, para que isso se confira sem ler o Wasm.
 
 ## O beacon
 
@@ -24,20 +25,23 @@ A construção foi descoberta por força bruta contra rodadas reais, não assumi
 
 ## As transações
 
-Rodada usada: **33380955**, obtida ao vivo da API pública no momento do teste.
-`randomness = 104870a5f58e570f7bb7d3f63331a752e42245543c17d1628c75bf775ff268d1`
+Rodada usada: **33382274**, obtida ao vivo da API pública no momento do teste.
+`randomness = 7fe86201ed0c0edcf570b52e55382e4ce981a4ec8dddb9f10fc454e33a2719f1`
 
 | Ato | Resultado | Transação |
 |---|---|---|
-| `verify` com a rodada real | **`true`** | [9de19747…](https://stellar.expert/explorer/testnet/tx/9de197478cd68e93a1f2d7a16c9b3f997580584239c0e5e83fddc0c322a2238d) |
-| `verify` com a mesma assinatura na rodada seguinte | **`false`** | [2ebda22b…](https://stellar.expert/explorer/testnet/tx/2ebda22bc89b0f8f72133381e9b30d94047d6fecc028c42a68a59b08053ec5ea) |
-| `draw` — rol de 200, painel de 25 | painel abaixo | [dda87cc0…](https://stellar.expert/explorer/testnet/tx/dda87cc05c16beed6e2720f579990d15c79e46dd9dc9f920b24917e8e1d87d65) |
+| `beacon()` — em que beacon o contrato confia | hash da quicknet | [804ba7a1…](https://stellar.expert/explorer/testnet/tx/804ba7a190e4e8b9ee1d593888fe8f35cc69e16580ca69e6e40a6a386a1ccbb5) |
+| `verify` com a rodada real, **sem passar chave** | **`true`** | [c74150ee…](https://stellar.expert/explorer/testnet/tx/c74150eeb7b73d0a196d20b44ed851a140812b3ac67e579b670b87ee2c3ffeea) |
+| `verify` com assinatura **forjada por outro par de chaves** | **`false`** | [30de94fe…](https://stellar.expert/explorer/testnet/tx/30de94feaf1ac2e6dea42a03edc8fe9be158b10716f03b4be707eb4328559375) |
+| `draw` — rol de 200, painel de 25 | painel abaixo | [d077a6a9…](https://stellar.expert/explorer/testnet/tx/d077a6a953a4c5c48a75306754e838a89bf00c92bd00a261c02cc6b03f2f1a1d) |
+
+**Sobre a terceira linha.** Essa assinatura não é um byte trocado: é uma assinatura **válida**, produzida por uma chave secreta real sobre a mensagem correta da rodada 1000000. Ela verifica sob a chave do adversário e é recusada aqui, porque este contrato só aceita a chave da quicknet. É a prova de que pinar a chave resolveu o problema que T-007 descreve.
 
 Painel sorteado on-chain:
 
 ```
-[146, 187, 57, 172, 113, 46, 106, 152, 12, 124, 56, 193, 101, 99, 88,
- 169, 63, 167, 108, 135, 18, 197, 148, 97, 73]
+[23, 81, 114, 169, 188, 195, 142, 52, 44, 13, 0, 60, 7, 124, 42,
+ 37, 121, 10, 192, 174, 155, 177, 140, 49, 135]
 ```
 
 ## A recomputação independente
@@ -46,10 +50,10 @@ O mesmo painel, recomputado fora da cadeia por uma implementação escrita do ze
 
 ```bash
 python3 scripts/verificar_sorteio.py \
-  104870a5f58e570f7bb7d3f63331a752e42245543c17d1628c75bf775ff268d1 200 25
+  7fe86201ed0c0edcf570b52e55382e4ce981a4ec8dddb9f10fc454e33a2719f1 200 25
 ```
 
-Saída idêntica ao painel on-chain.
+Saída idêntica ao painel on-chain. A mesma recomputação roda no navegador, em `web/`.
 
 A receita foi lida do host (`rs-soroban-env`), não da documentação:
 
@@ -61,25 +65,27 @@ A receita foi lida do host (`rs-soroban-env`), não da documentação:
 
 ## Custo medido
 
-No host de testes do Soroban, via `env.cost_estimate().budget()`:
+No host de testes do Soroban, via `env.cost_estimate().budget()`. **Não** são números extraídos das transações de testnet.
 
 | Operação | CPU | Memória |
 |---|---|---|
-| `verify` de uma rodada | **26.718.596** | 161.546 |
+| `verify` de uma rodada | **26.719.483** | 161.818 |
 | `draw`, rol de 50 | 128.952 | 26.379 |
 | `draw`, rol de 200 | 347.784 | 192.579 |
 | `draw`, rol de 1.000 | 2.274.884 | 4.118.979 |
 
-O pairing responde por 20,4M dos 26,7M. `hash_to_g1` custa 2,6M; as checagens de subgrupo somam 3,6M.
+O pairing responde pela maior parte do custo de `verify`. A diferença de 887 instruções em relação à medição anterior é o carregamento da chave pinada, que antes vinha como argumento.
+
+Reproduzir: `cargo test -p beacon-verifier rodada_real_verifica_e_mede_custo -- --nocapture`
 
 ## Testes
 
-Dez, em `contracts/beacon-verifier/src/test.rs`, incluindo três **vetores de ouro** produzidos pela implementação independente. Se o host mudar o algoritmo numa versão futura, os testes quebram.
+Doze, em `contracts/beacon-verifier/src/test.rs`, incluindo três **vetores de ouro** produzidos pela implementação independente e a recusa da assinatura forjada. Se o host mudar o algoritmo numa versão futura, os testes quebram.
 
 ## Limitações declaradas
 
-- **A chave pública do beacon entra como parâmetro neste spike.** Na versão de produção ela precisa ser constante pinada no contrato; caso contrário qualquer um passa a própria chave e forja qualquer rodada.
+- O contrato confia em **uma única chain da drand**. Se o grupo da quicknet rotacionar a chave, isso é uma chain nova e exige um contrato novo — consequência aceita de pinar.
 - A descompressão dos pontos acontece fora da cadeia. É seguro: ponto errado faz o pairing falhar.
 - Os custos foram medidos no host de testes, não extraídos das transações de testnet.
-- O verificador independente está em Python. Para auditoria pública de verdade falta a versão em JavaScript, que roda no navegador.
-- Sem auditoria externa.
+- O verificador independente está em Python e em JavaScript; nenhum dos dois é exercitado por um gate ainda (issues #4 e #5).
+- Sem auditoria externa. Nada em mainnet.

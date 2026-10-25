@@ -20,13 +20,30 @@ const DST: &[u8] = b"BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_NUL_";
 /// be(X_c1) || be(X_c0) || be(Y_c1) || be(Y_c0)
 pub const NEG_G2_GENERATOR: [u8; 192] = *include_bytes!("neg_g2.bin");
 
+/// Chave pública do grupo de limiar da quicknet, pinada.
+///
+/// Ela **não** é parâmetro. Se fosse, qualquer pessoa passaria a própria chave
+/// e faria qualquer rodada verificar — o que esvazia a garantia inteira, porque
+/// a semente deixaria de vir de um beacon que ninguém controla.
+///
+/// Consequência aceita: este contrato confia em uma única chain da drand. Se o
+/// grupo da quicknet rotacionar a chave, isso é uma chain nova, com outro hash,
+/// e exige um contrato novo. Trocar a chave sem trocar o contrato seria
+/// exatamente o poder que este pinning existe para remover.
+pub const BEACON_PUBLIC_KEY: [u8; 192] = *include_bytes!("quicknet_pk.bin");
+
+/// Hash da chain quicknet. Publicado por `beacon()` para que qualquer um
+/// confira em que beacon este contrato confia, sem ler o Wasm.
+pub const BEACON_CHAIN_HASH: [u8; 32] = *include_bytes!("quicknet_chain.bin");
+
 #[contract]
 pub struct BeaconVerifier;
 
 #[contractimpl]
 impl BeaconVerifier {
-    /// Verifica uma rodada do beacon. Devolve `true` se a assinatura confere.
-    pub fn verify(env: Env, round: u64, sig: BytesN<96>, pk: BytesN<192>) -> bool {
+    /// Verifica uma rodada do beacon contra a chave pinada da quicknet.
+    /// Devolve `true` se a assinatura confere.
+    pub fn verify(env: Env, round: u64, sig: BytesN<96>) -> bool {
         let bls = env.crypto().bls12_381();
 
         let mut preimage = Bytes::new(&env);
@@ -37,12 +54,19 @@ impl BeaconVerifier {
         let dst = Bytes::from_slice(&env, DST);
         let h = bls.hash_to_g1(&msg, &dst);
 
+        let pk = G2Affine::from_bytes(BytesN::from_array(&env, &BEACON_PUBLIC_KEY));
         let neg_g2 = G2Affine::from_bytes(BytesN::from_array(&env, &NEG_G2_GENERATOR));
 
         bls.pairing_check(
             vec![&env, h, G1Affine::from_bytes(sig)],
-            vec![&env, G2Affine::from_bytes(pk), neg_g2],
+            vec![&env, pk, neg_g2],
         )
+    }
+
+    /// Em que beacon este contrato confia. Leitura pública, sem argumento:
+    /// a resposta é a mesma para todo mundo, para sempre.
+    pub fn beacon(env: Env) -> BytesN<32> {
+        BytesN::from_array(&env, &BEACON_CHAIN_HASH)
     }
 
     /// Sorteia `k` posições de um rol de tamanho `n`, usando a aleatoriedade

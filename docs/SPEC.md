@@ -55,9 +55,10 @@ A claim appears in a document, README or UI only if it is listed here with its e
 
 | May claim | Evidence |
 |---|---|
-| A real drand round verifies on Stellar testnet | tx `9de19747…`, recorded in `docs/evidencia-testnet-sorteio.md` |
-| A tampered round is rejected on-chain | tx `2ebda22b…` |
-| One beacon verification costs 26,718,596 CPU instructions and 161,546 memory bytes | measured via `env.cost_estimate().budget()` in `contracts/beacon-verifier/src/test.rs`; test-host figure, **not** a figure from a testnet transaction |
+| A real drand round verifies on Stellar testnet | tx `c74150ee…`, recorded in `docs/evidencia-testnet-sorteio.md` |
+| A signature forged under a different keypair is rejected on-chain | tx `30de94fe…` — a genuinely valid signature from another secret key, not a flipped byte |
+| The contract trusts one named beacon, and says which | `beacon()` returns the quicknet chain hash; tx `804ba7a1…` |
+| One beacon verification costs 26,719,483 CPU instructions and 161,818 memory bytes | measured via `env.cost_estimate().budget()` in `contracts/beacon-verifier/src/test.rs`; test-host figure, **not** a figure from a testnet transaction |
 | The draw is recomputable off-chain by an independent implementation | `scripts/verificar_sorteio.py` and `web/sorteio.mjs` reproduce the on-chain panel; locked by golden vectors in `bate_com_a_recomputacao_fora_da_cadeia` |
 | `randomness = sha256(signature)` for drand quicknet | verified against live rounds; test `aleatoriedade_e_sha256_da_assinatura` |
 
@@ -114,7 +115,7 @@ Numbered; each with the test that enforces it, or marked `[proposed]` where noth
 | INV-07 | The attendance count never decreases because of an impediment (art. 463 §2) | `[proposed]` |
 | INV-08 | A substitute always comes from the already-drawn order; there is no re-draw for substitution | `[proposed]` |
 | INV-09 | The contract refuses to operate below the minimum roster size | `[proposed]` |
-| INV-10 | The beacon public key is a pinned constant, not a parameter | `[proposed]` — **violated today**, see §11 Q-05 |
+| INV-10 | The beacon public key is a pinned constant, not a parameter | `assinatura_de_outra_chave_nao_verifica`, `a_chave_do_beacon_nao_e_parametro` |
 
 ---
 
@@ -166,7 +167,7 @@ Open `[VERIFY]` items: none outstanding — every external fact relied on today 
 | drand threshold network | produce the entropy | public, scheduled, unpredictable before its round; a round earlier than the roster commitment is refused by INV-06 `[proposed]` |
 | Stellar validators | bias `env.prng()` if it were used alone | not used alone: the PRNG is reseeded from the beacon value. The SDK states the base seed is under validator control and must not be relied on for unpredictability |
 | whoever publishes the roster | choose who is eligible | public contestation window; **unresolved** — see §11 Q-07 |
-| whoever supplies the beacon public key | forge any round | **unresolved today**: the key is a call parameter, not a constant. See §11 Q-05 |
+| ~~whoever supplies the beacon public key~~ | — | **resolved (T-007)**: the key is a pinned constant and `verify` takes no key. The contract now trusts exactly one drand chain; a rotation of the quicknet group key would be a new chain and require a new contract |
 
 ### Secrets
 
@@ -224,7 +225,7 @@ Run from a clean checkout. The baseline below was recorded on 2026-10-25 **befor
 | T-004 | Green the baseline: fmt and clippy ([#3](https://github.com/ThaisFReis/pinakion/issues/3)) | T-003 | §8 | todo | G1 and G3 pass; no behaviour change; deprecated aliases replaced |
 | T-005 | Test the Python verifier in the repository ([#4](https://github.com/ThaisFReis/pinakion/issues/4)) | T-003 | §4 INV-04 | todo | A gate runs `scripts/verificar_sorteio.py` against the golden vectors and fails if they diverge |
 | T-006 | Test the JavaScript verifier in the repository ([#5](https://github.com/ThaisFReis/pinakion/issues/5)) | T-005 | §3 B-02 | todo | A gate runs `web/sorteio.mjs` against the same vectors; `npm test` stops being a placeholder (replaces G5) |
-| T-007 | Pin the beacon public key ([#1](https://github.com/ThaisFReis/pinakion/issues/1)) | T-004 | §4 INV-10, §7 | todo | The key is a constant; `verify` no longer accepts it as a parameter; a test proves a wrong key cannot verify any round |
+| T-007 | Pin the beacon public key ([#1](https://github.com/ThaisFReis/pinakion/issues/1)) | — | §4 INV-10, §7 | review | Key pinned; `verify` takes no key; `beacon()` publishes the trusted chain hash; a forged signature from a real adversary keypair is rejected on testnet |
 | T-008 | Enforce the roster's minimum round ([#6](https://github.com/ThaisFReis/pinakion/issues/6)) | T-007 | §4 INV-06 | todo | A draw against a round earlier than the roster's definitive ledger is rejected |
 
 ### Event track — from the Speedrun SHIP deck
@@ -267,6 +268,12 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Alternatives:** Publishing the algorithm as documentation only — rejected: nothing would catch a host change.
 **Consequences:** Two off-chain implementations exist; both need gates (T-005, T-006). A host change to the PRNG or shuffle turns the suite red, which is the intent.
 
+### DEC-004: Pin one beacon key, and publish which (2026-10-25, T-007)
+**Context:** `verify` accepted the drand public key as a call parameter, so anyone could pass their own key and have any round verify. That removes the entire guarantee, because the seed stops coming from a beacon nobody controls.
+**Decision:** The quicknet group key is a constant compiled into the contract, and `verify` takes no key. A new read, `beacon()`, returns the chain hash the contract trusts, so the pinned trust is auditable on-chain without reading the Wasm.
+**Alternatives:** A settable key behind an admin — rejected: it reintroduces the same party with an extra step. A set of accepted keys — rejected as unneeded complexity before a second beacon exists.
+**Consequences:** The contract trusts exactly one drand chain. A quicknet group-key rotation is a new chain with a new hash and requires a new contract; changing the key without changing the contract is precisely the power this pinning removes. Verification cost rose by 887 instructions, the constant being loaded rather than passed. INV-10 is now enforced; §7 and Q-05 updated. `beacon()` is a new public function and §5 declares no frozen interface yet.
+
 ---
 
 ## §11 Open questions
@@ -277,7 +284,7 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 | Q-02 | §1 states the goal as inferred. Is the milestone goal correct as written, and are the non-goals right? | T-001 |
 | Q-03 | ~~What happens to the withdrawn generation?~~ **Answered 2026-10-25:** moved out of the repository to `../Cautela-geracao-retirada/`, with a note explaining that the thesis changed and the work did not fail. Nothing deleted; the Groth16 verifier still has green tests and a testnet deployment there. | — |
 | Q-04 | ~~The active project has no name, and where does it live?~~ **Answered 2026-10-25: Pinakion**, in a new public repository at `ThaisFReis/pinakion`; the Cautela tree stays where it was. The πινάκιον was the bronze ticket bearing a citizen's name, slotted into the kleroterion before an Athenian jury draw. Chosen over *Kleroterion* because `kleros` is the root of an existing onchain jury protocol. | — |
-| Q-05 | `verify` takes the beacon public key as a parameter. Anyone can pass their own key and have any round verify. Confirm this is pinned before anything depends on it. | T-007 |
+| Q-05 | ~~`verify` takes the beacon public key as a parameter.~~ **Resolved 2026-10-25 by T-007.** Accepted consequence, worth confirming: the contract trusts a single drand chain, so a quicknet key rotation means a new chain and a new contract. | — |
 | Q-06 | No toolchain pins exist (`rust-toolchain.toml`, `.nvmrc`). Which versions are the project's? | T-003 |
 | Q-07 | Who publishes the first roster, and under what authority? This is unresolved across three design documents. | — |
 | Q-08 | Documents are written in Portuguese; code identifiers are mixed Portuguese and English. What is the convention? | — |

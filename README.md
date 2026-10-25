@@ -19,10 +19,10 @@ The guarantee, in one sentence: *nobody chooses who judges you.*
 
 ```bash
 python3 scripts/verificar_sorteio.py \
-  104870a5f58e570f7bb7d3f63331a752e42245543c17d1628c75bf775ff268d1 200 25
+  7fe86201ed0c0edcf570b52e55382e4ce981a4ec8dddb9f10fc454e33a2719f1 200 25
 ```
 
-That prints the panel that contract `CCLWP7WO…` drew on testnet, in [this transaction](https://stellar.expert/explorer/testnet/tx/dda87cc05c16beed6e2720f579990d15c79e46dd9dc9f920b24917e8e1d87d65).
+That prints the panel that contract `CBPHNZLG…` drew on testnet, in [this transaction](https://stellar.expert/explorer/testnet/tx/d077a6a953a4c5c48a75306754e838a89bf00c92bd00a261c02cc6b03f2f1a1d).
 
 ---
 
@@ -40,17 +40,17 @@ That prints the panel that contract `CCLWP7WO…` drew on testnet, in [this tran
 
 | Claim | Evidence |
 |---|---|
-| A live drand round verifies on Stellar testnet | [tx `9de19747…`](https://stellar.expert/explorer/testnet/tx/9de197478cd68e93a1f2d7a16c9b3f997580584239c0e5e83fddc0c322a2238d) → `true` |
-| A tampered round is rejected | [tx `2ebda22b…`](https://stellar.expert/explorer/testnet/tx/2ebda22bc89b0f8f72133381e9b30d94047d6fecc028c42a68a59b08053ec5ea) → `false` |
+| A live drand round verifies on Stellar testnet | [tx `c74150ee…`](https://stellar.expert/explorer/testnet/tx/c74150eeb7b73d0a196d20b44ed851a140812b3ac67e579b670b87ee2c3ffeea) → `true` |
+| A signature forged under a different keypair is rejected | [tx `30de94fe…`](https://stellar.expert/explorer/testnet/tx/30de94feaf1ac2e6dea42a03edc8fe9be158b10716f03b4be707eb4328559375) → `false` |
 | The panel is reproducible off-chain | two independent implementations, Python and JavaScript, written from the host's semantics; locked as a regression test |
-| One verification costs 26,718,596 CPU instructions, 161,546 bytes | measured with `env.cost_estimate().budget()` in the test host — **not** a figure taken from a testnet transaction |
+| One verification costs 26,719,483 CPU instructions, 161,818 bytes | measured with `env.cost_estimate().budget()` in the test host — **not** a figure taken from a testnet transaction |
+| The contract trusts one named beacon, auditable on-chain | `beacon()` returns the quicknet chain hash |
 | A draw from a roster of 1,000 costs 2,274,884 instructions | measured the same way |
 
 Full record, with every hash: [`docs/evidencia-testnet-sorteio.md`](docs/evidencia-testnet-sorteio.md).
 
 ## What is not
 
-- **The beacon public key is still a call parameter, not a pinned constant.** Anyone can pass their own key and have any round verify. Nothing should depend on this contract until that changes.
 - The case lifecycle, the roster cycle and the recusal rules are designed and **not built**.
 - Nothing has been audited. Nothing has run on mainnet.
 - Below a roster of about sixteen the draw guarantees nothing, and the contract should refuse rather than pretend — see [`docs/limite-inferior-do-rol.md`](docs/limite-inferior-do-rol.md).
@@ -62,7 +62,7 @@ Full record, with every hash: [`docs/evidencia-testnet-sorteio.md`](docs/evidenc
 Requires Rust with the `wasm32v1-none` target, Stellar CLI 28.x and Node 20+.
 
 ```bash
-cargo test --locked --workspace     # 13 tests, including the golden vectors
+cargo test --locked --workspace     # 12 tests, including the golden vectors
 stellar contract build              # plain `cargo build` to Wasm fails by design
 ```
 
@@ -73,7 +73,8 @@ stellar contract deploy --wasm target/wasm32v1-none/release/beacon_verifier.wasm
   --source <identity> --network testnet
 ```
 
-Then `verify --round <n> --sig <hex> --pk <hex>` and `draw --seed <hex> --n <size> --k <panel>`.
+Then `verify --round <n> --sig <hex>`, `beacon`, and `draw --seed <hex> --n <size> --k <panel>`.
+The beacon key is pinned in the contract — there is no key to pass.
 
 ---
 

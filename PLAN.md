@@ -25,7 +25,7 @@ Today is **25 Oct**. Everything in Phase 3 below is submission-critical; everyth
 
 Everything through **T-033's plan** is on `main` (`de2ed03`). **No open pull requests.** #9 to #28 are merged. #24 to #27 were each merged into their stacked base branch, not into `main`; their commits reached `main` only because #28 was cut from the top of that stack. Same trap as #13 and #15: the merge bar has to say *into main*, or the stack has to be merged from the top.
 
-Two issues remain open: [#8](https://github.com/ThaisFReis/pinakion/issues/8), the recording, and [#6](https://github.com/ThaisFReis/pinakion/issues/6), which T-029 already answered and is waiting to be closed. M1 (Phase 5) has no issues yet.
+Open issues: [#8](https://github.com/ThaisFReis/pinakion/issues/8), the recording, and [#30](https://github.com/ThaisFReis/pinakion/issues/30) to [#39](https://github.com/ThaisFReis/pinakion/issues/39), one per M1 task (Phase 5). [#6](https://github.com/ThaisFReis/pinakion/issues/6) was closed on 2026-10-25, answered by T-029.
 
 ### Gates right now — all seven green on `main`
 
@@ -122,7 +122,7 @@ Not before 26 Oct. These need contracts that do not exist yet.
 
 | Task | Issue | Blocked on |
 |---|---|---|
-| ~~T-008, the roster half of INV-06~~ | [#6](https://github.com/ThaisFReis/pinakion/issues/6) | **closed by T-029**: `kleroterion::lock` computes the minimum from the ledger clock — Q-15 answered |
+| ~~T-008, the roster half of INV-06~~ | [#6](https://github.com/ThaisFReis/pinakion/issues/6), closed | **closed by T-029**: `kleroterion::lock` computes the minimum from the ledger clock — Q-15 answered |
 | The case lifecycle, the roster cycle, the recusal rules | — | designed in three documents, **587 lines of design with no implementation**. M1 narrows it: no `impede` after lock (T-033), public `recuse` before `finalize` (T-038); a case, a reviewer and a verdict stay out of scope (DEC-015) |
 | Confidential case files | — | `docs/desenho-sorteio-e-sigilo.md`; threshold decryption per access |
 
@@ -168,16 +168,16 @@ Decided 2026-10-25 (DEC-015 to DEC-019): the juror registers a commitment at `en
 
 | Order | Task | Deps | Days (est.) | Issue | Branch / PR | State |
 |---|---|---|---|---|---|---|
-| 13 | T-033 close the two doors: round fixed at `lock`, `draw_round` deleted, no `enroll`/`impede` after lock | T-029 | 0.5 | — | — | todo |
-| 13 | T-034 **spike, kill-or-go**: ≥ 20 Poseidon vectors host × circomlib; one proof verified on testnet, cost measured; CPU ceiling read from the docs | T-033 | 1.5 | — | — | todo |
-| 13 | T-041 first page and guarantee sentence — cheap, and what a judge reads; finished after T-040 | T-033 | 1, split | — | — | todo |
-| 14 | T-035 commitment at `enroll`, `used_c`, Poseidon tree built by the contract, root frozen at `lock` | T-034 | 1 | — | — | todo |
-| 14 | T-036 circuit ported, public ptau, single-party phase 2, `vk`, CLI `pinakion prove` | T-034 | 1 | — | — | todo |
-| 15 | T-037 BN254 verifier as a separate contract; inputs assembled by `kleroterion` | T-036 | 1 | — | — | todo |
-| 16 | T-038 `seal`, `claim`, `finalize`, `reveal`, `recuse`; widening when fewer than `k` claim | T-035, T-037 | 1.5 | — | — | todo |
-| 17 | T-039 independent recomputation from the ledger; new golden vectors (N = 8, k = 3) | T-038 | 1 | — | — | todo |
-| 18 | T-040 testnet sequence end to end (with `AUTH_IMMUTABLE`), cost table by a §8 command | T-038, T-039 | 1 | — | — | todo |
-| 19 | T-042 ticket page, README links, Tessera export, submission text | T-039, T-041 | 1 | — | — | todo |
+| 13 | T-033 close the two doors: round fixed at `lock`, `draw_round` deleted, no `enroll`/`impede` after lock | T-029 | 0.5 | [#30](https://github.com/ThaisFReis/pinakion/issues/30) | — | todo |
+| 13 | T-034 **spike, kill-or-go**: ≥ 20 Poseidon vectors host × circomlib; one proof verified on testnet, cost measured; CPU ceiling read from the docs | T-033 | 1.5 | [#31](https://github.com/ThaisFReis/pinakion/issues/31) | — | todo |
+| 13 | T-041 first page and guarantee sentence — cheap, and what a judge reads; finished after T-040 | T-033 | 1, split | [#38](https://github.com/ThaisFReis/pinakion/issues/38) | — | todo |
+| 14 | T-035 commitment at `enroll`, `used_c`, Poseidon tree built by the contract, root frozen at `lock` | T-034 | 1 | [#32](https://github.com/ThaisFReis/pinakion/issues/32) | — | todo |
+| 14 | T-036 circuit ported, public ptau, single-party phase 2, `vk`, CLI `pinakion prove` | T-034 | 1 | [#33](https://github.com/ThaisFReis/pinakion/issues/33) | — | todo |
+| 15 | T-037 BN254 verifier as a separate contract; inputs assembled by `kleroterion` | T-036 | 1 | [#34](https://github.com/ThaisFReis/pinakion/issues/34) | — | todo |
+| 16 | T-038 `seal`, `claim`, `finalize`, `reveal`, `recuse`; widening when fewer than `k` claim | T-035, T-037 | 1.5 | [#35](https://github.com/ThaisFReis/pinakion/issues/35) | — | todo |
+| 17 | T-039 independent recomputation from the ledger; new golden vectors (N = 8, k = 3) | T-038 | 1 | [#36](https://github.com/ThaisFReis/pinakion/issues/36) | — | todo |
+| 18 | T-040 testnet sequence end to end (with `AUTH_IMMUTABLE`), cost table by a §8 command | T-038, T-039 | 1 | [#37](https://github.com/ThaisFReis/pinakion/issues/37) | — | todo |
+| 19 | T-042 ticket page, README links, Tessera export, submission text | T-039, T-041 | 1 | [#39](https://github.com/ThaisFReis/pinakion/issues/39) | — | todo |
 
 Same order number = can run in parallel. T-035 and T-036 are independent once the spike passes: one person on the contract, one on the circuit, about six calendar days for two. Every task: tests written first and seen failing, seven gates green, one branch and one PR **into `main`**.
 

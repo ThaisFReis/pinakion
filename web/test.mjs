@@ -11,7 +11,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { painel, sortear } from "./sorteio.mjs";
+import { painel, sortear, verificarSelado } from "./sorteio.mjs";
 import { criarPoseidon } from "./poseidon.mjs";
 import { raiz, zeros } from "./arvore.mjs";
 
@@ -75,10 +75,30 @@ for (const a of arvores.arvores) {
   }
 }
 
+// T-039: the sealed vectors, from the events and the drand randomness alone.
+const { selados } = JSON.parse(await readFile(join(raiz_, "tests", "vetores-de-ouro.json"), "utf8"));
+for (const v of selados) {
+  const r = verificarSelado(v, { R: criarPoseidon(await ler("poseidon-bn254.json")).R, hash1, hash2 }, raiz);
+  const ruins = r.conferencias.filter(([, ok]) => !ok).map(([nome]) => nome);
+  const estadosOk = Object.entries(v.esperado.jurados).every(([a, e]) => r.estados.get(a) === e);
+  const painelOk =
+    r.painel.length === v.esperado.painel.length && r.painel.every((y, i) => String(y) === v.esperado.painel[i]);
+  const ok = !ruins.length && estadosOk && painelOk && r.completo === v.esperado.completo &&
+    r.semRevelacao === v.esperado.assentos_sem_revelacao;
+  if (ok) console.log(`  ok    ${v.nome}: ${r.conferencias.length} conferencias`);
+  else {
+    falhas++;
+    console.log(`  FALHA ${v.nome}`);
+    for (const n of ruins) console.log(`        nao confere: ${n}`);
+    if (!estadosOk) console.log("        os estados dos jurados divergem");
+    if (!painelOk) console.log("        o painel diverge");
+  }
+}
+
 if (falhas) {
   console.log(`\n${falhas} falha(s).`);
   process.exit(1);
 }
 console.log(
-  `\n${vetores.length} vetores conferidos, ${poseidon.length} de Poseidon, ${arvores.arvores.length} arvores.`,
+  `\n${vetores.length} vetores conferidos, ${poseidon.length} de Poseidon, ${arvores.arvores.length} arvores, ${selados.length} selado(s).`,
 );

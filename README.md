@@ -112,7 +112,7 @@ contracts/poseidon/          Poseidon over BN254 on the host permutation (T-034 
 contracts/groth16-verifier/  a BN254 Groth16 verifier (T-034 spike, not wired in)
 circuits/                    the seat-claim circuit and its test-only prover — GPL-3.0
 scripts/verificar_sorteio.py an independent recomputation, no dependencies
-scripts/verificar_painel.py  the same, from a roster to a panel of addresses
+scripts/verificar_painel.py  the sealed panel, checked from the contract's events and drand alone
 scripts/sequencia_bilhete.sh the classic sequence on testnet, end to end
 web/                         the same recomputation, in a browser
 ```

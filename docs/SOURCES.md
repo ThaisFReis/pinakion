@@ -87,6 +87,7 @@ Every external fact this project relies on, and every piece of code copied in. A
 | 2026-10-25 | Maximum contract Wasm size on testnet | `contract_max_size_bytes` 131,072 | network config read live | `stellar network settings --network testnet` (T-035) |
 | 2026-10-25 | Public phase-1 file for 2¹² constraints | `powersOfTau28_hez_final_12.ptau`, 4,801,688 bytes, blake2b `ded2694169b7b08e898f736d5de95af87c3f1a64594013351b1a796dbee393bd825f88f9468c84505ddd11eb0b1465ac9b43b9064aa8ec97f2b73e04758b8a4a` — matched | Hermez Perpetual Powers of Tau | hash and current URL from `iden3/snarkjs` README on GitHub (`https://circom.info/…`); the URL in the installed snarkjs 0.7.6 README (`storage.googleapis.com/zkevm/ptau/…`) and the old Hermez S3 URL both returned **403** on this date (T-036) |
 | 2026-10-25 | Phase-2 beacon round | drand quicknet round 33389132, randomness `0b0106ce…5883f4` | quicknet | `https://api.drand.sh/52db9ba7…/public/33389132`; applied with `snarkjs zkey beacon`, 2¹⁰ iterations; `circuits/setup/TRANSCRICAO.md` |
+| 2026-10-25 | The phase-1 file's own consistency | `npx snarkjs powersoftau verify build/ptau/powersOfTau28_hez_final_12.ptau` → `Powers of Tau Ok!`, every contribution down to #1 checked | snarkjs 0.7.6 | measured locally; it ran for over 30 minutes and finished after T-036 merged, so T-036 relied on the published hash and `zkey verify` alone |
 
 ## Conflicting sources
 

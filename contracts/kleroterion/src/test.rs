@@ -359,6 +359,45 @@ fn o_sorteio_e_deterministico() {
     assert_eq!(a, b);
 }
 
+/// O quarto vetor de tests/vetores-de-ouro.json: sete endereços fixos, o
+/// primeiro da ordem impedido, painel de três. Os verificadores em Python e
+/// JavaScript devolvem estes mesmos endereços, nesta ordem.
+const ROL_DE_OURO: [&str; 7] = [
+    "CAR7NKBMHGHGH7NSGHE46UHR7DK6OFUKIJZ5LVGCF5LZ5BSLOOMFZKP2",
+    "CBNZ6GW7SJP4RWRMHXME65XUHZCTBVXA27PPO4KR7IDMJH2UZL7HPXPP",
+    "CBGK2LCVUESQU52MUQM2XYGAGBJ2GKTYAJUID4WQGMUD2ANMYTYNIYPH",
+    "CA222NMTAQQHVODIF3RSN476HUP7DW4NN6TXDKUMUCR35Z323Q6FURPR",
+    "CBYYRHFKSY5VVAACXXJS44HXYQ47CPF65JALEPTSUL7EHPCP5SCEL4TK",
+    "CAIQB4VFZUJH7LOCYT36YRZOH6ZMGK3WHVZX6JEOI7CTHPQONUI26AOG",
+    "CBSA33VZ5Q7FHWOGACNR6MXRFQIPCPCEXM3Z6ZE22OP2UM7FZHFQSUJI",
+];
+
+#[test]
+fn bate_com_o_vetor_de_enderecos() {
+    let m = mesa();
+    let js: std::vec::Vec<Address> = ROL_DE_OURO
+        .iter()
+        .map(|s| Address::from_str(&m.env, s))
+        .collect();
+    inscrever_todos(&m, &js);
+    m.c.lock();
+    m.c.impede(&js[ORDEM_DE_OURO[0] as usize]);
+    let painel = m.c.draw_round(&ROUND_A, &sig_a(&m), &3u32);
+    let esperado = [
+        "CBNZ6GW7SJP4RWRMHXME65XUHZCTBVXA27PPO4KR7IDMJH2UZL7HPXPP",
+        "CBYYRHFKSY5VVAACXXJS44HXYQ47CPF65JALEPTSUL7EHPCP5SCEL4TK",
+        "CBGK2LCVUESQU52MUQM2XYGAGBJ2GKTYAJUID4WQGMUD2ANMYTYNIYPH",
+    ];
+    for (i, s) in esperado.iter().enumerate() {
+        assert_eq!(
+            painel.get(i as u32).unwrap(),
+            Address::from_str(&m.env, s),
+            "assento {}",
+            i
+        );
+    }
+}
+
 // ---- as cópias do beacon-verifier ---------------------------------------
 
 /// As mesmas asserções de beacon-verifier::bate_com_a_recomputacao_fora_da_cadeia,

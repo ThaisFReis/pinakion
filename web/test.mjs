@@ -11,7 +11,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { sortear } from "./sorteio.mjs";
+import { painel, sortear } from "./sorteio.mjs";
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { vetores } = JSON.parse(
@@ -21,7 +21,9 @@ const { vetores } = JSON.parse(
 let falhas = 0;
 
 for (const v of vetores) {
-  const obtido = await sortear(v.semente, v.n, v.k);
+  const obtido = v.rol
+    ? await painel(v.semente, v.rol, v.inelegiveis, v.k)
+    : await sortear(v.semente, v.n, v.k);
   const bate =
     obtido.length === v.painel.length &&
     obtido.every((x, i) => x === v.painel[i]);

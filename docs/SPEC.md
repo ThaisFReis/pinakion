@@ -14,14 +14,16 @@ Source of truth for this repository. Written by Bootstrap on 2026-10-25 from wha
 
   | File | Role | State |
   |---|---|---|
-  | `THESIS.md` | **the root** — one line, who it is for, the problem, why Stellar. Change it here first, then the others | **missing** (T-010) |
+  | `THESIS.md` | **the root** — one line, who it is for, the problem, why Stellar. Change it here first, then the others | present (T-010) |
   | `SPEC.md` | what to build and how to check it works | this file |
-  | `DESIGN.md` | colours, type, logo, for every screen | **missing** (T-012) |
-  | `AGENTS.md` | the mission, ground rules, scope, tools, working style, done-when | **missing** (T-011) |
-  | `README.md` | how to run it; says what it is in line 1 | present, describes the withdrawn generation |
+  | `DESIGN.md` | colours, type, logo, for every screen | present (T-012) |
+  | `AGENTS.md` | the mission, ground rules, scope, tools, working style, done-when | present (T-011) |
+  | `README.md` | how to run it; says what it is in line 1 | present, rewritten for Pinakion (T-015) |
+  | `PLAN.md` | the order and state of the work; this file keeps the acceptance criteria | present (DEC-006) |
 
   The deck's rule for correcting course: a mentor saying *"nobody has this problem"* means fixing `THESIS.md`; *"cut that feature"* means `SPEC.md`; *"I can't tell what it does"* means `DESIGN.md`. Fix the file, not only the code.
-- Project-specific additions to `CLAUDE.md`: none yet.
+- Project-specific additions to `CLAUDE.md`:
+  - **Git is written in English.** Every commit message, and every pull request title and body, is in English, whatever language the conversation is in (DEC-007).
 
 ---
 
@@ -183,13 +185,13 @@ Testnet only. No mainnet target exists and none is in scope for this milestone.
 
 Run from a clean checkout. The baseline below was recorded on 2026-10-25 **before any change**, per `CLAUDE.md` Bootstrap step 3.
 
-| # | Command | Baseline | Note |
-|---|---|---|---|
-| G1 | `cargo fmt --all --check` | **FAIL** | `contracts/beacon-verifier/src/test.rs` is not rustfmt-clean (generated code) |
-| G2 | `cargo test --locked --workspace` | **PASS** | 10 tests, all in beacon-verifier |
-| G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | **FAIL** | 5 uses of deprecated aliases `G1Affine` / `G2Affine` in `contracts/beacon-verifier/src/lib.rs` |
-| G4 | `stellar contract build` | **PASS** | beacon-verifier, 2,182 B optimised |
-| G5 | `npm test` | **FAIL** | deliberate placeholder until T-006 replaces it |
+| # | Command | Baseline (25 Oct, before any change) | Now | Note |
+|---|---|---|---|---|
+| G1 | `cargo fmt --all --check` | FAIL | **PASS** | fixed by T-004 |
+| G2 | `cargo test --locked --workspace` | PASS, 10 tests | **PASS, 12 tests** | +2 from T-007 |
+| G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | FAIL, 5 deprecated aliases | **PASS** | fixed by T-004 |
+| G4 | `stellar contract build` | PASS | **PASS** | beacon-verifier, 2,576 B optimised |
+| G5 | `npm test` | FAIL | FAIL | deliberate placeholder until T-006 replaces it |
 
 **Missing gates** (proposed as tasks, not added silently):
 
@@ -200,6 +202,8 @@ Run from a clean checkout. The baseline below was recorded on 2026-10-25 **befor
 ---
 
 ## §9 Milestones and tasks
+
+**Progress view:** [`PLAN.md`](../PLAN.md) at the root carries the order of the work, the branch and PR state, and the phases. This section stays the authority on each task's acceptance criteria (DEC-006).
 
 **The clock.** The *Speedrun SHIP* deck puts the event at: 25 Oct build, 26 Oct ship — stop new features, record the video, submit one hour early. Today is **25 Oct**, and the first-hour checklist (thesis, spec, design, open repo with issues) is not done. The repository has **zero commits** and is not public, against the deck's "public repo on day 1".
 
@@ -222,7 +226,7 @@ Run from a clean checkout. The baseline below was recorded on 2026-10-25 **befor
 | T-001 | Decide the fate of the withdrawn generation | T-000 | §1, §11 Q-03 | review | Moved to `../Cautela-geracao-retirada/` with a note; removed from this tree; §1, §3, §6 and §8 updated |
 | T-002 | License the repository | T-000 | §11 Q-01 | review | MIT. `LICENSE` present; `package.json` renamed to `pinakion` and declares MIT |
 | T-003 | Pin the toolchain ([#2](https://github.com/ThaisFReis/pinakion/issues/2)) | T-000 | §6, §11 Q-06 | todo | `rust-toolchain.toml` and `.nvmrc` present; G1–G4 pass from a clean checkout |
-| T-004 | Green the baseline: fmt and clippy ([#3](https://github.com/ThaisFReis/pinakion/issues/3)) | T-003 | §8 | todo | G1 and G3 pass; no behaviour change; deprecated aliases replaced |
+| T-004 | Green the baseline: fmt and clippy ([#3](https://github.com/ThaisFReis/pinakion/issues/3)) | — | §8 | review | G1 and G3 pass. Aliases renamed to `Bls12381G1Affine` / `Bls12381G2Affine`; rustfmt applied. No behaviour change: the golden vectors still match |
 | T-005 | Test the Python verifier in the repository ([#4](https://github.com/ThaisFReis/pinakion/issues/4)) | T-003 | §4 INV-04 | todo | A gate runs `scripts/verificar_sorteio.py` against the golden vectors and fails if they diverge |
 | T-006 | Test the JavaScript verifier in the repository ([#5](https://github.com/ThaisFReis/pinakion/issues/5)) | T-005 | §3 B-02 | todo | A gate runs `web/sorteio.mjs` against the same vectors; `npm test` stops being a placeholder (replaces G5) |
 | T-007 | Pin the beacon public key ([#1](https://github.com/ThaisFReis/pinakion/issues/1)) | — | §4 INV-10, §7 | review | Key pinned; `verify` takes no key; `beacon()` publishes the trusted chain hash; a forged signature from a real adversary keypair is rejected on testnet |
@@ -238,11 +242,14 @@ Ordered by the clock, not by dependency. These block the submission; T-001 to T-
 | T-010 | Write `THESIS.md` | T-009 | §1 | review | Present at the repository root: the guarantee, who it is for, the problem with two documented cases, why Stellar with measured figures, what is proven and what is not |
 | T-011 | Write `AGENTS.md` | T-010 | §0 | review | Present at the root, in the deck's six sections. Defers to `CLAUDE.md` where the two disagree, and to §9 here for scope |
 | T-012 | Write `DESIGN.md` | T-010 | — | review | Present at the root: tokens for both themes, three type roles with a scale, the mark as inline SVG, layout and voice. Derived from the thesis — cool stone, oxidised bronze, and the machine's own black and white balls as the semantic pair |
-| T-017 | Bring `web/index.html` onto the design tokens ([#7](https://github.com/ThaisFReis/pinakion/issues/7)) | T-012 | `DESIGN.md` | todo | The page uses the `DESIGN.md` fonts and `:root` tokens; no literal colours; both themes checked. Declared divergence in `DESIGN.md` is removed |
+| T-017 | Civic design for the public page ([#7](https://github.com/ThaisFReis/pinakion/issues/7)) | T-012 | `DESIGN.md`, §2, §3 B-02 | review | User expanded the design brief on 2026-10-25: express governance legitimacy for all audiences and avoid crypto clichés. DESIGN.md and page hierarchy updated; responsive light/dark tokens applied; independent recomputation and evidence links retained; scope of comparison made visible. Local review only; see DEC-005 |
 | T-013 | Public repository | T-011, T-015 | §11 Q-04 | review | Live at [github.com/ThaisFReis/pinakion](https://github.com/ThaisFReis/pinakion), public, MIT, one clean commit on `main` |
 | T-014 | Spec tasks become issues | T-013 | §9 | review | Eight issues open, one per task still to do. Owners not yet assigned |
 | T-015 | Rewrite `README.md` | T-010 | §2 | review | Opens with the one-liner; how to run it; every claim traced to §2; limits stated before the instructions |
 | T-016 | Write the demo path and record the video ([#8](https://github.com/ThaisFReis/pinakion/issues/8)) | T-012, T-015 | §2 | todo | One flow, live on testnet, with the video as backup. 3 minutes in the deck's four parts |
+| T-018 | Write `PLAN.md`, the progress board | T-014 | §8, §9, §11 | review | Phases ordered by the clock; branch and PR state; what is out of scope before the ship date; §9 stays the authority on acceptance criteria (DEC-006) |
+
+| T-019 | Put the git record in English | T-018 | §0, §11 Q-08 | review | Commits not yet on `main` rewritten in English; PR titles and bodies in English; the convention recorded in §0 and DEC-007 |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
@@ -274,6 +281,27 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 **Alternatives:** A settable key behind an admin — rejected: it reintroduces the same party with an extra step. A set of accepted keys — rejected as unneeded complexity before a second beacon exists.
 **Consequences:** The contract trusts exactly one drand chain. A quicknet group-key rotation is a new chain with a new hash and requires a new contract; changing the key without changing the contract is precisely the power this pinning removes. Verification cost rose by 887 instructions, the constant being loaded rather than passed. INV-10 is now enforced; §7 and Q-05 updated. `beacon()` is a new public function and §5 declares no frozen interface yet.
 
+### DEC-006: A separate `PLAN.md` for order and state (2026-10-25, post-T-014)
+**Context:** §9 holds both the acceptance criteria and the status of every task, plus the event's deliverables. Reading it to answer "what is next, and what is waiting on whom" means reading three tables and two prose paragraphs, and the branch and PR state is not in it at all.
+**Decision:** `PLAN.md` at the root carries the order, the phases, the branch and PR state, and what is deliberately out of scope before the ship date. §9 keeps the acceptance criteria and remains the authority on them.
+**Alternatives:** Keeping everything in §9 — rejected: the file a human checks hourly during an event should not be the file that also defines correctness. Generating `PLAN.md` from §9 — rejected: no generator exists and writing one before the video is the wrong order.
+**Consequences:** Two files state task status, which can drift. `PLAN.md` states the rule for that: where the two disagree about criteria, the spec wins and `PLAN.md` is stale. Fixed the §0 table, which still listed `THESIS.md`, `DESIGN.md` and `AGENTS.md` as missing after T-010 to T-012 wrote them.
+
+---
+
+### DEC-005: Civic editorial identity for all governance audiences (2026-10-25, T-017)
+**Context:** The human requested a stronger design focused on what governance should convey, avoiding crypto clichés, and specified that all listed audiences matter.
+**Decision:** Use the stone/patina palette and serif/sans/data type roles in an editorial layout. Lead with procedure and people. Place the working comparison, its evidence and its limitations together. Put technical inputs behind native disclosure controls. A matching result describes agreement with the supplied data.
+**Correction made while finishing the task:** the page's worked example pointed at contract `CCLWP7WO…` and two transactions that no document in this repository records. Both are real on testnet, but they belong to the pre-T-007 deployment, whose beacon key was still a call parameter. The example is now round 33382274 on `CBPHNZLG…`, with the two transactions `docs/evidencia-testnet-sorteio.md` lists.
+**Consequences:** T-017 includes hierarchy and copy presentation as authorised in the conversation; general approval in §0 remains pending. No contract or independent algorithm change. The page is a local preview, not a public deployment. Empty signature input clears the previous result so an obsolete success state is not displayed.
+**Validation (observed 2026-10-25):** G1–G4 passed with their §8 commands, including 12 Rust tests. G5 fails as the placeholder `docs/SPEC.md` §8 declares, which T-006 replaces — an earlier note here said `npm` was absent from PATH; it is present (v24.14.1, via nvm) and the failure is the declared one, not a missing tool. Browser checks at 800px and 375px, light and dark: the documented panel recomputes and matches, a deliberately altered panel is refused, no console errors, no horizontal overflow. These checks do not replace T-006 or establish new contract guarantees.
+
+### DEC-007: Git is written in English (2026-10-25, T-019)
+**Context:** The conversation runs in Portuguese and the commit messages followed it, as did two PR bodies. The repository is public and read by people who do not read Portuguese; the history and the PR record are part of what they see.
+**Decision:** Every commit message and every pull request title and body is written in English. The language of the conversation does not decide the language of the repository's git record.
+**Alternatives:** Bilingual messages — rejected as noise. Leaving it to each commit — rejected: that is how the inconsistency arose.
+**Consequences:** Five Portuguese commits that had not reached `main` were rewritten in English on a fresh branch, giving the same tree in three commits instead of seven. Two Portuguese commits are already on `main` (`ca738dc`, `f0048e2`) and are left alone, because rewriting published history on a public default branch is the human's call, not the agent's. The merged PR bodies of #11 and #12 are part of the public record and were rewritten in place. Q-08 is now partly answered; the prose documents remain mixed.
+
 ---
 
 ## §11 Open questions
@@ -287,9 +315,9 @@ Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` 
 | Q-05 | ~~`verify` takes the beacon public key as a parameter.~~ **Resolved 2026-10-25 by T-007.** Accepted consequence, worth confirming: the contract trusts a single drand chain, so a quicknet key rotation means a new chain and a new contract. | — |
 | Q-06 | No toolchain pins exist (`rust-toolchain.toml`, `.nvmrc`). Which versions are the project's? | T-003 |
 | Q-07 | Who publishes the first roster, and under what authority? This is unresolved across three design documents. | — |
-| Q-08 | Documents are written in Portuguese; code identifiers are mixed Portuguese and English. What is the convention? | — |
+| Q-08 | **Partly answered 2026-10-25:** git is in English — commit messages and PR titles and bodies, always (DEC-007). Still open for the repository's prose: `THESIS.md`, `README.md`, `DESIGN.md`, `AGENTS.md`, `PLAN.md` and `docs/SPEC.md` are in English, while `docs/desenho-*.md`, `docs/evidencia-*.md` and `web/index.html` are in Portuguese, and code identifiers are mixed. | — |
 | Q-09 | `docs/whitepaper-v0.1.md` states the Soroban CPU ceiling as 100M. A measurement from a previous project of the human's, cited in conversation, gives 400M by bisection on testnet. The two have not been reconciled and no figure in §2 depends on either. | — |
 | Q-10 | ~~What is the one line?~~ **Answered 2026-10-25:** *"Verifiable jury selection for governance on Stellar."* Seven words, in the deck's own shape — category plus where. *"Nobody chooses who judges you."* is kept as the guarantee: it opens the pitch and sits under the landing hero, but it is not the one-liner, because it does not say what the thing is. | — |
 | Q-11 | Which track and which category is the submission? The eligibility question raised in the human's own research — Genesis describes itself as for builders with limited Stellar experience, and the human has a previously awarded Soroban contract — was never answered by the organisers. | T-009 |
 | Q-12 | ~~`AGENTS.md` versus `CLAUDE.md`.~~ **Resolved 2026-10-25 as proposed:** `AGENTS.md` carries the deck's six sections and states that `CLAUDE.md` wins where the two disagree. Neither duplicates the other. Confirm you are happy with that precedence. | — |
-| Q-13 | `DESIGN.md` chooses Cormorant Garamond for display, replacing the Newsreader used by `web/index.html`. That page was built first and now diverges from the system. Confirm the direction before T-017 changes a page that works. | T-017 |
+| Q-13 | **Addressed by the design request on 2026-10-25:** T-017 applies Cormorant Garamond and the stone/patina system in the civic direction of DEC-005. The implementation is for human review. | T-017 |

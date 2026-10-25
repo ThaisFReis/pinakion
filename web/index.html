@@ -1,260 +1,137 @@
-<meta charset="utf-8">
-<title>Sorteio a Portas Abertas</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Public+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<style>
-  /* Documento de registro público: coluna única, três atos em sequência, números em grade tabular. */
-  :root {
-    --bg: #f7f8fa;
-    --surface: #ffffff;
-    --fg: #16181d;
-    --muted: #5c6472;
-    --line: #d9dde4;
-    --accent: #1f4fa3;
-    --ok: #1a6b4a;
-    --bad: #9c2b2b;
-    --display: "Newsreader", Georgia, "Times New Roman", serif;
-    --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #101216;
-      --surface: #171a20;
-      --fg: #e7e9ee;
-      --muted: #99a1b0;
-      --line: #2a2f38;
-      --accent: #7aa5f0;
-      --ok: #5fc394;
-      --bad: #e58a8a;
-      color-scheme: dark;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #101216;
-    --surface: #171a20;
-    --fg: #e7e9ee;
-    --muted: #99a1b0;
-    --line: #2a2f38;
-    --accent: #7aa5f0;
-    --ok: #5fc394;
-    --bad: #e58a8a;
-    color-scheme: dark;
-  }
-
-  body {
-    background: var(--bg);
-    color: var(--fg);
-    font-family: var(--body);
-    font-size: 16px;
-    line-height: 1.6;
-    padding-left: max(16px, env(safe-area-inset-left, 0px));
-    padding-right: max(16px, env(safe-area-inset-right, 0px));
-    padding-block: 40px 64px;
-  }
-  .wrap { max-width: 68ch; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
-
-  h1 {
-    font-family: var(--display);
-    font-size: clamp(2rem, 6vw, 2.9rem);
-    font-weight: 600;
-    line-height: 1.12;
-    letter-spacing: -0.015em;
-    margin: 0;
-    text-wrap: balance;
-  }
-  .lede { color: var(--muted); margin: 10px 0 0; max-width: 58ch; }
-  h2 {
-    font-family: var(--display);
-    font-size: 1.35rem;
-    font-weight: 600;
-    margin: 0 0 4px;
-    text-wrap: balance;
-  }
-  .ato {
-    font-family: var(--body);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.11em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin: 0;
-  }
-  p { margin: 0; }
-  .nota { color: var(--muted); font-size: 0.9rem; }
-  a { color: var(--accent); }
-  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible {
-    outline: 2px solid var(--accent); outline-offset: 2px;
-  }
-
-  section { display: flex; flex-direction: column; gap: 14px; }
-  .painel {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .campos { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-  label { display: flex; flex-direction: column; gap: 5px; font-size: 0.8rem; color: var(--muted); min-width: 0; }
-  input, textarea {
-    font-family: var(--mono);
-    font-size: 0.9rem;
-    background: var(--bg);
-    color: var(--fg);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    padding: 8px 10px;
-    min-width: 0;
-  }
-  input[type="number"] { width: 7.5ch; }
-  #rodada { width: 13ch; }
-  textarea { width: 100%; resize: vertical; min-height: 64px; line-height: 1.5; }
-  button {
-    font-family: var(--body);
-    font-size: 0.9rem;
-    font-weight: 500;
-    background: var(--accent);
-    color: #fff;
-    border: 0;
-    border-radius: 4px;
-    padding: 9px 16px;
-    cursor: pointer;
-  }
-  button.secundario { background: transparent; color: var(--accent); border: 1px solid var(--line); }
-  button:disabled { opacity: 0.5; cursor: progress; }
-
-  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; align-items: baseline; }
-  dt { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
-  dd { margin: 0; font-family: var(--mono); font-size: 0.82rem; word-break: break-all; min-width: 0; }
-
-  .grade { display: flex; flex-wrap: wrap; gap: 6px; font-variant-numeric: tabular-nums; }
-  .grade span {
-    font-family: var(--mono);
-    font-size: 0.85rem;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    padding: 3px 8px;
-  }
-  .grade.conferido span { border-color: var(--ok); color: var(--ok); }
-
-  .veredito { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-weight: 500; }
-  .selo {
-    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-    border: 1px solid currentColor; border-radius: 3px; padding: 2px 8px;
-  }
-  .ok { color: var(--ok); }
-  .bad { color: var(--bad); }
-
-  ol.receita { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 7px; font-size: 0.92rem; }
-  ol.receita code { font-family: var(--mono); font-size: 0.86em; }
-  footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.85rem; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
-  footer a { word-break: break-all; }
-
-  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-</style>
-
-<div class="wrap">
-  <header>
-    <h1>Sorteio a portas abertas</h1>
-    <p class="lede">
-      O art. 433 do Código de Processo Penal manda sortear os jurados a portas abertas, para que
-      qualquer pessoa possa assistir. Esta página é a mesma coisa, depois do fato: ela recomputa,
-      no seu navegador, o painel que um contrato na Stellar sorteou — e você confere se bate.
-    </p>
-  </header>
-
-  <section>
-    <p class="ato">Ato um</p>
-    <h2>A rodada do beacon</h2>
-    <p class="nota">
-      A semente vem da drand, uma rede pública que publica um número imprevisível a cada três
-      segundos. Ninguém sabe o valor antes da hora — é isso que impede escolher o painel.
-    </p>
-    <div class="painel">
-      <div class="campos">
-        <label for="rodada">Rodada
-          <input id="rodada" type="text" inputmode="numeric" value="33380955">
-        </label>
-        <button id="buscar" type="button">Buscar na drand</button>
-        <button id="ultima" type="button" class="secundario">Usar a última</button>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Pinakion: sorteio verificável de painéis para governanças. Conheça o princípio e recompute um exemplo documentado na testnet.">
+  <title>Pinakion — Quem decide também precisa de regras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <a class="skip" href="#conteudo">Ir para o conteúdo</a>
+  <div class="shell">
+    <header class="masthead">
+      <a class="brand" href="#" aria-label="Pinakion, início">
+        <svg viewBox="0 0 24 28" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="23" rx="1" stroke="currentColor"/><path d="M7 8h10M7 20h10" stroke="currentColor" stroke-width="1.5"/><path d="M7 14h10" stroke="currentColor" stroke-width="3"/></svg>
+        Pinakion
+      </a>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="#principio">O princípio</a>
+        <a href="#conferir">Conferir um sorteio <span aria-hidden="true">↗</span></a>
+        <button class="theme" id="tema" aria-label="Alternar tema" title="Alternar tema">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg>
+        </button>
+      </nav>
+    </header>
+    <main id="conteudo">
+      <section class="hero" aria-labelledby="titulo">
+        <div class="hero-copy">
+          <p class="eyebrow">Para decisões que afetam pessoas</p>
+          <h1 id="titulo">Quem decide<br>também precisa<br><span>de regras.</span></h1>
+          <p class="intro">Pinakion propõe um sorteio de painéis para governanças. Uma lista de participantes definida antes do caso, com um resultado que qualquer pessoa possa conferir.</p>
+          <div class="hero-actions">
+            <a class="button" href="#conferir">Conferir o exemplo <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg></a>
+            <a class="quiet-link" href="#principio">Conheça o princípio</a>
+          </div>
+        </div>
+        <figure class="folio">
+          <div class="folio-head"><span class="eyebrow">O princípio</span><span class="eyebrow" aria-hidden="true">P / 01</span></div>
+          <svg class="folio-figure" viewBox="0 0 320 260" role="img" aria-labelledby="fig-title fig-desc">
+            <title id="fig-title">Uma lista, uma ordem comum</title>
+            <desc id="fig-desc">Composição conceitual de entradas de um rol, com algumas posições destacadas. Ilustração, sem dados de um sorteio.</desc>
+            <defs><pattern id="slots" width="64" height="38" patternUnits="userSpaceOnUse"><rect x="7" y="9" width="48" height="18" rx="1" fill="none" stroke="currentColor" stroke-opacity=".38"/><path d="M18 18h26" stroke="currentColor" stroke-opacity=".38"/></pattern></defs>
+            <rect x="0" y="0" width="320" height="228" fill="url(#slots)"/>
+            <g fill="currentColor"><rect x="135" y="9" width="48" height="18" rx="1"/><rect x="7" y="85" width="48" height="18" rx="1"/><rect x="199" y="123" width="48" height="18" rx="1"/><rect x="71" y="161" width="48" height="18" rx="1"/><rect x="263" y="199" width="48" height="18" rx="1"/></g>
+            <path d="M7 247h304M7 242v10m304-10v10" stroke="currentColor" stroke-opacity=".55"/>
+          </svg>
+          <figcaption>
+            <p class="folio-title">A lista vem antes.<br>O sorteio vem depois.</p>
+            <p class="folio-note">A proposta é simples: ninguém deve escolher quem vai julgar o seu caso.</p>
+          </figcaption>
+        </figure>
+      </section>
+      <div class="audience">
+        <p>Um procedimento comum. Diferentes governanças.</p>
+        <p>Comunidades · DAOs · Grants · Fundos e instituições</p>
       </div>
-      <label for="assinatura">Assinatura (hex, 48 bytes) — cole aqui se preferir não usar a rede
-        <textarea id="assinatura" spellcheck="false">90543e0bd8b03bf6a8270c2d64b915c1f1734ad86e4b082ec7e4bd1366dcad6c9cb0fc12736d37b75979b91d76ed0df1</textarea>
-      </label>
-      <dl>
-        <dt>Semente</dt>
-        <dd id="semente">—</dd>
-      </dl>
-      <p class="nota" id="notaSemente">
-        A semente é o <code>sha256</code> da assinatura, calculado aqui no navegador. Não é preciso
-        confiar no que a API responde.
-      </p>
-    </div>
-  </section>
-
-  <section>
-    <p class="ato">Ato dois</p>
-    <h2>O sorteio</h2>
-    <p class="nota">
-      O rol de jurados é comprometido antes de a rodada existir. O painel sai do embaralhamento
-      daquele rol com a semente acima.
-    </p>
-    <div class="painel">
-      <div class="campos">
-        <label for="n">Tamanho do rol
-          <input id="n" type="number" min="2" max="5000" value="200">
-        </label>
-        <label for="k">Painel
-          <input id="k" type="number" min="1" max="200" value="25">
-        </label>
-        <button id="sortear" type="button">Recomputar o painel</button>
+      <section class="section" id="principio" aria-labelledby="principio-titulo">
+        <div class="section-heading">
+          <p class="eyebrow">01 / A proposta</p>
+          <h2 id="principio-titulo">A confiança precisa<br>de algo que se possa conferir.</h2>
+        </div>
+        <ol class="principles">
+          <li><span class="ordinal">01</span><h3>Critérios antes do caso</h3><p>O desenho prevê um rol definido previamente, com uma janela pública para contestar quem participa.</p></li>
+          <li><span class="ordinal">02</span><h3>Uma escolha por sorteio</h3><p>A proposta usa uma rodada pública de aleatoriedade para determinar a ordem dos participantes.</p></li>
+          <li><span class="ordinal">03</span><h3>Um resultado conferível</h3><p>A recomputação permite comparar o painel com o resultado informado. Você pode experimentar abaixo.</p></li>
+        </ol>
+        <p class="status-note"><strong>Em desenvolvimento</strong> O ciclo do rol, os casos e as recusas ainda não estão implementados.</p>
+      </section>
+    </main>
+  </div>
+  <section class="verification" id="conferir" aria-labelledby="conferir-titulo">
+    <div class="shell section">
+      <div class="section-heading">
+        <p class="eyebrow">02 / Conferência pública</p>
+        <div class="section-intro">
+          <h2 id="conferir-titulo">O mesmo sorteio.<br>Nas suas mãos.</h2>
+          <p>Recompute um exemplo documentado na testnet. Os dados já estão preenchidos; o cálculo acontece no seu navegador.</p>
+        </div>
       </div>
-      <div class="grade" id="painelSaida"></div>
+      <div class="record">
+        <div class="record-input">
+          <div class="record-header"><h3>Dados do sorteio</h3><span class="sample-label">Exemplo · testnet</span></div>
+          <div class="fields">
+            <label class="round-field" for="rodada">Rodada da drand<input id="rodada" type="text" inputmode="numeric" value="33382274" aria-describedby="round-help"></label>
+            <label for="n">Posições no rol<input id="n" type="number" min="2" max="5000" value="200"></label>
+            <label for="k">Posições no painel<input id="k" type="number" min="1" max="200" value="25"></label>
+          </div>
+          <p class="nota" id="round-help">Para usar outra rodada, busque sua assinatura nos dados de conferência abaixo.</p>
+          <button class="button" id="sortear" type="button">Recomputar o painel <span aria-hidden="true">↗</span></button>
+          <details>
+            <summary>Assinatura e dados de conferência</summary>
+            <div class="details-content">
+              <div class="fetch-actions"><button class="secondary" id="buscar" type="button">Buscar rodada</button><button class="secondary" id="ultima" type="button">Buscar última rodada</button></div>
+              <label for="assinatura">Assinatura comprimida (hex)
+                <textarea id="assinatura" spellcheck="false">b2d4ef6d4695d5ad1d371488c341ea1166dd6a1f32ccf256bac0fd5d7682f22a7a6c28535aa99836e757d0ad742bc7a0</textarea>
+              </label>
+              <dl class="seed"><dt>Semente calculada no navegador</dt><dd id="semente">Aguardando cálculo.</dd></dl>
+              <p class="nota" id="notaSemente" role="status">A semente é o SHA-256 da assinatura comprimida. A autenticidade da assinatura não é verificada por esta página.</p>
+              <label for="esperado">Painel informado para comparação
+                <textarea id="esperado" spellcheck="false">[23,81,114,169,188,195,142,52,44,13,0,60,7,124,42,37,121,10,192,174,155,177,140,49,135]</textarea>
+              </label>
+            </div>
+          </details>
+        </div>
+        <div class="record-output">
+          <div class="record-header"><h3>Painel recomputado</h3><span class="eyebrow">Ordem de seleção</span></div>
+          <div class="grade" id="painelSaida" aria-label="Posições sorteadas"></div>
+          <p class="nota">Os números representam posições no rol, a partir de zero. A ordem faz parte do resultado.</p>
+          <div class="veredito" id="veredito" role="status" aria-live="polite"><span class="nota">Calculando o exemplo…</span></div>
+          <div class="record-links">
+            <a href="https://stellar.expert/explorer/testnet/tx/d077a6a953a4c5c48a75306754e838a89bf00c92bd00a261c02cc6b03f2f1a1d" target="_blank" rel="noopener noreferrer">O sorteio na cadeia <span aria-hidden="true">↗</span></a>
+            <a href="https://stellar.expert/explorer/testnet/tx/c74150eeb7b73d0a196d20b44ed851a140812b3ac67e579b670b87ee2c3ffeea" target="_blank" rel="noopener noreferrer">Verificação do beacon <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </div>
+      <noscript><p class="status-note">Ative o JavaScript para recomputar o painel no navegador.</p></noscript>
+      <div class="limit"><h3>O que esta conferência demonstra</h3><p>A igualdade entre o painel calculado e os dados informados. A página não consulta o registro na cadeia nem verifica a anterioridade do rol. O protótipo não foi auditado e está restrito à testnet.</p></div>
+      <details class="method">
+        <summary>Consultar o método de recomputação</summary>
+        <div class="details-content">
+          <p class="nota">Receita implementada em <a href="https://github.com/ThaisFReis/pinakion/blob/main/web/sorteio.mjs">sorteio.mjs</a>, com fontes registradas no <a href="https://github.com/ThaisFReis/pinakion/blob/main/docs/SOURCES.md">caderno de fontes</a>.</p>
+          <ol><li><code>HMAC-SHA256(sal, semente)</code> deriva a chave.</li><li><code>ChaCha20Rng</code> produz a sequência usada pelo embaralhamento.</li><li>Fisher-Yates determina a ordem; o painel usa as primeiras posições.</li></ol>
+          <p class="nota">O exemplo desta página é a rodada 33382274 sorteada pelo contrato <code>CBPHNZLGQIUEC4BEC53ZP7P65LLIBT5JTWTHMZVAMCGZCEN3PSUHTPQN</code>, que traz a chave do beacon fixada como constante. Cada hash está no <a href="https://github.com/ThaisFReis/pinakion/blob/main/docs/evidencia-testnet-sorteio.md">registro de evidências</a>.</p>
+        </div>
+      </details>
     </div>
   </section>
-
-  <section>
-    <p class="ato">Ato três</p>
-    <h2>A conferência</h2>
-    <p class="nota">
-      Cole o painel que saiu on-chain. Se os dois coincidirem, o sorteio foi honesto — e você
-      verificou sozinho, sem instalar nada.
-    </p>
-    <div class="painel">
-      <label for="esperado">Painel registrado on-chain
-        <textarea id="esperado" spellcheck="false">[146,187,57,172,113,46,106,152,12,124,56,193,101,99,88,169,63,167,108,135,18,197,148,97,73]</textarea>
-      </label>
-      <div class="veredito" id="veredito"></div>
-    </div>
-  </section>
-
-  <section>
-    <p class="ato">Como funciona</p>
-    <h2>A receita, lida do host</h2>
-    <ol class="receita">
-      <li><code>chave = HMAC-SHA256(sal, semente)</code> — é o que <code>unbias_prng_seed</code> faz no Soroban.</li>
-      <li><code>ChaCha20Rng::from_seed(chave)</code>, do <code>rand_chacha</code> 0.3.1.</li>
-      <li>Fisher-Yates do <code>rand</code> 0.8.5, com índices por amostragem de Lemire com rejeição.</li>
-    </ol>
-    <p class="nota">
-      O sal é <code>sha256("Public Global Stellar Network ; September 2015")</code>. O comentário no
-      próprio código do Soroban diz que ele é parte do protocolo e precisa ser igual em todas as
-      implementações — por isso esta página consegue existir.
-    </p>
-  </section>
-
-  <footer>
-    <p>Exemplo em tela: rodada 33380955 da drand quicknet, sorteada pelo contrato
-      <code>CCLWP7WOESC46JLHKGASYQ5R7XKBHEBIJCKWT74R7GPO7P5ZW3N5PCGN</code> na testnet Stellar.</p>
-    <p><a href="https://stellar.expert/explorer/testnet/tx/dda87cc05c16beed6e2720f579990d15c79e46dd9dc9f920b24917e8e1d87d65">Transação do sorteio</a> ·
-       <a href="https://stellar.expert/explorer/testnet/tx/9de197478cd68e93a1f2d7a16c9b3f997580584239c0e5e83fddc0c322a2238d">Transação da verificação do beacon</a></p>
-  </footer>
-</div>
+  <div class="shell">
+    <section class="closing" aria-labelledby="closing-titulo"><h2 id="closing-titulo">Um procedimento aberto<br>ao exame de todos.</h2><p>O desenho, o código e as limitações estão disponíveis para leitura.<br><a href="https://github.com/ThaisFReis/pinakion">Explorar o projeto <span aria-hidden="true">↗</span></a></p></section>
+    <footer class="footer"><p>Pinakion · Verifiable jury selection for governance on Stellar.</p><a href="https://github.com/ThaisFReis/pinakion/blob/main/LICENSE">Código aberto · MIT</a></footer>
+  </div>
 
 <script type="module">
   import { sortear, aleatoriedadeDaAssinatura } from "./sorteio.mjs";
@@ -273,6 +150,9 @@
     if (!/^[0-9a-fA-F]{96}$/.test(sig)) {
       semente = null;
       $("semente").textContent = "assinatura precisa ter 96 caracteres hex";
+      $("painelSaida").textContent = "";
+      $("painelSaida").className = "grade";
+      $("veredito").textContent = "Preencha uma assinatura válida para recomputar o painel.";
       return false;
     }
     semente = await aleatoriedadeDaAssinatura(sig);
@@ -307,12 +187,12 @@
     }
     const selo = document.createElement("span");
     selo.className = "selo " + (bate ? "ok" : "bad");
-    selo.textContent = bate ? "confere" : "não confere";
+    selo.textContent = bate ? "Os painéis coincidem" : "Os painéis divergem";
     const txt = document.createElement("span");
     txt.className = bate ? "ok" : "bad";
     txt.textContent = bate
-      ? "O painel recomputado é idêntico ao registrado on-chain."
-      : "Os painéis divergem. Verifique a rodada, o tamanho do rol e o painel colado.";
+      ? "O painel recomputado corresponde aos dados informados."
+      : "Verifique a rodada, o tamanho do rol e o painel informado.";
     ver.append(selo, txt);
   }
 
@@ -347,5 +227,25 @@
     $(id).addEventListener("input", recomputar);
   }
 
+  const tema = $("tema");
+  const preferencia = matchMedia("(prefers-color-scheme: dark)");
+  function temaEscuro() {
+    return document.documentElement.dataset.theme
+      ? document.documentElement.dataset.theme === "dark" : preferencia.matches;
+  }
+  function rotularTema() {
+    const label = temaEscuro() ? "Usar tema claro" : "Usar tema escuro";
+    tema.setAttribute("aria-label", label);
+    tema.title = label;
+  }
+  tema.addEventListener("click", () => {
+    document.documentElement.dataset.theme = temaEscuro() ? "light" : "dark";
+    rotularTema();
+  });
+  preferencia.addEventListener("change", rotularTema);
+  rotularTema();
   recomputar();
 </script>
+
+</body>
+</html>

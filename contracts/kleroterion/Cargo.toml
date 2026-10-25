@@ -10,6 +10,8 @@ doctest = false
 
 [dependencies]
 soroban-sdk = { workspace = true }
+pinakion-poseidon = { path = "../poseidon" }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+serde_json = "1"

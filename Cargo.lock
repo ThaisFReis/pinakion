@@ -1096,6 +1096,8 @@ dependencies = [
 name = "kleroterion"
 version = "0.1.0"
 dependencies = [
+ "pinakion-poseidon",
+ "serde_json",
  "soroban-sdk",
 ]
 

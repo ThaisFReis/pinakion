@@ -14,9 +14,10 @@
 #   4. SAC admin -> kleroterion
 #   5. issuer master weight 0: nobody can ever issue or authorize a ticket
 #      again except the contract                        (the commitment)
-#   6. enroll each juror: SAC trust (CAP-73) + set_authorized + mint
+#   6. enroll each juror with c = Poseidon(s): SAC trust (CAP-73) + set_authorized + mint;
+#      the contract updates the commitment tree
 #   7. impede the first juror of the enrolment order    (art. 463; refused after lock)
-#   8. lock(k = 3, reveal_after ledger): ledger, timestamp, the drand round, k
+#   8. lock(k = 3, reveal_after ledger): ledger, timestamp, the drand round, k, root, N
 #   9. wait for that round, then seal with its signature (once; no round is chosen)
 #  10. recompute the panel off-chain, no dependencies
 set -euo pipefail
@@ -46,10 +47,23 @@ log "5. issuer master weight 0"
 stellar tx new set-options --source "$ISSUER" $N --master-weight 0 2>&1 | grep -o '[0-9a-f]\{64\}' | sed 's/^/tx /'
 curl -s "https://horizon-testnet.stellar.org/accounts/$EMISSOR" | python3 -c "import sys,json;d=json.load(sys.stdin);print('flags',d['flags']);print('master weight',[s['weight'] for s in d['signers'] if s['key']==d['account_id']])"
 
-log "6. enroll ${#JURORS[@]} jurors (clerk signs the envelope; the CLI signs each juror's auth entry with the local identity)"
+log "6. enroll ${#JURORS[@]} jurors with c = Poseidon(s) (clerk signs the envelope; the CLI signs each juror's auth entry)"
+# Each juror's secret s is drawn here and kept in build/ (git-ignored): losing
+# it means losing the seat (T-036/T-038 need it). Only c goes on-chain.
+mkdir -p build; SEGREDOS=build/segredos-$KLERO.json; echo '{}' > "$SEGREDOS"
 for J in "${JURORS[@]}"; do
   A=$(stellar keys address "$J")
-  H=$(stellar contract invoke --id "$KLERO" --source "$CLERK" $N -- enroll --jurado "$A" 2>&1 | grep -o 'tx/[0-9a-f]*' | cut -d/ -f2)
+  C=$(python3 - "$SEGREDOS" "$A" <<'PY'
+import json, secrets, sys
+sys.path.insert(0, "scripts")
+from poseidon import R, hash1
+caminho, endereco = sys.argv[1], sys.argv[2]
+s = secrets.randbelow(R - 1) + 1
+d = json.load(open(caminho)); d[endereco] = str(s); json.dump(d, open(caminho, "w"), indent=1)
+print(hash1(s))
+PY
+)
+  H=$(stellar contract invoke --id "$KLERO" --source "$CLERK" $N -- enroll --jurado "$A" --c "$C" 2>&1 | grep -o 'tx/[0-9a-f]*' | cut -d/ -f2)
   printf '%-8s %s  tx %s\n' "$J" "$A" "$H"
 done
 

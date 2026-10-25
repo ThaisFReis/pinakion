@@ -12,10 +12,12 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { painel, sortear } from "./sorteio.mjs";
+import { criarPoseidon } from "./poseidon.mjs";
+import { raiz, zeros } from "./arvore.mjs";
 
-const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
+const raiz_ = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { vetores } = JSON.parse(
-  await readFile(join(raiz, "tests", "vetores-de-ouro.json"), "utf8"),
+  await readFile(join(raiz_, "tests", "vetores-de-ouro.json"), "utf8"),
 );
 
 let falhas = 0;
@@ -38,8 +40,45 @@ for (const v of vetores) {
   }
 }
 
+// T-035: Poseidon against circomlib's vectors, then the commitment root
+// from the events.
+const ler = async (nome) => JSON.parse(await readFile(join(raiz_, "tests", nome), "utf8"));
+const { hash1, hash2 } = criarPoseidon(await ler("poseidon-bn254.json"));
+const poseidon = (await ler("vetores-poseidon.json")).vetores;
+let iguais = 0;
+for (const v of poseidon) {
+  const xs = v.entradas.map(BigInt);
+  const h = xs.length === 1 ? hash1(xs[0]) : hash2(xs[0], xs[1]);
+  if (h === BigInt(v.saida)) iguais++;
+  else {
+    falhas++;
+    console.log(`  FALHA Poseidon(${v.entradas}) = ${h}, esperado ${BigInt(v.saida)}`);
+  }
+}
+if (iguais === poseidon.length) console.log(`  ok    Poseidon: ${iguais} vetores da circomlib`);
+
+const arvores = await ler("vetores-arvore.json");
+if (zeros(hash2).every((z, d) => String(z) === arvores.zeros[d])) {
+  console.log("  ok    as raizes vazias");
+} else {
+  falhas++;
+  console.log("  FALHA as raizes vazias");
+}
+for (const a of arvores.arvores) {
+  const obtida = String(raiz(a.eventos, hash2));
+  if (obtida === a.raiz) console.log(`  ok    arvore: ${a.nome}`);
+  else {
+    falhas++;
+    console.log(`  FALHA arvore: ${a.nome}`);
+    console.log(`        esperado ${a.raiz}`);
+    console.log(`        obtido   ${obtida}`);
+  }
+}
+
 if (falhas) {
   console.log(`\n${falhas} falha(s).`);
   process.exit(1);
 }
-console.log(`\n${vetores.length} vetores conferidos.`);
+console.log(
+  `\n${vetores.length} vetores conferidos, ${poseidon.length} de Poseidon, ${arvores.arvores.length} arvores.`,
+);

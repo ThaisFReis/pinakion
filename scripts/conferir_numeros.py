@@ -27,6 +27,10 @@ TUPLAS = {
         RAIZ / "contracts" / "poseidon" / "src" / "test.rs",
         ["CUSTO_HASH1", "CUSTO_HASH2", "CUSTO_ARVORE_6"],
     ),
+    "kleroterion": (
+        RAIZ / "contracts" / "kleroterion" / "src" / "test.rs",
+        ["CUSTO_ENROLL", "CUSTO_IMPEDE", "CUSTO_LOCK"],
+    ),
 }
 
 # Which figures each document publishes, by the name used below.
@@ -39,7 +43,10 @@ ONDE = {
     ],
     "README.md": ["verify_cpu", "verify_mem", "draw_1000_cpu"],
     "THESIS.md": ["verify_cpu", "draw_1000_cpu"],
-    "docs/SPEC.md": ["verify_cpu", "verify_mem"],
+    "docs/SPEC.md": [
+        "verify_cpu", "verify_mem",
+        "kleroterion_custo_enroll_cpu", "kleroterion_custo_impede_cpu", "kleroterion_custo_lock_cpu",
+    ],
     "docs/SOURCES.md": ["verify_cpu", "verify_mem"],
     "docs/DEMO.md": ["verify_cpu"],
     "docs/evidencia-testnet-spike.md": [

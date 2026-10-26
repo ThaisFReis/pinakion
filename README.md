@@ -88,6 +88,7 @@ Full records: [`docs/evidencia-testnet-bilhete.md`](docs/evidencia-testnet-bilhe
 ## What is not
 
 - **The case lifecycle is designed and not built.** That covers roster renewal, contestation windows and the quorum arithmetic. The roster cycle — enrol → impede → lock → seal → claim → recuse → finalize → reveal — is built, passes its unit tests and ran once on testnet.
+- **Nothing yet stops the person judged from sitting on their own case.** The clerk must impede them before `lock`; if that is skipped and they are drawn, their seat stays sealed until the reveal. Severity-sized panels, interim suspension and a floor on the reveal are studied in [`docs/desenho-gravidade-afastamento-revelacao.md`](docs/desenho-gravidade-afastamento-revelacao.md) and not built (§11 Q-26).
 - **The testnet run was one machine playing all 20 jurors and every seat account,** with short windows: 60 ledgers to claim, and a reveal ledger minutes away rather than "after the verdict" (§11 Q-24).
 - **Nothing has been audited. Nothing has run on mainnet.**
 - **The drand signature is verified on-chain at `seal`,** not again by the off-chain checker, which takes the randomness from drand's API.

@@ -1,11 +1,11 @@
 #![no_std]
-//! Verificador de rodada do beacon drand (quicknet) na Stellar.
+//! Verifier for a drand beacon round (quicknet) on Stellar.
 //!
-//! Esquema `bls-unchained-g1-rfc9380`: assinatura em G1, chave pública em G2.
-//! A mensagem assinada é `sha256(round as u64 big-endian)` — verificado
-//! empiricamente contra rodadas reais antes de escrever este contrato.
+//! Scheme `bls-unchained-g1-rfc9380`: signature in G1, public key in G2. The
+//! signed message is `sha256(round as u64 big-endian)` — checked empirically
+//! against real rounds before this contract was written.
 //!
-//! Verificação: e(H(msg), pk) · e(sig, -G2) == 1
+//! Verification: e(H(msg), pk) · e(sig, -G2) == 1
 
 use soroban_sdk::{
     contract, contracterror, contractimpl,
@@ -13,32 +13,32 @@ use soroban_sdk::{
     panic_with_error, vec, Bytes, BytesN, Env,
 };
 
-/// Domain separation tag do drand quicknet.
+/// drand quicknet's domain separation tag.
 const DST: &[u8] = b"BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_NUL_";
 
-/// Gerador de G2 negado, codificação não comprimida:
+/// The G2 generator, negated, uncompressed encoding:
 /// be(X_c1) || be(X_c0) || be(Y_c1) || be(Y_c0)
 pub const NEG_G2_GENERATOR: [u8; 192] = *include_bytes!("neg_g2.bin");
 
-/// Chave pública do grupo de limiar da quicknet, pinada.
+/// quicknet's threshold-group public key, pinned.
 ///
-/// Ela **não** é parâmetro. Se fosse, qualquer pessoa passaria a própria chave
-/// e faria qualquer rodada verificar — o que esvazia a garantia inteira, porque
-/// a semente deixaria de vir de um beacon que ninguém controla.
+/// It is **not** a parameter. If it were, anyone could pass their own key and
+/// make any round verify — which empties the whole guarantee, because the seed
+/// would stop coming from a beacon nobody controls.
 ///
-/// Consequência aceita: este contrato confia em uma única chain da drand. Se o
-/// grupo da quicknet rotacionar a chave, isso é uma chain nova, com outro hash,
-/// e exige um contrato novo. Trocar a chave sem trocar o contrato seria
-/// exatamente o poder que este pinning existe para remover.
+/// Accepted consequence: this contract trusts a single drand chain. If the
+/// quicknet group rotates its key, that is a new chain with a different hash,
+/// and it needs a new contract. Swapping the key without swapping the contract
+/// would be exactly the power this pinning exists to remove.
 pub const BEACON_PUBLIC_KEY: [u8; 192] = *include_bytes!("quicknet_pk.bin");
 
-/// Hash da chain quicknet. Publicado por `beacon()` para que qualquer um
-/// confira em que beacon este contrato confia, sem ler o Wasm.
+/// The quicknet chain hash. Published by `beacon()` so anyone can check which
+/// beacon this contract trusts without reading the Wasm.
 pub const BEACON_CHAIN_HASH: [u8; 32] = *include_bytes!("quicknet_chain.bin");
 
-/// (p-1)/2 para o campo base da BLS12-381, big-endian.
-/// Usado para o bit de sinal de Y na compressão de um ponto G1.
-const METADE_DE_P: [u8; 48] = [
+/// (p-1)/2 for BLS12-381's base field, big-endian.
+/// Used for Y's sign bit when compressing a G1 point.
+const HALF_OF_P: [u8; 48] = [
     0x0d, 0x00, 0x88, 0xf5, 0x1c, 0xbf, 0xf3, 0x4d, 0x25, 0x8d, 0xd3, 0xdb, 0x21, 0xa5, 0xd6, 0x6b,
     0xb2, 0x3b, 0xa5, 0xc2, 0x79, 0xc2, 0x89, 0x5f, 0xb3, 0x98, 0x69, 0x50, 0x7b, 0x58, 0x7b, 0x12,
     0x0f, 0x55, 0xff, 0xff, 0x58, 0xa9, 0xff, 0xff, 0xdc, 0xff, 0x7f, 0xff, 0xff, 0xff, 0xd5, 0x55,
@@ -47,11 +47,11 @@ const METADE_DE_P: [u8; 48] = [
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum Erro {
-    /// A rodada pedida é anterior à que o rol fixou (INV-06).
-    RodadaAnteriorAoRol = 1,
-    /// A assinatura não é da quicknet.
-    AssinaturaInvalida = 2,
+pub enum Error {
+    /// The round asked for is earlier than the one the roster fixed (INV-06).
+    RoundBeforeRoster = 1,
+    /// The signature is not quicknet's.
+    InvalidSignature = 2,
 }
 
 #[contract]
@@ -59,8 +59,8 @@ pub struct BeaconVerifier;
 
 #[contractimpl]
 impl BeaconVerifier {
-    /// Verifica uma rodada do beacon contra a chave pinada da quicknet.
-    /// Devolve `true` se a assinatura confere.
+    /// Verifies a beacon round against quicknet's pinned key.
+    /// Returns `true` if the signature checks out.
     pub fn verify(env: Env, round: u64, sig: BytesN<96>) -> bool {
         let bls = env.crypto().bls12_381();
 
@@ -81,14 +81,14 @@ impl BeaconVerifier {
         )
     }
 
-    /// Em que beacon este contrato confia. Leitura pública, sem argumento:
-    /// a resposta é a mesma para todo mundo, para sempre.
+    /// Which beacon this contract trusts. A public read with no argument: the
+    /// answer is the same for everyone, forever.
     pub fn beacon(env: Env) -> BytesN<32> {
         BytesN::from_array(&env, &BEACON_CHAIN_HASH)
     }
 
-    /// Sorteia `k` posições de um rol de tamanho `n`, usando a aleatoriedade
-    /// do beacon como semente. Fisher-Yates, determinístico e recomputável.
+    /// Draws `k` positions from a roster of size `n`, using the beacon's
+    /// randomness as the seed. Fisher-Yates, deterministic and recomputable.
     pub fn draw(env: Env, seed: BytesN<32>, n: u32, k: u32) -> soroban_sdk::Vec<u32> {
         let prng = env.prng();
         prng.seed(seed.into());
@@ -104,62 +104,63 @@ impl BeaconVerifier {
         out
     }
 
-    /// Sorteia a partir de uma rodada do beacon, recusando rodada anterior à
-    /// que o rol fixou.
+    /// Draws from a beacon round, refusing a round earlier than the one the
+    /// roster fixed.
     ///
-    /// Esta é a metade de INV-06 que dá para impor sem um contrato de rol: o
-    /// chamador informa `rodada_minima`, e o contrato recusa qualquer rodada
-    /// mais antiga. A outra metade — garantir que essa `rodada_minima` é
-    /// mesmo a do rol, e não um número escolhido depois — precisa do rol
-    /// guardado na cadeia, que não existe ainda.
+    /// This is the half of INV-06 that can be enforced without a roster
+    /// contract: the caller states `minimum_round`, and the contract refuses
+    /// any older round. The other half — making sure that `minimum_round` is
+    /// really the roster's, and not a number chosen afterwards — needs the
+    /// roster held on the ledger, which does not exist yet.
     ///
-    /// A semente não é parâmetro: ela é derivada da assinatura verificada, de
-    /// modo que o painel fica preso a uma rodada autêntica e não anterior.
+    /// The seed is not a parameter: it is derived from the verified signature,
+    /// so the panel is tied to a round that is authentic and not earlier.
     pub fn draw_round(
         env: Env,
-        rodada_minima: u64,
+        minimum_round: u64,
         round: u64,
         sig: BytesN<96>,
         n: u32,
         k: u32,
     ) -> soroban_sdk::Vec<u32> {
-        if round < rodada_minima {
-            panic_with_error!(&env, Erro::RodadaAnteriorAoRol);
+        if round < minimum_round {
+            panic_with_error!(&env, Error::RoundBeforeRoster);
         }
         if !Self::verify(env.clone(), round, sig.clone()) {
-            panic_with_error!(&env, Erro::AssinaturaInvalida);
+            panic_with_error!(&env, Error::InvalidSignature);
         }
         let seed = Self::randomness(env.clone(), sig);
         Self::draw(env, seed, n, k)
     }
 
-    /// A aleatoriedade da rodada, como a drand a publica: o sha256 da
-    /// assinatura **comprimida**.
+    /// The round's randomness, as drand publishes it: the sha256 of the
+    /// **compressed** signature.
     ///
-    /// A assinatura chega aqui descomprimida, porque é isso que as funções de
-    /// host da BLS12-381 recebem. Comprimir de volta é só recolocar os bits de
-    /// bandeira em X: 0x80 sempre, e 0x20 quando Y é o maior dos dois valores
-    /// possíveis. Sem isso o valor devolvido não seria o da drand, e a semente
-    /// daqui não bateria com a do verificador independente.
+    /// The signature arrives here uncompressed, because that is what the
+    /// BLS12-381 host functions take. Compressing it back is only a matter of
+    /// putting the flag bits back in X: 0x80 always, and 0x20 when Y is the
+    /// larger of the two possible values. Without that the value returned
+    /// would not be drand's, and the seed here would not match the independent
+    /// verifier's.
     pub fn randomness(env: Env, sig: BytesN<96>) -> BytesN<32> {
         let bytes = sig.to_array();
         let mut x = [0u8; 48];
         x.copy_from_slice(&bytes[..48]);
 
-        let mut y_e_o_maior = false;
+        let mut y_is_the_larger = false;
         for i in 0..48 {
-            if bytes[48 + i] != METADE_DE_P[i] {
-                y_e_o_maior = bytes[48 + i] > METADE_DE_P[i];
+            if bytes[48 + i] != HALF_OF_P[i] {
+                y_is_the_larger = bytes[48 + i] > HALF_OF_P[i];
                 break;
             }
         }
         x[0] |= 0x80;
-        if y_e_o_maior {
+        if y_is_the_larger {
             x[0] |= 0x20;
         }
 
-        let comprimida = Bytes::from_array(&env, &x);
-        env.crypto().sha256(&comprimida).to_bytes()
+        let compressed = Bytes::from_array(&env, &x);
+        env.crypto().sha256(&compressed).to_bytes()
     }
 }
 

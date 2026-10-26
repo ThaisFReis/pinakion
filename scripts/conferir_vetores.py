@@ -34,11 +34,11 @@ TESTES_RUST = [
 
 
 def paineis_do_teste_rust(fonte):
-    """Every `let esperado_x: [u32; N] = [ ... ];` in a Rust test file, plus
+    """Every `let expected_x: [u32; N] = [ ... ];` in a Rust test file, plus
     kleroterion's `const ORDEM_DE_OURO`, which is the small-roster vector."""
     achados = []
     for corpo in re.findall(
-        r"(?:let esperado_\w+|const ORDEM_DE_OURO): \[u32; \d+\] = \[(.*?)\];", fonte, re.S
+        r"(?:let expected_\w+|const GOLDEN_ORDER): \[u32; \d+\] = \[(.*?)\];", fonte, re.S
     ):
         achados.append([int(n) for n in re.findall(r"\d+", corpo)])
     return achados

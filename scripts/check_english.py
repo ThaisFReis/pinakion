@@ -25,9 +25,18 @@ What is deliberately not checked, and why:
                 is Phosphor; `circuits/setup/` is build output. Translating
                 any of them would mean forking it.
   the Tessera   Tessera's own contract is deployed unchanged and its interface
-  boundary      is Portuguese. Where this project has to speak to it, the
-                Portuguese is Tessera's, not ours: ALLOWED_TESSERA holds those
-                names and nothing else may be added to it.
+  boundary      is Portuguese. Soroban matches struct field names on the wire,
+                so the mirror of its `Proposta` and the `Tessera` trait keep
+                its spelling or the cross-contract call stops working. Those
+                lines are fenced:
+
+                    // check-english: foreign-interface begin (Tessera 356c22f)
+                    ...
+                    // check-english: foreign-interface end
+
+                The fence is scoped to the lines between the markers, so our
+                own `round`, `threshold` and `bench` are still checked
+                everywhere else. An unclosed fence is itself a failure.
   history       commit messages and the names in `docs/SOURCES.md`'s *Copied
                 code* rows record what was true when they were written.
   proper nouns  Pinakion, Kleroterion, Tessera, Cautela, Pignus. The first two
@@ -53,15 +62,19 @@ SKIP_PREFIXES = (
 # Binary and generated files the signals cannot read usefully.
 SKIP_SUFFIXES = (".bin", ".wasm", ".zkey", ".r1cs", ".svg", ".png", ".lock", ".patch")
 
-# Names Tessera owns. This list only shrinks: a name belongs here when Tessera's
-# deployed contract or its CLI at 356c22f requires that exact spelling.
+# Lines between these markers are Tessera's interface, not ours. The fence is
+# per-line, not per-word, so nothing is excused outside it.
+FENCE_BEGIN = "check-english: foreign-interface begin"
+FENCE_END = "check-english: foreign-interface end"
+
+# Names Tessera owns that appear outside a fence, in a command line or a flag.
+# This list only shrinks: a name belongs here when Tessera's deployed contract
+# or its CLI at 356c22f requires that exact spelling.
 ALLOWED_TESSERA = {
-    "rodada_abertura",  # the field Tessera's contract reads
-    "fim_tempo",  # what its CLI sent before the patch
     "aptos",  # its voter-list flag, `--aptos`
     "verificar",  # its own subcommand, `tessera verificar`
-    "votacao",  # its contract's own name for a vote
-    "proposta",  # its proposal type
+    "votacao",  # `tessera votacao`, and its contract's name for a vote
+    "proposta",  # `tessera proposta`
 }
 
 # Proper nouns and loanwords that stay as they are.
@@ -76,6 +89,10 @@ ALLOWED_NAMES = {
     "soroban",
     "lumen",
     "drand",
+    "poseidon",  # the hash function, not a Portuguese word
+    "groth",
+    "circom",
+    "circomlib",
 }
 
 # Portuguese words, matched whole. Short words that are also English or common
@@ -108,7 +125,7 @@ veredito verificar vetor vetores vinculada vincular voto votos
 """.split()
 
 # File and directory names that are Portuguese.
-NAME_WORDS = set(WORDS) | {"vivo", "ouro", "custos", "evidencia", "poseidon"}
+NAME_WORDS = set(WORDS) | {"vivo", "ouro", "custos", "evidencia"}
 
 ACCENTED = "áàâãéêíóôõúüçñÁÀÂÃÉÊÍÓÔÕÚÜÇÑ"
 
@@ -162,7 +179,20 @@ def check_text(path):
     except (UnicodeDecodeError, FileNotFoundError, IsADirectoryError):
         return []
     found = []
+    fenced = False
     for n, line in enumerate(lines, 1):
+        if FENCE_BEGIN in line:
+            if fenced:
+                found.append((n, "fence", "nested", "a fence is already open"))
+            fenced = True
+            continue
+        if FENCE_END in line:
+            if not fenced:
+                found.append((n, "fence", "unopened", "fence closed but not open"))
+            fenced = False
+            continue
+        if fenced:
+            continue
         accents = sorted({c for c in line if c in ACCENTED})
         if accents:
             found.append((n, "accent", "".join(accents), line.strip()[:90]))
@@ -175,6 +205,8 @@ def check_text(path):
                     hits.add(word)
         if hits:
             found.append((n, "word", " ".join(sorted(hits)), line.strip()[:90]))
+    if fenced:
+        found.append((len(lines), "fence", "unclosed", "fence never closed"))
     return found
 
 

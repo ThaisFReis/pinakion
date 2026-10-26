@@ -195,6 +195,48 @@ def main():
     else:
         falhas += 1
         print("  FALHA docs/evidencia-testnet-aptos.txt divergiu de scripts/exportar_tessera.py")
+    # T-050: the recorded case checks out from the ledger alone, and three
+    # mutations of it fail by name: a voter list that is not the attendees,
+    # a score that is not Tessera's, and the party attending as a juror.
+    import verificar_processo  # noqa: E402
+    caso = json.loads((RAIZ / "docs" / "evidencia-processo-registro.json").read_text())
+    autos = RAIZ / "docs" / "caso-demo"
+    r = verificar_processo.verificar(caso, autos)
+    ruins = [n for n, ok in r[1] if not ok]
+    if ruins or not all(r[0].values()):
+        falhas += 1
+        print(f"  FALHA o processo registrado: {ruins or r[0]}")
+    else:
+        print(f"  ok    o processo registrado: {len(r[1])} conferencias, {len(r[0])} fases")
+    def mutado(f):
+        w = copy.deepcopy(caso)
+        f(w)
+        return dict(verificar_processo.verificar(w, autos)[1])
+    def aptos(w):
+        w["tessera"]["aptos"] = w["tessera"]["aptos"][:-1]
+    def placar(w):
+        d = next(e for e in w["eventos"] if e["evento"] == "Decidido")
+        d["sim"] += 1
+    def parte(w):
+        c = next(e for e in w["eventos"] if e["evento"] == "Compareceu")
+        c["assento"] = next(e for e in w["eventos"] if e["evento"] == "CasoAberto")["acusado"]
+    for nome, f, conferencia in [("aptos", aptos, "a lista de votantes do Tessera e a dos presentes, na ordem"),
+                                 ("placar", placar, "o placar e o que o Tessera publicou"),
+                                 ("parte", parte, "a parte nunca compareceu como jurada")]:
+        if mutado(f).get(conferencia, True):
+            falhas += 1
+            print(f"  FALHA a mutacao '{nome}' passou sem '{conferencia}'")
+        else:
+            print(f"  ok    mutacao do processo '{nome}': '{conferencia}' nao confere")
+    # T-049: docs/evidencia-processo.md is what its generator prints from the record.
+    impresso = subprocess.run([sys.executable, str(RAIZ / "scripts" / "evidencia_processo.py"),
+                               str(RAIZ / "docs" / "evidencia-processo-registro.json")],
+                              capture_output=True, text=True, cwd=RAIZ).stdout
+    if impresso == (RAIZ / "docs" / "evidencia-processo.md").read_text():
+        print("  ok    docs/evidencia-processo.md e o que o registro imprime")
+    else:
+        falhas += 1
+        print("  FALHA docs/evidencia-processo.md divergiu de scripts/evidencia_processo.py")
     # T-044: every table of the panel-size study is what the model prints today.
     saida = subprocess.run([sys.executable, str(RAIZ / "scripts" / "tamanho_do_painel.py")],
                            capture_output=True, text=True).stdout

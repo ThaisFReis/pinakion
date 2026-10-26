@@ -86,16 +86,21 @@ These are specific reasons, each one measured or read from source. "Because bloc
 
 **It is** a module that an existing governance calls to run a draw. It keeps a roster, fixes a beacon round, lets the jurors prove their seats, publishes the panel, and emits a record anyone can recheck.
 
+**Around the draw, it carries the case** (`processo`, since T-048):
+- the complaint and the record, each document as its SHA-256 on the ledger, filed by the role that may file it — the clerk, the person judged (suspended, never silenced), a juror from a seat account;
+- attendance and quorum, confirmed from the seat accounts, so the session opens without anyone learning who sits;
+- the binding of the vote: the case accepts only a Tessera vote whose voter list is exactly the jurors who attended, recomputed on-chain under Tessera's own rule;
+- the verdict: Tessera's published score under the level's rule, a majority of the whole panel or two thirds.
+
 **It is not** a DAO, a court, a ballot or a dispute marketplace:
 - it does not decide who may be on the roster;
-- it does not decide what the panel rules, or what follows from the ruling;
-- it counts no votes;
-- it holds no deliberation;
-- it models no case.
+- it does not decide what follows from the ruling: the sanction is the governance's;
+- **it counts no votes.** The vote is **Tessera's**, the author's earlier secret-ballot module, used as it is;
+- it holds no deliberation: deliberation happens off-chain, and only its minutes are hashed into the record.
 
 **It is not Kleros.** Kleros answers *who will judge?* with a market of anonymous jurors selected by stake. Pinakion answers it with **the institution's own roster, fixed before the case**.
 
-**It is not Tessera.** Tessera is the author's earlier module. It hides *how one votes*, for good; Pinakion hides *who sits*, until they have judged. The panel's seat accounts can be handed to Tessera as its voter list, and the two modules compose without either one doing the other's job.
+**It is not Tessera, and it uses Tessera.** Tessera is the author's earlier module, built for the Find Your Way hackathon. It hides *how one votes*, for good; Pinakion hides *who sits*, until they have judged. In the case cycle the vote runs on Tessera unchanged: its contract at commit `356c22f`, deployed on testnet, and its CLI at the same commit with a one-line client fix (`scripts/tessera-cli.patch`). What is new here is the binding — the case accepts a Tessera vote only when its voter list is exactly the attendees — and the verdict rule on top of Tessera's score. Neither module does the other's job.
 
 ---
 
@@ -109,6 +114,17 @@ These are specific reasons, each one measured or read from source. "Because bloc
 - a complete panel came out, and 18 jurors revealed.
 
 **Then the panel was recomputed from the ledger's events and drand alone**: `CONFERE`, 77 checks, 0 failures.
+
+**Then a whole case, on testnet, the same day** (`docs/evidencia-processo.md`):
+- a roster of 40, and a level-3 case with 7 seats;
+- the person judged was on the roster, and the lock itself impeded them;
+- the complaint, the evidence, the defence and the minutes were filed by their hashes;
+- 6 of the 7 seated jurors attended from their seat accounts, against a quorum of 5;
+- the vote was bound to exactly those 6, recomputed on-chain under Tessera's rule;
+- the secret vote came out 5 to 1 on Tessera, upheld with 4 required;
+- the jurors revealed afterwards.
+
+**It was then checked from the record alone**: `scripts/verificar_processo.py` in a terminal, and `web/processo.html` in a browser.
 
 **The arithmetic is held to circomlib.**
 - The contract's Poseidon equals circomlib's on 22 vectors.
@@ -126,6 +142,8 @@ These are specific reasons, each one measured or read from source. "Because bloc
 - **The seal ends at the ledger.** Deliberation off-chain — a chat, a call — breaks it the moment the jurors meet.
 - **The person judged is kept off their own panel in the code, not yet on testnet.** Since T-045 `lock` names them and impedes them if enrolled; the 2026-10-26 run predates that, and there the clerk had to do it by hand. The interim suspension only publishes a window (`suspended`); the host governance removes the real powers, or nothing happens.
 - **Nothing has been audited, nothing has run on mainnet, and the run was one machine playing every juror.**
+- **The vote's secrecy and tally are Tessera's**, and so are its limits: a floor of five confidential votes, and a committee that tallies. This project checks the binding and the rule, not the tally.
+- **The case's records are public in the demo.** Confidential records with justified access are designed, not built.
 - Below a roster of about sixteen the draw guarantees little (`docs/limite-inferior-do-rol.md`).
 
 ---

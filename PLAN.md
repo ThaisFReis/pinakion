@@ -156,7 +156,7 @@ Answered since the last update: Q-11 (the path is Genesis, DEC-013, superseding 
 
 ---
 
-## Phase 5 — M1, Plan B: sealed sortition · **todo, after the event**
+## Phase 5 — M1, Plan B: sealed sortition · **done, on `main`**
 
 Decided 2026-10-25 (DEC-015 to DEC-019): the juror registers a commitment at `enroll`, the seat is claimed with a Groth16 proof over BN254 and Poseidon (Protocol 25), the panel is the `k` smallest `y`, and it is revealed **after the verdict**. Acceptance criteria in `docs/SPEC.md` §9; the reasoning, the days per item and the limits in the doc *Pinakion — Plano B: sortição selada* (https://claude.ai/artifact/9WDXFX9eSJWjhWUdRmrh2N).
 
@@ -181,4 +181,25 @@ Same order number = can run in parallel. T-035 and T-036 are independent once th
 
 **Done when:** a stranger runs `scripts/sequencia_bilhete.sh` and the verifier against testnet and gets *seated · revealed · not revealed · drawn-absent* matching the contract; the README's first page states the setup, the relayer, the reveal condition and the limits; every number in the docs is produced by a §8 command.
 
-**Where it stands today:** nothing started. The plan itself is on `main` (#28).
+**Where it stands (2026-10-26):** built and merged, T-033 to T-043, PRs #28 to #51; the sealed run `t040b` is on testnet and checks out (77 checks). §9 of `docs/SPEC.md` is the authority on each task.
+
+## Phase 6 — M2: the case around the draw · **done, on `main`**
+
+| Task | What | PR |
+|---|---|---|
+| T-044 | study: severity and panel size, interim suspension, late reveal | [#52](https://github.com/ThaisFReis/pinakion/pull/52) |
+| T-045 | severity table sets `k`; the party impeded at `lock`; `suspended` | [#53](https://github.com/ThaisFReis/pinakion/pull/53), [#55](https://github.com/ThaisFReis/pinakion/pull/55) |
+| T-046 | a floor on the reveal; TTL that reaches it | [#54](https://github.com/ThaisFReis/pinakion/pull/54), [#55](https://github.com/ThaisFReis/pinakion/pull/55) |
+
+## Phase 7 — M3: the case cycle, end to end, with a demo link
+
+One branch, `t-047-case-cycle`, and one PR (DEC-034).
+
+| Task | What |
+|---|---|
+| T-047 | `seated(assento)` in kleroterion; one seat per seat account |
+| T-048 | `contracts/processo`: opening, attendance and quorum, the record, the Tessera vote bound to the attendees, the verdict |
+| T-049 | `scripts/sequencia_processo.sh`: the whole case on testnet, the vote on Tessera |
+| T-050 | `scripts/verificar_processo.py` and `web/processo.mjs`: the whole case checked from the record |
+| T-051 | `web/processo.html`: the case page, with a presentation mode for the video |
+| T-052 | landing, README, thesis, submission and `docs/DEMO.md` follow |

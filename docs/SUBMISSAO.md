@@ -40,7 +40,19 @@ The guarantee has three sentences:
 
 The independent check, reading only the events and drand, returns **`CONFERE`, 77 checks, 0 failures**. The panel's seat accounts export straight into Tessera, the author's earlier secret-ballot module, as its voter list.
 
-- Page: https://thaisfreis.github.io/pinakion/web/bilhetes.html
+**And then a whole case, on testnet, the same day.** A fictional code-of-conduct case, with real transactions.
+- 40 jurors were enrolled. The case was opened at level 3, which seats 7.
+- The person judged was on the roster, and the lock itself impeded them.
+- The complaint, the evidence, the defence and the minutes were filed by their hashes, each by the role allowed to file it.
+- Six of the seven seated jurors attended from their seat accounts, against a quorum of five.
+- The vote was secret, and it ran on **Tessera**, the author's earlier secret-ballot module, used as it is (contract at `356c22f`; a one-line CLI fix). The case contract accepted the vote only because Tessera's voter list was exactly the attendees. It recomputes Tessera's root on-chain to check that.
+- The vote was 5 to 1. The verdict, *upheld*, is Tessera's score under the level's rule: 4 of 7 required.
+- Afterwards the jurors revealed.
+
+`scripts/verificar_processo.py` checks the whole case from the record alone, and so does the page.
+
+- Demo: https://thaisfreis.github.io/pinakion/web/processo.html
+- The sealed draw, person by person: https://thaisfreis.github.io/pinakion/web/bilhetes.html
 - Code: https://github.com/ThaisFReis/pinakion
 
 ## Why Stellar, and why now
@@ -55,8 +67,9 @@ The independent check, reading only the events and drand, returns **`CONFERE`, 7
 - **No relayer.** A seat account must be funded with no trail to the juror. In this run every account came from friendbot, and one machine played every juror.
 - **A lost secret is a lost seat.** A juror who never reveals stays unaccounted for, and is listed as such on the ledger.
 - **The seal ends at the ledger.** Deliberating off-chain breaks it.
-- **Keeping the person judged off their own panel is built but not yet on testnet.** The code now impedes them at `lock`; the testnet run predates that change.
-- **What is built is the roster cycle.** The case lifecycle (renewal, contestation windows, quorum) is designed and not built.
+- **The demo's windows are short.** The approved reveal floor is 30 days; the run used minutes.
+- **The case is built and ran once; the rest of its lifecycle is designed.** Roster renewal, contestation windows, a redraw after an adjournment and confidential records with justified access are not built. The demo's records are public.
+- **The vote is Tessera's.** Its privacy floor is five votes, so a case needs five seats or more. The tally's correctness is checked by Tessera's own verifier, not by this project.
 - **Testnet only. Not audited.**
 
 Verifying drand on Soroban is not new (`AshFrancis/splicers`, `NibrasD/Stellar-VRF`), and Pinakion does not claim it. What neither does is the sortition: a panel drawn from a roster committed before the case, sealed until the verdict. No Stellar build we could find does it either. That search was run on 2026-10-25 (`docs/SOURCES.md`), and the indexes lag.

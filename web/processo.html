@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Pinakion: um caso de código de conduta na testnet da Stellar, do rol ao veredito, conferido no seu navegador a partir do ledger. A votação é do Tessera.">
+  <title>Pinakion — O processo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    /* Only what this page adds to style.css. */
+    .veredito-final { font: 600 var(--t-hero)/.98 var(--display); letter-spacing: -.045em; margin: 0; }
+    .veredito-final.bad { color: var(--error); }
+    .veredito-final .sub { display: block; font-size: .42em; letter-spacing: -.02em; color: var(--muted); margin-top: 14px; line-height: 1.15; }
+    .cifras { display: grid; grid-template-columns: repeat(5, 1fr); border-block: 1px solid var(--line); margin-top: 48px; }
+    .cifras div { padding: 22px 18px 20px 0; display: flex; flex-direction: column; gap: 6px; }
+    .cifras div + div { padding-left: 18px; border-left: 1px solid var(--line); }
+    .cifras strong { font: 600 2.6rem/1 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+    .cifras span { color: var(--muted); font-size: var(--t-small); line-height: 1.4; }
+
+    .trilha { position: sticky; top: 0; z-index: 5; background: var(--stone); border-bottom: 1px solid var(--line); }
+    .trilha ol { list-style: none; display: flex; gap: 0; padding: 0; margin: 0; overflow-x: auto; scrollbar-width: none; }
+    .trilha li { flex: 1 0 auto; }
+    .trilha a { display: flex; align-items: center; gap: 8px; padding: 14px 14px 13px 0; text-decoration: none; font-size: .78rem; color: var(--muted); white-space: nowrap; border-bottom: 2px solid transparent; }
+    .trilha a[aria-current="step"] { color: var(--ink); border-bottom-color: var(--patina); }
+    .marca { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; font: 500 .62rem/1 var(--mono); flex: none; }
+    .marca.ok { border-color: var(--patina); background: var(--patina); color: var(--on-accent); }
+    .marca.bad { border-color: var(--error); color: var(--error); }
+
+    .fases { list-style: none; padding: 0; margin: 0; }
+    .fase { display: grid; grid-template-columns: 1fr 2fr; gap: 48px; padding-block: 64px; border-bottom: 1px solid var(--line); scroll-margin-top: 56px; }
+    .fase-cabeca { display: flex; flex-direction: column; gap: 14px; align-self: start; position: sticky; top: 76px; }
+    .fase-num { font: var(--t-data)/1 var(--mono); color: var(--bronze); }
+    .fase h2 { font: 600 var(--t-display)/1.02 var(--display); letter-spacing: -.035em; }
+    .fase-ator { color: var(--muted); font-size: var(--t-small); }
+    .fase-corpo { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+    .fase-corpo > p { color: var(--muted); max-width: 62ch; }
+    .fase-corpo > p strong { color: var(--ink); font-weight: 600; }
+    .provas { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: var(--t-small); }
+    .provas li { display: flex; gap: 10px; align-items: baseline; }
+    .provas li::before { content: "✓"; color: var(--patina); font-weight: 700; }
+    .provas li.bad::before { content: "✗"; color: var(--error); }
+    .fatos { display: grid; grid-template-columns: max-content 1fr; gap: 6px 24px; font-size: var(--t-small); margin: 0; }
+    .fatos dt { color: var(--muted); }
+    .fatos dd { margin: 0; font-family: var(--mono); font-size: var(--t-data); overflow-wrap: anywhere; }
+    .fatos a, .autos a, .tabela a { color: var(--patina); }
+    .autos { list-style: none; padding: 0; border-top: 1px solid var(--line); }
+    .autos li { display: grid; grid-template-columns: 1.3fr 1fr auto; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: var(--t-small); }
+    .autos .doc { background: none; border: 0; padding: 0; text-align: left; color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .3em; }
+    .autos .doc:hover { color: var(--patina); }
+    .papel { color: var(--muted); }
+    .hash { font: var(--t-data)/1.4 var(--mono); color: var(--muted); }
+    .confere { font-size: var(--t-data); white-space: nowrap; }
+    .estado { display: inline-block; padding: 2px 8px; border: 1px solid var(--line); font-size: var(--t-data); white-space: nowrap; }
+    .estado.sentou { border-color: var(--patina); color: var(--patina); }
+    .estado.silencio { border-color: var(--bronze); color: var(--bronze); }
+    .estado.impedido, .estado.recusou { color: var(--muted); }
+    .tabela { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+    .tabela th { text-align: left; font: 500 var(--t-label)/1.4 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); }
+    .tabela td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .tabela .mono { font-family: var(--mono); font-size: var(--t-data); }
+    .rolagem { overflow-x: auto; }
+    .tessera { border: 1px solid var(--bronze); padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; font-size: var(--t-small); }
+    .tessera .eyebrow { color: var(--bronze); }
+    .tessera p { color: var(--muted); }
+    .placar { display: flex; gap: 40px; align-items: flex-end; flex-wrap: wrap; }
+    .placar div { display: flex; flex-direction: column; gap: 4px; }
+    .placar strong { font: 600 4.2rem/1 var(--display); font-variant-numeric: tabular-nums; }
+    .placar span { color: var(--muted); font-size: var(--t-small); }
+    .regua { display: flex; gap: 6px; }
+    .regua i { width: 22px; height: 30px; border: 1px solid var(--line); }
+    .regua i.sim { background: var(--patina); border-color: var(--patina); }
+    .regua i.nao { background: var(--line); }
+    .regua i.exigido { outline: 2px solid var(--bronze); outline-offset: 2px; }
+
+    dialog { max-width: min(760px, 92vw); width: 100%; border: 1px solid var(--line); background: var(--slab); color: var(--ink); padding: 0; }
+    dialog::backdrop { background: rgb(0 0 0 / .45); }
+    .doc-cabeca { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+    .doc-texto { padding: 22px; max-height: 70vh; overflow: auto; font-size: .9375rem; line-height: 1.7; }
+    .doc-texto h1, .doc-texto h2 { font: 600 1.9rem/1.1 var(--display); margin: 0 0 12px; letter-spacing: -.02em; }
+    .doc-texto p, .doc-texto ul, .doc-texto ol, .doc-texto pre { margin: 0 0 12px; }
+    .doc-texto pre { font: var(--t-data)/1.6 var(--mono); white-space: pre-wrap; background: var(--stone); padding: 12px; }
+    .doc-pe { padding: 14px 22px; border-top: 1px solid var(--line); font: var(--t-data)/1.5 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+
+    .apresentar { background: transparent; border: 1px solid var(--line); color: var(--ink); min-height: 42px; padding: 8px 14px; border-radius: 2px; font-size: var(--t-small); display: inline-flex; gap: 8px; align-items: center; }
+    .apresentar:hover { border-color: var(--ink); }
+    .palco-controles { display: none; }
+    body.palco .masthead, body.palco .hero-caso, body.palco .trilha, body.palco .limites, body.palco .footer { display: none; }
+    body.palco .fase { display: none; min-height: 100vh; align-content: center; border: 0; padding-block: 48px 120px; }
+    body.palco .fase.atual { display: grid; animation: entra .5s ease both; }
+    body.palco .fase-cabeca { position: static; }
+    body.palco .fase h2 { font-size: clamp(3rem, 6vw, 5.5rem); }
+    body.palco .fase-corpo > p { font-size: 1.15rem; }
+    body.palco .palco-controles { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 9; justify-content: space-between; align-items: center; gap: 16px; padding: 14px max(28px, env(safe-area-inset-left)); background: var(--stone); border-top: 1px solid var(--line); font-size: var(--t-small); color: var(--muted); }
+    .palco-controles .barra { flex: 1; height: 2px; background: var(--line); }
+    .palco-controles .barra i { display: block; height: 100%; background: var(--patina); width: 0; transition: width .4s ease; }
+    .palco-controles button { background: transparent; border: 1px solid var(--line); color: var(--ink); min-height: 40px; padding: 6px 12px; border-radius: 2px; }
+    @keyframes entra { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { body.palco .fase.atual { animation: none; } }
+
+    @media (max-width: 900px) {
+      .fase { grid-template-columns: 1fr; gap: 20px; padding-block: 44px; }
+      .fase-cabeca { position: static; }
+      .cifras { grid-template-columns: repeat(2, 1fr); }
+      .cifras div:nth-child(odd) { padding-left: 0; border-left: 0; }
+      .cifras div { border-bottom: 1px solid var(--line); }
+      .autos li { grid-template-columns: 1fr; gap: 4px; }
+      .fatos { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#conteudo">Ir para o conteúdo</a>
+  <div class="shell">
+    <header class="masthead">
+      <a class="brand" href="./index.html" aria-label="Pinakion, início">
+        <svg viewBox="0 0 24 28" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="23" rx="1" stroke="currentColor"/><path d="M7 8h10M7 20h10" stroke="currentColor" stroke-width="1.5"/><path d="M7 14h10" stroke="currentColor" stroke-width="3"/></svg>
+        Pinakion
+      </a>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="./index.html">O princípio</a>
+        <a href="./processo.html" aria-current="page">O processo</a>
+        <button class="apresentar" id="apresentar" type="button" title="Um passo por tela, para gravar ou projetar (setas ou espaço)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 5v14l12-7Z" fill="currentColor"/></svg>Apresentar
+        </button>
+        <button class="theme" id="tema" aria-label="Alternar tema" title="Alternar tema">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg>
+        </button>
+      </nav>
+    </header>
+
+    <main id="conteudo">
+      <section class="section hero-caso" aria-labelledby="titulo">
+        <p class="eyebrow" style="color: var(--patina)">Caso fictício · testnet da Stellar · <span id="quando">26 out 2026</span></p>
+        <h1 id="titulo" class="veredito-final" aria-live="polite" style="margin-top: 18px">Conferindo o processo…</h1>
+        <p class="intro" id="resumo" style="margin-top: 26px; max-width: 64ch">Um caso de código de conduta, do rol ao veredito. Esta página lê os eventos dos contratos na testnet e refaz cada passo no seu navegador, sem confiar em nenhum deles.</p>
+        <p class="status-note"><strong>Somente leitura.</strong> Nada aqui assina ou envia transações. Os nomes, o projeto e os fatos do caso são inventados; as transações são reais.</p>
+        <div class="cifras" id="cifras" aria-label="O caso em cinco números"></div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="trilha" aria-label="Fases do processo"><div class="shell"><ol id="trilha"></ol></div></nav>
+
+  <div class="shell">
+    <ol class="fases" id="fases"></ol>
+
+    <section class="section limites" aria-labelledby="limites-titulo">
+      <div class="limit">
+        <h3 id="limites-titulo">O que este caso não mostra</h3>
+        <p>Uma única máquina fez o papel de todas as pessoas, e todas as contas vieram do friendbot: na vida real, a conta de assento precisa ser financiada sem rastro até o jurado, e falta um relayer para isso. O setup do circuito foi feito por uma só parte. Os documentos dos autos são públicos aqui; um caso real precisa de autos sigilosos com acesso justificado, que estão desenhados e não construídos. A deliberação fora da cadeia quebra o selo quando os jurados se encontram. Os prazos são curtos para caber numa demonstração: o padrão aprovado para a revelação é de 30 dias. A correção do placar é conferida pelo verificador do Tessera, não por esta página. É só testnet, e nada foi auditado.</p>
+      </div>
+      <p class="status-note">Registro: <a href="../docs/evidencia-processo-registro.json">docs/evidencia-processo-registro.json</a>. Pela linha de comando: <code>python3 scripts/verificar_processo.py docs/evidencia-processo-registro.json</code>.</p>
+    </section>
+
+    <footer class="footer"><p>Pinakion · Sealed jury selection for governance on Stellar. A votação usa o Tessera, da mesma autora.</p><a href="https://github.com/ThaisFReis/pinakion">Código aberto · MIT, circuito GPL-3.0</a></footer>
+  </div>
+
+  <div class="palco-controles" id="palco" aria-hidden="true">
+    <button type="button" id="voltar" aria-label="Fase anterior">←</button>
+    <span id="palco-rotulo"></span>
+    <div class="barra"><i id="palco-barra"></i></div>
+    <button type="button" id="auto" aria-pressed="false">Avançar sozinho</button>
+    <button type="button" id="avancar" aria-label="Próxima fase">→</button>
+    <button type="button" id="sair">Sair</button>
+  </div>
+
+  <dialog id="documento" aria-labelledby="doc-titulo">
+    <div class="doc-cabeca"><strong id="doc-titulo"></strong><button class="secondary" type="button" id="fechar-doc">Fechar</button></div>
+    <div class="doc-texto" id="doc-texto"></div>
+    <div class="doc-pe" id="doc-pe"></div>
+  </dialog>
+
+<script type="module">
+  import { verificarProcesso, sha256, hex } from "./processo.mjs";
+  import { criarPoseidon } from "./poseidon.mjs";
+  import { raiz } from "./arvore.mjs";
+
+  const $ = (id) => document.getElementById(id);
+  const EXPLORER = "https://stellar.expert/explorer/testnet";
+  const CHAIN = "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971";
+  const TESSERA_REPO = "https://github.com/ThaisFReis/tessera";
+  const curto = (s, n = 6) => (s && s.length > 2 * n + 1 ? `${s.slice(0, n)}…${s.slice(-4)}` : s);
+  const el = (tag, attrs = {}, ...filhos) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    for (const f of filhos.flat()) if (f !== null && f !== undefined) e.append(f instanceof Node ? f : document.createTextNode(String(f)));
+    return e;
+  };
+  const link = (href, texto) => el("a", { href, rel: "noopener", target: "_blank" }, texto);
+  const tx = (h) => (h ? link(`${EXPLORER}/tx/${h}`, curto(h, 8)) : "—");
+  const conta = (a) => link(`${EXPLORER}/${a.startsWith("C") ? "contract" : "account"}/${a}`, curto(a));
+  const TIPO = ["Denúncia", "Prova", "Defesa", "Ata"];
+  const PAPEL = ["escrivão", "pessoa julgada", "jurado, pela conta de assento"];
+
+  async function json(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${url}: ${r.status}`);
+    return r.json();
+  }
+
+  // A small Markdown renderer for the case documents: headings, emphasis,
+  // lists, paragraphs; tables become preformatted text.
+  function renderizar(md) {
+    const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/`(.+?)`/g, "<code>$1</code>");
+    const out = [];
+    let lista = null, tabela = [];
+    const fechar = () => {
+      if (lista) { out.push(`</${lista}>`); lista = null; }
+      if (tabela.length) { out.push(`<pre>${esc(tabela.join("\n"))}</pre>`); tabela = []; }
+    };
+    for (const l of md.split("\n")) {
+      if (/^\|/.test(l)) { if (lista) { out.push(`</${lista}>`); lista = null; } tabela.push(l); continue; }
+      if (tabela.length) fechar();
+      if (/^# /.test(l)) { fechar(); out.push(`<h1>${inline(l.slice(2))}</h1>`); }
+      else if (/^## /.test(l)) { fechar(); out.push(`<h2>${inline(l.slice(3))}</h2>`); }
+      else if (/^- /.test(l)) { if (lista !== "ul") { fechar(); out.push("<ul>"); lista = "ul"; } out.push(`<li>${inline(l.slice(2))}</li>`); }
+      else if (/^\d+\. /.test(l)) { if (lista !== "ol") { fechar(); out.push("<ol>"); lista = "ol"; } out.push(`<li>${inline(l.replace(/^\d+\. /, ""))}</li>`); }
+      else if (!l.trim()) fechar();
+      else { fechar(); out.push(`<p>${inline(l)}</p>`); }
+    }
+    fechar();
+    return out.join("");
+  }
+
+  const textos = new Map(); // hash -> { titulo, texto }
+  function abrirDocumento(hash) {
+    const d = textos.get(hash);
+    if (!d) return;
+    $("doc-titulo").textContent = d.titulo;
+    $("doc-texto").innerHTML = renderizar(d.texto);
+    $("doc-pe").textContent = `SHA-256 ${hash}: o mesmo hash que o contrato guardou.`;
+    $("documento").showModal();
+  }
+  $("fechar-doc").addEventListener("click", () => $("documento").close());
+
+  // The checks keep the ASCII names they share with scripts/verificar_processo.py;
+  // the reader sees them in Portuguese.
+  const ROTULOS = {
+    "a raiz do fechamento e a dos compromissos": "a raiz do fechamento é a dos compromissos inscritos",
+    "N e quem estava autorizado": "N é o número de inscritos ainda autorizados",
+    "a parte inscrita foi impedida antes do fechamento": "a pessoa julgada, inscrita, foi impedida antes de o rol fechar",
+    "o nivel do fechamento esta na tabela": "o nível está na tabela fixada antes do caso",
+    "k e o do nivel": "k é o do nível, não uma escolha de quem fechou",
+    "o rol chega ao minimo do nivel": "o rol alcança o mínimo do nível",
+    "o afastamento e o do construtor": "o prazo do afastamento é o da regra",
+    "a revelacao respeita a espera minima": "a revelação respeita a espera mínima",
+    "houve selo": "a rodada drand foi verificada e selada",
+    "a semente e a da rodada drand >> 8": "a semente é a aleatoriedade da rodada drand",
+    "o limiar e floor(r*2k/N)": "o limiar é ⌊r·2k/N⌋",
+    "o painel sao os k menores y que ficaram": "o painel são os k menores y que ficaram",
+    "completo se e so se chegou a k": "o painel está completo exatamente quando chegou a k",
+    "a sessao se instala exatamente no quorum": "a sessão se instalou exatamente no quórum",
+    "a parte nunca compareceu como jurada": "a pessoa julgada nunca compareceu como jurada",
+    "o primeiro registro e a denuncia, do escrivao": "o primeiro registro é a denúncia, do escrivão",
+    "a votacao vinculada e a do Tessera registrada": "a votação vinculada é a do Tessera",
+    "o identificador e o do nome da votacao no Tessera": "o identificador é o da votação no Tessera",
+    "a raiz dos aptos e a dos presentes, pela regra do Tessera": "a raiz dos votantes é a dos presentes, pela regra do Tessera",
+    "o Tessera guarda essa mesma raiz": "o Tessera guarda essa mesma raiz",
+    "a lista de votantes do Tessera e a dos presentes, na ordem": "os votantes do Tessera são os presentes, na ordem",
+    "a mesa do Tessera e de presentes": "a mesa do Tessera é de presentes",
+    "a cedula e uma pergunta sigilosa de duas opcoes": "a cédula é uma pergunta sigilosa, sim ou não",
+    "a votacao abriu depois da sessao": "a votação abriu depois da sessão",
+    "o placar e o que o Tessera publicou": "o placar é o que o Tessera publicou",
+    "os votos exigidos sao os da abertura": "os votos exigidos são os fixados na abertura",
+    "procedente se e so se sim alcanca os exigidos": "procedente exatamente quando o sim alcança os exigidos",
+    "o veredito veio depois da votacao": "o veredito veio depois da votação",
+  };
+  const rotulo = (n) => ROTULOS[n.replace(/^sorteio: /, "")] || n.replace(/^sorteio: /, "");
+  function provas(conferencias, prefixos) {
+    const sel = conferencias.filter(([n]) => prefixos.some((p) => n.startsWith(p)));
+    return el("ul", { class: "provas" }, sel.map(([n, ok]) => el("li", { class: ok ? "" : "bad" }, rotulo(n))));
+  }
+  const fatos = (pares) => el("dl", { class: "fatos" }, pares.flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, v)]));
+
+  async function principal() {
+    const params = new URLSearchParams(location.search);
+    const registro = await json(params.get("registro") || "../docs/evidencia-processo-registro.json");
+    const indice = await json("../docs/caso-demo/indice.json");
+    const docs = {};
+    for (const d of indice.documentos) {
+      const r = await fetch(`../docs/caso-demo/${d.arquivo}`);
+      if (!r.ok) continue;
+      const bytes = new Uint8Array(await r.arrayBuffer());
+      const h = hex(await sha256(bytes));
+      docs[h] = d.arquivo;
+      textos.set(h, { titulo: d.titulo, texto: new TextDecoder().decode(bytes) });
+    }
+    const P = criarPoseidon(await json("../tests/poseidon-bn254.json"));
+    const r = await verificarProcesso(registro, { P, raiz, docs });
+    const C = r.conferencias;
+    const ruins = C.filter(([, ok]) => !ok);
+    const evs = registro.eventos;
+    const k = (n) => evs.filter((e) => e.contrato === "kleroterion" && e.evento === n);
+    const p = (n) => evs.filter((e) => e.contrato === "processo" && e.evento === n);
+    const um = (lista) => lista[0];
+    const fechado = um(k("Fechado")), selado = um(k("Selado")), final = um(k("Finalizado"));
+    const aberto = um(p("CasoAberto")), inst = um(p("Instituido")), vinc = um(p("VotacaoVinculada"));
+    const decid = um(p("Decidido")), sessao = um(p("SessaoInstalada"));
+    const t = registro.tessera || {};
+    const ct = registro.contratos || {};
+    const inscritos = k("Inscrito");
+    const impedidos = k("Impedido");
+    const revelados = k("Revelado");
+
+    // ---- hero ----
+    const titulo = $("titulo");
+    if (ruins.length) {
+      titulo.textContent = "Não confere.";
+      titulo.classList.add("bad");
+      $("resumo").textContent = `${ruins.length} de ${C.length} conferências falharam: ${ruins.map(([n]) => n).join("; ")}.`;
+    } else {
+      titulo.textContent = decid ? (decid.procedente ? "Procedente." : "Improcedente.") : "Em andamento.";
+      titulo.append(el("span", { class: "sub" }, decid
+        ? (decid.procedente ? `A sanção do nível ${aberto.gravidade} se aplica, por ${decid.sim} votos a ${decid.nao}.` : `A sanção não se aplica: ${decid.sim} votos sim, ${decid.exigidos} exigidos.`)
+        : "O caso ainda não terminou."));
+      $("resumo").textContent = `Um caso de código de conduta, do rol ao veredito. Cada passo abaixo foi refeito no seu navegador a partir dos eventos do ledger: ${C.length} conferências, nenhuma falha.`;
+    }
+    const cifra = (n, s) => el("div", {}, el("strong", {}, n), el("span", {}, s));
+    $("cifras").append(
+      cifra(inscritos.length, "no rol, cada um com um compromisso"),
+      cifra(fechado ? fechado.k : "—", `sorteados, no nível ${fechado ? fechado.gravidade : "—"}`),
+      cifra(r.presentes.length, `presentes, quórum de ${aberto ? aberto.quorum : "—"}`),
+      cifra(decid ? `${decid.sim}·${decid.nao}` : "—", "sim · não, em voto secreto"),
+      cifra(revelados.length, "revelaram quem eram, depois"),
+    );
+
+    // ---- phases ----
+    const fases = [];
+    const fase = (id, num, titulo, ator, ok, ...corpo) => fases.push({ id, num, titulo, ok,
+      no: el("li", { class: "fase", id, "data-fase": id },
+        el("div", { class: "fase-cabeca" }, el("span", { class: "fase-num" }, `${num} / 09`), el("h2", {}, titulo), el("p", { class: "fase-ator" }, ator)),
+        el("div", { class: "fase-corpo" }, ...corpo)) });
+    const okDe = (prefixos) => C.filter(([n]) => prefixos.some((x) => n.startsWith(x))).every(([, ok]) => ok);
+
+    const parte = aberto ? aberto.acusado : fechado?.acusado;
+    const parteNoRol = impedidos.some((e) => e.jurado === parte);
+    fase("rol", "01", "O rol", "A comunidade, antes de qualquer caso",
+      okDe(["sorteio: a raiz"]),
+      el("p", {}, el("strong", {}, `${inscritos.length} pessoas se inscreveram para julgar.`), " Cada uma recebeu um bilhete — uma unidade de um ativo clássico da Stellar cujo emissor está travado — e deixou um compromisso ", el("code", {}, "c = Poseidon(s)"), ", com um segredo que só ela guarda. O contrato mantém a árvore desses compromissos."),
+      provas(C, ["sorteio: a raiz", "sorteio: N e quem"]),
+      fatos([["Contrato do rol", ct.kleroterion ? conta(ct.kleroterion) : "—"], ["Bilhetes na Horizon", ct.emissor ? link(`https://horizon-testnet.stellar.org/accounts?asset=PINAKION:${ct.emissor}`, "/accounts?asset=PINAKION") : "—"], ["Primeira inscrição", tx(inscritos[0]?.tx)]]));
+
+    fase("fechamento", "02", "O fechamento", "O escrivão, uma vez",
+      okDe(["sorteio: a parte inscrita", "sorteio: o nivel", "sorteio: k e o do nivel", "sorteio: o rol chega"]),
+      el("p", {}, el("strong", {}, `O rol fechou para julgar uma pessoa, no nível ${fechado?.gravidade}: ${fechado?.k} assentos.`), " O número de assentos vem da tabela de gravidade fixada antes de qualquer caso; ninguém o escolhe agora. A rodada do drand que vai decidir o sorteio também ficou fixada aqui, pelo relógio do ledger — ela ainda não existia."),
+      el("p", {}, parteNoRol ? el("strong", {}, "A pessoa julgada estava no rol, e foi impedida no próprio fechamento: nunca senta no próprio caso.") : "A pessoa julgada não estava no rol.", " Ela fica afastada até o ledger ", el("code", {}, String(fechado?.afastado_ate)), " ou até o veredito, o que vier antes — afastada, mas não calada: a defesa dela entra nos autos."),
+      provas(C, ["sorteio: a parte inscrita", "sorteio: o nivel", "sorteio: k e o do nivel", "sorteio: o rol chega", "sorteio: o afastamento", "sorteio: a revelacao respeita"]),
+      fatos([["Pessoa julgada", parte ? conta(parte) : "—"], ["Rodada drand", fechado ? link(`https://api.drand.sh/${CHAIN}/public/${fechado.rodada}`, String(fechado.rodada)) : "—"], ["Transação", tx(fechado?.tx)]]));
+
+    const regs = p("Registrado");
+    const listaAutos = el("ul", { class: "autos" }, regs.map((e, i) => {
+      const nome = r.documentos[i];
+      const titulo = nome ? indice.documentos.find((d) => d.arquivo === nome)?.titulo : `registro ${i}`;
+      return el("li", {},
+        el("div", {}, nome ? el("button", { class: "doc", type: "button", "data-hash": e.hash }, titulo) : el("strong", {}, titulo), el("div", { class: "papel" }, `${TIPO[e.tipo]}, por ${PAPEL[e.papel]}`)),
+        el("div", { class: "hash" }, `sha256 ${curto(e.hash, 10)}`),
+        el("div", { class: "confere" }, nome ? el("span", { class: "ok" }, "✓ o documento confere") : el("span", { class: "bad" }, "documento ausente"), " · ", tx(e.tx)));
+    }));
+    listaAutos.addEventListener("click", (ev) => { const b = ev.target.closest(".doc"); if (b) abrirDocumento(b.dataset.hash); });
+    fase("autos", "03", "A denúncia e os autos", "Escrivão, pessoa julgada, jurados",
+      okDe(["registro", "o primeiro registro"]),
+      el("p", {}, el("strong", {}, `${regs.length} documentos nos autos.`), " O contrato guarda só o SHA-256 de cada um; o documento fica fora da cadeia. Esta página baixou cada documento, calculou o hash e comparou. Cada papel só registra o que lhe cabe: o escrivão, provas e atas; a pessoa julgada, a defesa; um jurado presente, atas — pela conta de assento, sem dizer quem é."),
+      listaAutos,
+      provas(C, ["o primeiro registro"]));
+
+    fase("sorteio", "04", "O sorteio selado", "A drand, verificada na cadeia",
+      okDe(["sorteio: a semente", "sorteio: o limiar", "sorteio: houve selo"]),
+      el("p", {}, el("strong", {}, "A assinatura da rodada drand foi verificada pelo contrato, uma vez só."), " Dela saíram a semente e um limiar. Cada pessoa calcula, sozinha, ", el("code", {}, "y = Poseidon(semente, s)"), " — e só ela sabe se o seu ", el("code", {}, "y"), " caiu abaixo do limiar."),
+      provas(C, ["sorteio: houve selo", "sorteio: a semente", "sorteio: o limiar"]),
+      fatos([["Semente", selado ? curto(selado.seed, 14) : "—"], ["Limiar", selado ? curto(selado.limiar, 14) : "—"], ["Transação do selo", tx(selado?.tx)]]));
+
+    const reiv = k("Reivindicado");
+    fase("assentos", "05", "Os assentos", "Cada sorteado, de uma conta nova",
+      okDe(["sorteio: reivindicacao", "sorteio: o painel", "sorteio: completo"]),
+      el("p", {}, el("strong", {}, `${reiv.length} pessoas provaram, em conhecimento zero, que caíram abaixo do limiar.`), ` Cada prova veio de uma conta de assento nova, e o evento leva só o y. Os ${fechado?.k} menores formam o painel. No ledger, um assento é um número, nunca um nome.`),
+      provas(C, ["sorteio: o painel", "sorteio: completo"]),
+      fatos([["Painel", final ? `${final.painel.length} assentos, ${final.completo ? "completo" : "INCOMPLETO"}` : "ainda não saiu"], ["Abaixo do limiar, conferidas", `${C.filter(([n, ok]) => n.includes("abaixo do limiar") && ok).length} de ${reiv.length}`], ["Transação do painel", tx(final?.tx)]]));
+
+    fase("quorum", "06", "O quórum", "Os jurados, pelas contas de assento",
+      okDe(["presenca", "a sessao", "a parte nunca"]),
+      el("p", {}, el("strong", {}, `${r.presentes.length} de ${fechado?.k} jurados compareceram; o quórum era ${aberto?.quorum}.`), " Cada presença foi confirmada pela conta de assento, e o contrato só perguntou ao rol se aquela conta sentou — sem saber de quem ela é. A sessão se instalou na presença que completou o quórum."),
+      provas(C, ["a sessao", "a parte nunca"]),
+      el("div", { class: "rolagem" }, el("table", { class: "tabela" }, el("thead", {}, el("tr", {}, el("th", {}, "#"), el("th", {}, "Conta de assento"), el("th", {}, "Transação"))),
+        el("tbody", {}, p("Compareceu").map((e, i) => el("tr", {}, el("td", {}, i + 1), el("td", { class: "mono" }, conta(e.assento)), el("td", { class: "mono" }, tx(e.tx))))))));
+
+    fase("votacao", "07", "A votação", "Os presentes, em voto secreto, no Tessera",
+      okDe(["a votacao", "o identificador", "a raiz dos aptos", "o Tessera guarda", "a lista de votantes", "a mesa", "a cedula"]),
+      el("div", { class: "tessera" },
+        el("p", { class: "eyebrow" }, "Esta votação usa o Tessera"),
+        el("p", {}, "O Tessera é o módulo de voto secreto que a mesma autora construiu antes, no hackathon Find Your Way. Aqui ele é usado como é: o contrato no commit ", el("code", {}, "356c22f"), ", implantado na testnet, sem nenhuma mudança; a CLI no mesmo commit, com uma correção de uma linha que ela precisava para falar com o próprio contrato (", el("code", {}, "scripts/tessera-cli.patch"), ")."),
+        el("p", {}, "O que é deste projeto é a ligação: o contrato do processo só aceitou esta votação porque recalculou a raiz da lista de votantes pela regra do Tessera e ela é exatamente a dos presentes. ", link(TESSERA_REPO, "Código do Tessera"), ".")),
+      el("p", {}, el("strong", {}, "Ninguém — nem esta página — sabe em que cada pessoa votou."), " O ledger recebeu compromissos de Pedersen, que não carregam informação sobre o voto; só o total saiu, quando a mesa apurou."),
+      provas(C, ["a votacao", "o identificador", "a raiz dos aptos", "o Tessera guarda", "a lista de votantes", "a mesa", "a cedula"]),
+      fatos([["Contrato do Tessera", ct.tessera ? conta(ct.tessera) : "—"], ["Votação", vinc ? curto(vinc.proposta, 10) : "—"], ["Raiz dos aptos", vinc ? curto(vinc.raiz_aptos, 10) : "—"], ["Abertura", tx(t.abertura_tx)], ["Apuração", tx(t.apuracao?.tx)]]));
+
+    const regua = el("div", { class: "regua", "aria-hidden": "true" });
+    if (decid && fechado) for (let i = 0; i < fechado.k; i++) regua.append(el("i", { class: [i < decid.sim ? "sim" : i < decid.sim + decid.nao ? "nao" : "", i === decid.exigidos - 1 ? "exigido" : ""].join(" ") }));
+    fase("veredito", "08", "O veredito", "Qualquer um pode chamar",
+      okDe(["o placar", "os votos exigidos sao", "procedente", "o veredito"]),
+      el("div", { class: "placar" },
+        el("div", {}, el("strong", {}, decid ? decid.sim : "—"), el("span", {}, "sim")),
+        el("div", {}, el("strong", {}, decid ? decid.nao : "—"), el("span", {}, "não")),
+        el("div", {}, el("strong", {}, decid ? decid.exigidos : "—"), el("span", {}, `exigidos, de ${fechado?.k}`))),
+      regua,
+      el("p", {}, el("strong", {}, decid ? (decid.procedente ? "Procedente." : "Improcedente.") : "Ainda não decidido."), ` O contrato leu o placar que o Tessera publicou e aplicou a regra do nível ${aberto?.gravidade}: ${inst && aberto && aberto.gravidade >= inst.dois_tercos_desde ? "dois terços" : "a maioria"} do painel inteiro. Quem faltou não conta a favor. O afastamento cautelar termina aqui; a sanção é da governança do projeto.`),
+      provas(C, ["o placar", "os votos exigidos sao", "procedente", "o veredito"]),
+      fatos([["Transação", tx(decid?.tx)]]));
+
+    const silencio = r.sorteio.estados ? [...r.sorteio.estados.entries()].filter(([, e]) => e === "nao revelou").length : 0;
+    fase("revelacao", "09", "A revelação", "Depois do veredito, cada jurado",
+      revelados.length > 0 && okDe(["sorteio: Revelado de"]),
+      el("p", {}, el("strong", {}, `${revelados.length} ${revelados.length === 1 ? "pessoa revelou" : "pessoas revelaram"} o segredo depois do prazo; ${silencio} ${silencio === 1 ? "ficou" : "ficaram"} em silêncio.`), " Só agora o ledger liga um assento a um nome — de propósito, depois de decidido. Com as revelações, qualquer um recalcula o painel inteiro. Quem não revela fica registrado como tal."),
+      el("ul", { class: "provas" },
+        el("li", { class: okDe(["sorteio: Revelado de"]) ? "" : "bad" }, `${revelados.length} revelações: em cada uma, Poseidon(s) = c e y = Poseidon(semente, s), e o "sentou" confere com o painel`)),
+      el("p", {}, link("./bilhetes.html", "Os bilhetes, pessoa por pessoa"), " · ", link(`${EXPLORER}/contract/${ct.kleroterion}`, "o rol no stellar.expert")));
+
+    const trilha = $("trilha");
+    for (const f of fases) {
+      $("fases").append(f.no);
+      trilha.append(el("li", {}, el("a", { href: `#${f.id}` }, el("span", { class: `marca ${f.ok ? "ok" : "bad"}` }, f.ok ? "✓" : "!"), `${f.num} ${f.titulo}`)));
+    }
+    const vigia = new IntersectionObserver((es) => {
+      for (const e of es) {
+        if (!e.isIntersecting) continue;
+        for (const a of trilha.querySelectorAll("a")) {
+          if (a.getAttribute("href") === `#${e.target.id}`) a.setAttribute("aria-current", "step");
+          else a.removeAttribute("aria-current");
+        }
+      }
+    }, { rootMargin: "-40% 0px -55% 0px" });
+    for (const f of fases) vigia.observe(f.no);
+    palco(fases, params.has("apresentar"));
+  }
+
+  function palco(fases, ja) {
+    let i = 0, timer = null;
+    const mostrar = () => {
+      fases.forEach((f, j) => f.no.classList.toggle("atual", j === i));
+      $("palco-rotulo").textContent = `${fases[i].num} / 09 · ${fases[i].titulo}`;
+      $("palco-barra").style.width = `${((i + 1) / fases.length) * 100}%`;
+      scrollTo(0, 0);
+    };
+    const passo = (d) => { i = Math.max(0, Math.min(fases.length - 1, i + d)); mostrar(); };
+    const entrar = () => { document.body.classList.add("palco"); $("palco").setAttribute("aria-hidden", "false"); i = 0; mostrar(); };
+    const sair = () => { document.body.classList.remove("palco"); $("palco").setAttribute("aria-hidden", "true"); clearInterval(timer); timer = null; $("auto").setAttribute("aria-pressed", "false"); };
+    $("apresentar").addEventListener("click", entrar);
+    $("sair").addEventListener("click", sair);
+    $("avancar").addEventListener("click", () => passo(1));
+    $("voltar").addEventListener("click", () => passo(-1));
+    $("auto").addEventListener("click", () => {
+      if (timer) { clearInterval(timer); timer = null; $("auto").setAttribute("aria-pressed", "false"); return; }
+      $("auto").setAttribute("aria-pressed", "true");
+      timer = setInterval(() => (i < fases.length - 1 ? passo(1) : clearInterval(timer)), 9000);
+    });
+    addEventListener("keydown", (e) => {
+      if (!document.body.classList.contains("palco") || $("documento").open) return;
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); passo(1); }
+      if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); passo(-1); }
+      if (e.key === "Escape") sair();
+    });
+    if (ja) entrar();
+  }
+
+  principal().catch((e) => {
+    $("titulo").textContent = "Não foi possível conferir.";
+    $("titulo").classList.add("bad");
+    $("resumo").textContent = String(e.message || e);
+  });
+
+  const tema = $("tema");
+  const preferencia = matchMedia("(prefers-color-scheme: dark)");
+  const temaEscuro = () => (document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : preferencia.matches);
+  const rotularTema = () => { const l = temaEscuro() ? "Usar tema claro" : "Usar tema escuro"; tema.setAttribute("aria-label", l); tema.title = l; };
+  tema.addEventListener("click", () => { document.documentElement.dataset.theme = temaEscuro() ? "light" : "dark"; rotularTema(); });
+  rotularTema();
+</script>
+</body>
+</html>

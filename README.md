@@ -18,6 +18,26 @@
 
 ## Try it
 
+**The demo: a whole case, from the roster to the verdict:** [thaisfreis.github.io/pinakion/web/processo.html](https://thaisfreis.github.io/pinakion/web/processo.html). It is a fictional code-of-conduct case with real testnet transactions:
+- 40 people on the roster, and a level-3 case with 7 seats;
+- the person judged was on the roster and was impeded by the lock itself;
+- the complaint, the evidence, the defence and the minutes were filed by their hashes;
+- 6 of the 7 seated jurors attended from their seat accounts, against a quorum of 5;
+- the vote was secret, on Tessera, and came out 5 to 1, upheld with 4 required;
+- the jurors revealed afterwards.
+
+The page checks every phase in your browser from the ledger's events. **Present** shows one phase per screen, for a projector or a recording.
+
+> **The vote runs on Tessera.** [Tessera](https://github.com/ThaisFReis/tessera) is the author's earlier secret-ballot module, from the Find Your Way hackathon. It is used as it is: its contract at commit `356c22f`, deployed unchanged on testnet, and its CLI at the same commit with a one-line client fix ([`scripts/tessera-cli.patch`](scripts/tessera-cli.patch)). What this project adds is the binding: the `processo` contract accepts a Tessera vote only if its voter list is exactly the jurors who attended. It recomputes Tessera's Merkle root on-chain to check that. On top of Tessera's score it applies the level's verdict rule.
+
+```bash
+python3 scripts/verificar_processo.py docs/evidencia-processo-registro.json
+```
+
+The same checks from the command line, with no dependencies: the draw, the opening, the record against the documents in [`docs/caso-demo/`](docs/caso-demo), attendance against the panel, Tessera's voter root against the attendees, and the verdict against Tessera's score. Every transaction is in [`docs/evidencia-processo.md`](docs/evidencia-processo.md). To run a case yourself: `scripts/sequencia_processo.sh`.
+
+**The first sealed draw (2026-10-26), on its own:**
+
 **Check the testnet panel yourself, from the ledger and drand, with no dependencies:**
 
 ```bash
@@ -87,8 +107,8 @@ Full records: [`docs/evidencia-testnet-bilhete.md`](docs/evidencia-testnet-bilhe
 
 ## What is not
 
-- **The case lifecycle is designed and not built.** That covers roster renewal, contestation windows and the quorum arithmetic. The roster cycle — enrol → impede → lock → seal → claim → recuse → finalize → reveal — is built, passes its unit tests and ran once on testnet.
-- **The person judged is kept off their own panel only in the code, not yet on testnet.** Since T-045 `lock` impedes them if enrolled, and refuses a clerk who is the party. The 2026-10-26 testnet run predates it. `suspended()` only publishes the window: removing real permissions is the host governance's job. Since T-046 the constructor also fixes a floor on the reveal (`espera_minima`), and `lock` and `finalize` extend the TTL of what `reveal` reads up to the network maximum (about 180 days on testnet, estimated); a later reveal needs someone to extend again, which any account can do. See [`docs/desenho-gravidade-afastamento-revelacao.md`](docs/desenho-gravidade-afastamento-revelacao.md).
+- **Part of the case lifecycle is built and part is only designed.** Built and run on testnet: the opening, the record, attendance and quorum, the bound vote and the verdict, all in `contracts/processo`. Designed and not built: roster renewal, contestation windows, a redraw after an adjournment, and confidential records with justified access. In the demo the case documents are public. The roster cycle — enrol → impede → lock → seal → claim → recuse → finalize → reveal — is built, passes its unit tests and ran once on testnet.
+- **The vote depends on Tessera.** Its privacy floor is five confidential votes, so a case needs at least five seats. Below that, the case is refused at `abrir`. The correctness of the score is Tessera's verifier's job (`tessera verificar`), not this repository's. The demo's windows are short: the approved reveal floor is 30 days.
 - **The testnet run was one machine playing all 20 jurors and every seat account,** with short windows: 60 ledgers to claim, and a reveal ledger minutes away rather than "after the verdict" (§11 Q-24).
 - **Nothing has been audited. Nothing has run on mainnet.**
 - **The drand signature is verified on-chain at `seal`,** not again by the off-chain checker, which takes the randomness from drand's API.
@@ -96,7 +116,7 @@ Full records: [`docs/evidencia-testnet-bilhete.md`](docs/evidencia-testnet-bilhe
 
 ## Related work
 
-- **[Tessera](https://github.com/ThaisFReis/tessera)** is the author's earlier module, awarded the same week. It is complementary: *Tessera decides how one votes, in secret; Pinakion decides who sits.* Pinakion has no ballot on purpose, and the panel's seat accounts can become Tessera's voter list. No Tessera machinery is in this repository: no ring signatures, key images, Pedersen commitments, time-locks or tallies.
+- **[Tessera](https://github.com/ThaisFReis/tessera)** is the author's earlier module, awarded the same week. *Tessera decides how one votes, in secret; Pinakion decides who sits.* In the case cycle, the vote **is** a Tessera vote, bound to the attendees (see *Try it*).
 - **Kleros** seats anonymous jurors selected by stake, from a market. Pinakion seats the institution's own roster, fixed before the case.
 - **[`AshFrancis/splicers`](https://github.com/AshFrancis/splicers) and [`NibrasD/Stellar-VRF`](https://github.com/NibrasD/Stellar-VRF)** verified drand on Soroban before us, with the same host functions. Neither seats a jury.
 
@@ -151,6 +171,7 @@ docs/SOURCES.md every external fact checked, with its date
 
 contracts/beacon-verifier/   the beacon: verify, randomness, draw
 contracts/kleroterion/       the roster as an asset, drawn sealed: enroll … seal, claim, recuse, finalize, reveal
+contracts/processo/          the case: abrir, comparecer, registrar, vincular_votacao (Tessera), decidir
 contracts/poseidon/          Poseidon over BN254 on the host permutation, circomlib's
 contracts/groth16-verifier/  the BN254 Groth16 verifier, with the claim circuit's key embedded
 circuits/                    the seat-claim circuit, its setup and `pinakion prove` — GPL-3.0
@@ -159,7 +180,11 @@ scripts/verificar_painel.py  the sealed panel, checked from the contract's event
 scripts/sequencia_bilhete.sh the sealed sequence on testnet, end to end
 scripts/registro.py          the contract's events, read from the network, with tx hashes
 scripts/exportar_tessera.py  the panel's seat accounts, as Tessera's --aptos list
-web/                         the recomputations in a browser; bilhetes.html is the sealed panel, person by person
+scripts/sequencia_processo.sh the whole case on testnet, the vote on Tessera
+scripts/registro_processo.py the case's events and Tessera's vote, read from the network
+scripts/verificar_processo.py the whole case, checked from the record alone
+scripts/tessera-cli.patch    the one-line fix Tessera's CLI needs to talk to its own contract
+web/                         the recomputations in a browser; processo.html is the case, bilhetes.html the sealed panel
 ```
 
 ---

@@ -31,7 +31,7 @@ NOMES = {"Constituido", "Inscrito", "Impedido", "Fechado", "Selado", "Ampliado",
          "Recusado", "Finalizado", "Revelado"}
 
 
-def eventos(contrato, inicio, rede):
+def eventos(contrato, inicio, rede, nomes=NOMES):
     vistos, cursor, saida = set(), None, []
     while True:
         cmd = ["stellar", "events", "--id", contrato, "--output", "json", "--count", "200", "--network", rede]
@@ -43,7 +43,7 @@ def eventos(contrato, inicio, rede):
             return saida
         for e in novos:
             vistos.add(e["id"])
-            if e.get("event_name") in NOMES:
+            if e.get("event_name") in nomes:
                 saida.append({"evento": e["event_name"], "ledger": e["ledger"], "id": e["id"], **e["params"]})
         cursor = novos[-1]["id"]
 

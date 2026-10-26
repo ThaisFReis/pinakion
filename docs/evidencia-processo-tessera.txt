@@ -1,0 +1,24 @@
+
+  TESSERA · verificador independente
+  ──────────────────────────────────────────────────────────────────────
+
+  Fonte .............. contrato CDWBWAHU…XQT7 na testnet
+  Confia em .......... nada que a CLI gravou e ela não possa provar
+
+  Aptidão ............ 6 de 6 na raiz 042e…066e                        ✓
+  Unicidade .......... 0 repetidos                                     ✓
+  Boa formação ....... 12 disjuntivas válidas                          ✓
+  Soma por pergunta .. 6 de 6 somam 1                                  ✓
+  Respostas em claro . 0 de 0 conferem                                 ✓
+  Sigilo mínimo ...... 6 confidenciais ≥ 5                             ✓
+
+  Agregado refeito ... SIM       5·G + R·H                             ✓
+                       NAO       1·G + R·H                             ✓
+
+  ──────────────────────────────────────────────────────────────────────
+
+  ✓ o resultado publicado é o resultado correto
+
+  E o que este verificador NÃO conseguiu descobrir:
+    em que cada uma das 6 pessoas votou.
+

@@ -149,6 +149,27 @@ The landing page has a deliberate reading order:
 5. **The open draw it began with.** The Fisher-Yates recomputation, labelled as `beacon-verifier`'s.
 6. **Closing.**
 
+The case page (`web/processo.html`, T-051) is the demo link. Its reading order:
+
+1. **The verdict first.** *Procedente.* or *Improcedente.*, with the score in one line, then how many checks the browser just ran.
+2. **The case in five figures.** Roster, seats and level, attendance and quorum, the score, the reveals.
+3. **Nine phases, in the order they happened:**
+   1. the roster;
+   2. the lock;
+   3. the complaint and the record;
+   4. the sealed draw;
+   5. the seats;
+   6. the quorum;
+   7. the vote;
+   8. the verdict;
+   9. the reveal.
+
+   Each phase has the same three parts: what happened, said plainly; how it is checked, as ticked lines; and the transactions.
+4. **The vote phase names Tessera** in a bronze-ruled box, before anything else in that phase. Tessera is the author's earlier module, used unchanged. Bronze is the colour this page uses for what a reader should weigh.
+5. **The limits, then the record's path and the command that checks it.**
+
+A sticky step rail mirrors the nine phases with a tick each, and marks the one in view. The documents open in a dialog with the hash they were matched against. **Present** shows one phase per screen, with arrow and space keys and an auto-advance, so a video can be recorded from the page itself.
+
 The ticket page (`web/bilhetes.html`) is the record itself. It opens with the verdict of the check, then the facts (root, N and k, round, seed, `T`, panel), then the table of people, then the table of claims, then its limits.
 
 - An editorial shell with a maximum width of 1280px and 28px side gutters, 20px on small screens. These are design choices, not product measurements.
@@ -177,8 +198,8 @@ The same rules as `CLAUDE.md`, applied to what the reader sees.
 
 ## Implementation and limits
 
-`web/index.html` and `web/style.css` implement this direction (T-017, revised in T-043). `web/bilhetes.html` is the sealed record (T-042). `web/sorteio.mjs`, `web/poseidon.mjs` and `web/arvore.mjs` hold the recomputations.
+`web/index.html` and `web/style.css` implement this direction (T-017, revised in T-043). `web/processo.html` and `web/processo.mjs` are the case (T-051, T-050). `web/bilhetes.html` is the sealed record (T-042). `web/sorteio.mjs`, `web/poseidon.mjs` and `web/arvore.mjs` hold the recomputations.
 
-None of this is a production deployment. The pages manage no roster and handle no case. Nothing on them signs or sends a transaction. Neither page verifies the drand BLS signature in the browser: the contract does that at `seal`. The ticket page reads a committed record of the testnet run, not a live RPC. The open-draw example keeps its original contract and transaction links.
+None of this is a production deployment. The pages manage no roster and run no case: they read a committed record of one. Nothing on them signs or sends a transaction. Neither page verifies the drand BLS signature in the browser: the contract does that at `seal`. The ticket page reads a committed record of the testnet run, not a live RPC. The open-draw example keeps its original contract and transaction links.
 
 Typography loads from Google Fonts, with local fallback fonts, and the pages stay readable if the font service is unavailable.

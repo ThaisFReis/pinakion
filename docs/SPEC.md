@@ -50,7 +50,7 @@ The guarantee, in one sentence: *nobody chooses who judges you.*
 - Not a DAO, not a governance application, not a wallet. It is a module an existing governance calls.
 - Does not decide who may be on the roster, what the panel decides, or what follows from the decision.
 - Does not provide due process over asset clawback. That was the withdrawn generation.
-- Does not count votes, run a ballot or deliberate (that is the author's earlier module, Tessera, which Pinakion feeds — DEC-019); does not model a case, a reviewer or a verdict. Plan B (DEC-015) adds *who sits is sealed until the verdict and public afterwards*; it never adds *how the panel votes*.
+- Does not count votes, run a ballot or deliberate: the vote is the author's earlier module, Tessera (DEC-019, DEC-036). Since M3 it **does** carry the case around the draw — the opening, the record, attendance and quorum, the binding of a Tessera vote, and the verdict under the level's rule (`contracts/processo`, DEC-035). It still does not decide the sanction or apply it. Plan B (DEC-015) adds *who sits is sealed until the verdict and public afterwards*; it never adds *how the panel votes*.
 
 ---
 
@@ -74,6 +74,8 @@ A claim appears in a document, README or UI only if it is listed here with its e
 | Before reveal, no seat is tied to a roster address on the ledger: seats are **indistinguishable within the panel of k**, as far as the seat account's funding leaves no trail | the run's events (`docs/evidencia-testnet-registro.json`); INV-17. The qualifier is part of the claim. Approved 2026-10-26 |
 | A seat claim costs about 32 M instructions declared on testnet, 8 % of the 400 M per-transaction ceiling | the cost table from the 53 transactions (G9); ceiling read with `stellar network settings` (`docs/SOURCES.md`). Approved 2026-10-26 |
 | Verifying a drand round on Soroban was done before this project | `AshFrancis/splicers`, `NibrasD/Stellar-VRF` — stated wherever the beacon is claimed |
+| A whole case ran on testnet, from the roster to the verdict: the party impeded at lock, the record filed by hash, attendance from seat accounts, a Tessera vote bound to the attendees, the verdict from Tessera's score | run `caso1`, 2026-10-26 (`docs/evidencia-processo.md`, `docs/evidencia-processo-hashes.tsv`); `scripts/verificar_processo.py` on the recorded events, re-checked offline by G6 and G5 (T-049, T-050). Asked for by the human, M3 |
+| The vote runs on Tessera, the author's earlier module, used as it is; the case accepts a vote only if Tessera's voter list is exactly the attendees | Tessera contract at `356c22f` deployed unchanged (`CDWBWAHU…`); CLI with `scripts/tessera-cli.patch`; `vincular_votacao` recomputes Tessera's root on-chain (`raiz_dos_aptos_bate_com_a_do_tessera`, INV-25). **Must be stated wherever the vote appears** (DEC-036) |
 
 **Must not claim** (no evidence today): secure, audited, production-ready, trustless, unbiasable. Under Plan B (DEC-015), also never *anonymous* — the word is *indistinguishable within the panel of k* — and never *full recomputation*: the panel is recomputable **among those who revealed**, and the silence of those who did not is itself on the ledger. Plan B ran on testnet on 2026-10-26 (T-040); the four Plan B rows above are what may be said of it, and nothing beyond them — never *anonymous*, never *full recomputation*, never *first* Groth16 on Soroban (Tessera measured one before; `splicers` and `Stellar-VRF` verified drand before). The entropy source is trusted (§7), the contract is unaudited, and nothing has run on mainnet.
 
@@ -172,6 +174,11 @@ Numbered; each with the test that enforces it, or marked `[proposed]` where noth
 | INV-19 | `k` comes from the severity table fixed at construction; nobody chooses `k` at `lock`; below the level's roster floor, `lock` is refused (INV-09 per level). *Approved 2026-10-26.* | `k_vem_da_gravidade`, `rol_abaixo_do_minimo_do_nivel_e_recusado`, `gravidade_fora_da_tabela_e_recusada`, `tabela_vazia_ou_k_zero_e_recusada`, `constituir_publica_a_tabela_e_o_afastamento` (T-045); the verifiers check `k` against `Constituido` |
 | INV-20 | `suspended(a)` is true only for the party, from `lock` to `lock + afastamento` (exclusive), and nothing extends it. *Approved 2026-10-26.* | `afastado_so_para_o_acusado_e_so_no_prazo` (T-045); the verifiers check `afastado_ate` against `Constituido` when the record carries the lock's ledger |
 | INV-21 | `revela_em ≥ lock + espera_minima`; what `reveal` reads lives at least until `revela_em + janela`, or the network maximum if sooner. *Approved 2026-10-26.* | `revelar_antes_da_espera_minima_e_recusado`, `o_que_o_reveal_le_vive_ate_a_revelacao` (red without the extension, checked 2026-10-26), `a_extensao_para_no_teto_da_rede` (T-046); the verifiers check `revela_em` against `Constituido.espera_minima` when the record has the lock's ledger |
+| INV-22 | A case opens only after the roster locked, for the lock's party, level and `k`; never twice; never with `k` below the vote's privacy floor | `abrir_le_o_caso_do_kleroterion_e_registra_a_denuncia`, `abrir_antes_de_o_rol_fechar_e_recusado`, `painel_menor_que_o_sigilo_e_recusado` (T-048); the verifiers check the opening against `Fechado` |
+| INV-23 | Only a seat account that sat attends, once; the session opens exactly when the count reaches the quorum (the panel's majority, never below the privacy floor); without it in time, the case is adjourned | `so_quem_sentou_comparece_e_uma_vez`, `o_quorum_instala_a_sessao_e_quem_chega_depois_conta`, `sem_quorum_no_prazo_o_caso_e_adiado`, `quorum_e_votos_exigidos_seguem_a_regra`; `seated_so_depois_do_painel_e_so_para_quem_sentou`, `a_mesma_conta_de_assento_nao_reivindica_duas_vezes` (T-047) |
+| INV-24 | Each role files only what it may: the clerk evidence (before the vote) and minutes; the person judged their defence (until the verdict); an attending juror minutes (until the verdict); nobody else | `cada_papel_registra_so_o_que_lhe_cabe`, `depois_da_votacao_nao_entram_provas_e_depois_do_veredito_so_a_ata_do_escrivao` |
+| INV-25 | A vote binds only if it is a Tessera proposal of one secret two-option question, whose voter root is exactly the attendees' (in order, under Tessera's rule, recomputed on-chain), whose committee are attendees, opened after the session | `a_votacao_vinculada_tem_de_ser_dos_presentes`, `raiz_dos_aptos_bate_com_a_do_tessera` (the rule against a root Tessera's CLI wrote on testnet) |
+| INV-26 | The verdict is Tessera's published score under the level's rule — upheld iff yes reaches a majority of the whole panel, or two thirds from the configured level; absence never counts in favour; the interim suspension ends at the verdict | `a_maioria_e_os_dois_tercos_contam_sobre_o_painel`, `sem_placar_nao_ha_veredito`, `o_afastamento_termina_no_veredito` |
 
 ---
 
@@ -249,11 +256,11 @@ Run from a clean checkout — **verified**: on 2026-10-25 a fresh clone ran G1 t
 | # | Command | Baseline (25 Oct, before any change) | Now | Note |
 |---|---|---|---|---|
 | G1 | `cargo fmt --all --check` | FAIL | **PASS** | fixed by T-004 |
-| G2 | `cargo test --locked --workspace` | PASS, 10 tests | **PASS, 98 tests** | +2 from T-007, +4 from T-026, +22 from T-029, +3 from T-033, +11 from T-034, +10 from T-035, +1 from T-036, +9 from T-037, +12 net from T-038, +1 from T-039, +10 from T-045, +3 from T-046 (16 `beacon-verifier`, 56 `kleroterion`, 9 `groth16-verifier`, 4 `pinakion-poseidon`) |
+| G2 | `cargo test --locked --workspace` | PASS, 10 tests | **PASS, 114 tests** | +2 from T-007, +4 from T-026, +22 from T-029, +3 from T-033, +11 from T-034, +10 from T-035, +1 from T-036, +9 from T-037, +12 net from T-038, +1 from T-039, +10 from T-045, +3 from T-046, +2 from T-047, +14 from T-048 (`processo`) (16 `beacon-verifier`, 56 `kleroterion`, 9 `groth16-verifier`, 4 `pinakion-poseidon`) |
 | G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | FAIL, 5 deprecated aliases | **PASS** | fixed by T-004 |
-| G4 | `stellar contract build` | PASS | **PASS** | beacon-verifier, 2,576 B optimised |
-| G5 | `npm test` | FAIL | **PASS, 4 vectors, 22 Poseidon, 4 trees, 1 sealed** | was a placeholder; T-006 replaced it with `web/test.mjs`; T-035 adds Poseidon and the commitment root; T-045 adds two mutations of the sealed vector that must fail by name |
-| G6 | `python3 scripts/conferir_vetores.py` | did not exist | **PASS, 4 vectors + the tie to `beacon-verifier`'s `test.rs`, 22 Poseidon, 4 trees, constants = `params.rs`, the N = 8 flow fixture, 1 sealed vector, the recorded testnet run (77 checks), the Tessera export = `docs/evidencia-testnet-aptos.txt`** | added by T-005; T-035 adds Poseidon, the root and the constants check; T-044 adds the six tables of the panel-size study; T-045 adds the same two mutations |
+| G4 | `stellar contract build` | PASS | **PASS** | beacon-verifier, 2,576 B optimised; since T-048 also `processo` (17,130 B optimised) |
+| G5 | `npm test` | FAIL | **PASS, 4 vectors, 22 Poseidon, 4 trees, 1 sealed** | was a placeholder; T-006 replaced it with `web/test.mjs`; T-035 adds Poseidon and the commitment root; T-045 adds two mutations of the sealed vector that must fail by name; T-050 adds the recorded case (`docs/evidencia-processo-registro.json`, the same checks as the Python verifier) and three mutations of it that must fail by name |
+| G6 | `python3 scripts/conferir_vetores.py` | did not exist | **PASS, 4 vectors + the tie to `beacon-verifier`'s `test.rs`, 22 Poseidon, 4 trees, constants = `params.rs`, the N = 8 flow fixture, 1 sealed vector, the recorded testnet run (77 checks), the Tessera export = `docs/evidencia-testnet-aptos.txt`** | added by T-005; T-035 adds Poseidon, the root and the constants check; T-044 adds the six tables of the panel-size study; T-045 adds the same two mutations; T-050 adds the recorded case and the same three mutations; T-049 adds that `docs/evidencia-processo.md` is what `scripts/evidencia_processo.py` prints |
 | G7 | `python3 scripts/conferir_numeros.py` | did not exist | **PASS, 34 figures in 7 documents** | added by T-023; T-035 adds the costs of `enroll`, `impede`, `lock` in this file; T-034 adds the `(cpu, mem)` constants of `contracts/poseidon` and `contracts/groth16-verifier` and `docs/evidencia-testnet-spike.md` |
 | G8 | `node circuits/test.mjs` (`npm run test:circuito`) | did not exist | **PASS, 19 checks** | added by T-036 (T-037 adds: the key embedded in the verifier is `vk.json`): the CLI's path reaches circomlib's roots; a real claim verifies; wrong root, seed, claimer or another juror's `y` are refused; no witness exists for a false root or `y`; an impeded or unknown `s` gets no proof; the Rust fixture uses this setup's `vk`. Needs `npm ci`; no circom, no ptau |
 | G9 | `python3 scripts/custos_testnet.py docs/evidencia-testnet-hashes.tsv` | did not exist | **network, not per task** | added by T-040: reprints the cost table in `docs/evidencia-testnet-bilhete.md` from the 53 testnet transactions (declared resources, fee charged). Needs the Stellar CLI and RPC access; run when that page changes |
@@ -363,6 +370,19 @@ Asked by the human on 2026-10-26: a council decides more than expulsion, so seve
 | T-044 | Study: severity and panel size, interim suspension, late reveal | — | §4, `docs/limite-inferior-do-rol.md`, `docs/desenho-sorteio-e-sigilo.md` | review | `docs/desenho-gravidade-afastamento-revelacao.md` answers the three requests; every table is printed by `scripts/tamanho_do_painel.py` and G6 fails when one figure drifts; the re-check of `limite-inferior-do-rol.md` §4 matches; proposed invariants, defaults and the two build tasks written down; limits section; nothing built |
 | T-045 | Severity table, the party impeded at `lock`, `afastado` | T-044, Q-28 | §4 INV-18..20, §5, the study §1–§2 | review | constructor takes the level table (`k`, roster floor) and `afastamento`, and emits `Constituido`; `lock(gravidade, revela_em, acusado)` takes `k` from the table, refuses below the level's floor and `acusado == escrivão`, impedes an enrolled party in the same call; `Fechado` carries `gravidade`, `acusado`, `afastado_ate`; `afastado(endereco)` true only for the party, only in the window; Python and JS verifiers check `k` against `Constituido` and that the party never sits; sealed golden vector regenerated; costs re-pinned; G1–G8 green |
 | T-046 | Late reveal: a floor on `revela_em`, TTL to match | T-045, Q-28 | §4 INV-21, §6, the study §3 | review | constructor takes `espera_minima`; `lock` refuses `revela_em < lock + espera_minima`; `lock` and `finalize` extend the TTL of what `reveal` reads to `revela_em + janela`, capped at `max_ttl()`; a test advances the ledger past `min_persistent_ttl` and reveals; the two `[VERIFY]` of the study's §3 settled; `bilhetes.html` shows *sealed until ledger X*; G1–G8 green |
+
+### M3 — the case cycle, end to end, with a demo link (2026-10-26)
+
+Asked by the human on 2026-10-26: *build the full cycle — the opening of the case, the quorum, the records and minutes, and the vote — end to end, tested, good for a video and for a dapp link; deploy it yourself; do not stop to ask.* The human also asked that the vote be stated to run on Tessera, so the link to the author's earlier module is disclosed, not discovered (DEC-034, DEC-036). One branch and one PR for the milestone (DEC-034).
+
+| ID | Title | Deps | Reads | Status | Acceptance criteria |
+|---|---|---|---|---|---|
+| T-047 | `seated(assento)` in kleroterion | T-046 | §4 INV-15, INV-17 | review | `claim` records the seat account's `y` and refuses a second claim from the same account; `seated` is true only after the panel and only for a seat account whose `y` sat; tests; costs re-pinned |
+| T-048 | The `processo` contract | T-047 | §4 INV-22..26 | review | `abrir` (after `lock`, reading party, level and `k`; refuses `k` below the vote's privacy floor) · `comparecer` (seated seat accounts only, once, within the quorum window; the session opens at the quorum) · `adiar` · `registrar` (each role files only its types: clerk evidence and minutes, the party its defence, an attending juror minutes) · `vincular_votacao` (a Tessera proposal of one secret two-option question whose voter root is the attendees' under Tessera's rule, recomputed on-chain, with a committee of attendees, opened after the session) · `decidir` (Tessera's score; upheld iff yes ≥ the level's required votes over the whole panel) · `suspended` ends at the verdict; tests against a real kleroterion panel from the N = 8 fixture and a Tessera stand-in; the voter-root rule checked against a root Tessera's own CLI produced on testnet |
+| T-049 | The whole case on testnet | T-048 | §7 | review | `scripts/sequencia_processo.sh` runs roster → lock against an enrolled party → complaint, evidence, defence → seal → claims → panel → attendance and quorum → juror's minutes → Tessera vote bound → secret votes → Tessera tally and its own verifier → verdict → minutes → reveals; every hash recorded; `docs/evidencia-processo.md` |
+| T-050 | Check the case from the ledger | T-049 | §4 | review | `scripts/verificar_processo.py` and `web/processo.mjs` reach the same checks from the record alone: the draw (with `verificar_painel`), the opening, the record against the documents, attendance against the panel, Tessera's voter root against the attendees, the verdict against Tessera's score; G6 and G5 check the recorded run and fail on mutations |
+| T-051 | The case page | T-050 | `DESIGN.md` | review | `web/processo.html`: verdict first, the case in five figures, nine phases each with what happened, how it is checked and its transactions, documents opened and hashed in the browser, the Tessera disclosure in the vote phase, a presentation mode (one phase per screen, keys, auto-advance) for the video; light, dark and phone width checked in a browser |
+| T-052 | Landing, README, thesis, demo script, submission | T-051 | §2 | review | the landing page leads to the case; `THESIS.md`, `README.md`, `docs/SUBMISSAO.md` say what the cycle is and that the vote is Tessera's; `docs/DEMO.md` is the video script for the case; G1–G8 green |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
@@ -632,6 +652,56 @@ Consequences:
 - **Not extended:** the SAC's own instance, which `reveal` reads through `balance`. The contract cannot extend it; anyone can, through `ExtendFootprintTTLOp`.
 - **Not measured:** the network cost of a restore.
 - **Not on testnet:** this version has not run there.
+
+
+### DEC-034: The human waived the stops for M3 (2026-10-26, M3)
+Context: on 2026-10-26 the human asked for the whole case cycle end to end, and wrote: *"Não precisa parar pra pedir aprovação, implemente tudo direto"*, *"Implante sozinho. Não precisa me pedir permissão para nada"*, and *"Permito tudo sempre. Pode executar tudo"*.
+Decision: for M3 the "ask first" column of `CLAUDE.md` is relaxed by the human. That covers new invariants (INV-22..26), a new contract, deploying to testnet, publishing the page through `main`, and merging the milestone's PR. It does not cover what the human did not say: no mainnet, no production endpoints, no secrets in git, and no claim §2 does not allow. M3 is one branch and one PR rather than one per task, so the PR can be merged once with the run's evidence.
+Alternatives: one PR per task, each waiting for review — rejected by the human's instruction.
+Consequences: §9 M3. The human still sets tasks to `done`.
+
+### DEC-035: The case is a second contract, `processo`, that reads the roster (2026-10-26, T-048)
+Context: the cycle needs a complaint, a record, attendance, a vote and a verdict, and kleroterion's Wasm is already 61,927 bytes.
+Decision:
+- **A separate contract.** `processo` reads kleroterion through a client with mirrored types (`Fechamento`, `Final`), and Tessera the same way (`Proposta`, `Pergunta`, at commit `356c22f`, MIT, the same author). It never writes to either.
+- **One small change in kleroterion.** It stores each seat account's `y` and exposes `seated`, so attendance is checked without naming anyone. The seat account is already public as the claim transaction's source.
+- **Records** are SHA-256 hashes in instance storage, extended to the network maximum at each write.
+- **Quorum and votes.** The quorum is `max(⌊k/2⌋+1, votos_minimos)`. The votes required are `⌈2k/3⌉` from `dois_tercos_desde`, otherwise `⌊k/2⌋+1`. Both are counted over the whole panel.
+- **The privacy floor.** `votos_minimos` is 5 on testnet, because Tessera publishes no score below five confidential votes. That is why a case at level 1 (`k = 3`) is refused.
+
+Alternatives:
+- Growing kleroterion — rejected: size, and it would mix the roster with the case.
+- Counting votes in `processo` — rejected: that is Tessera's job (DEC-019), and a second ballot would be a weaker one.
+- Binding the vote off-chain only — rejected: the contract can recompute Tessera's root for about the cost of a few hashes.
+
+Consequences: §3, §4 INV-22..26, §5, §9 T-047..T-048.
+
+### DEC-036: Tessera at 356c22f, our own testnet deployment, and a one-line CLI fix (2026-10-26, T-049)
+Context: the deployed Tessera contract named in Tessera's README (`CDWGDWDP…`, 2026-10-10) is older than its CLI. The CLI at `356c22f` also sends an `abrir` argument, `fim_tempo`, that the contract at the same commit renamed to `rodada_abertura`. Opening a vote failed with *unexpected argument '--fim_tempo'* (observed 2026-10-26).
+Decision:
+- **The contract.** Tessera's contract at `356c22f`, built unchanged and deployed once on testnet as `CDWBWAHUZ3MC3BJXJIW5O74MNUXH76VCGBIVFQU3XJJFGML3VKFIXQT7`.
+- **The CLI.** Tessera's CLI at the same commit, in a worktree outside this repository, with `scripts/tessera-cli.patch`, which sends `rodada_abertura` instead of `fim_tempo`. That is a one-line client fix; nothing in Tessera's contract or cryptography changes.
+- **The smoke test.** A five-voter vote opened, voted, tallied 4 to 1, and passed `tessera verificar`, on 2026-10-26.
+- **Disclosure.** Everywhere the vote appears — the page, README, THESIS, SUBMISSAO and the video script — it says that the vote is Tessera's, the author's earlier module.
+
+Alternatives:
+- The older deployment — rejected: it does not match the CLI.
+- Rewriting the vote — rejected (DEC-035).
+
+Consequences: §6, `docs/SOURCES.md`. The fix belongs upstream in Tessera; it is not sent from here.
+
+
+### DEC-037: Seat accounts are recorded at claim, and costs move (2026-10-26, T-047)
+Context: `processo` must check that an attendee sat without learning who they are.
+Decision: `claim` stores `YDe(assento) = y` and refuses a second claim from the same seat account (`AssentoRepetido`); `seated(assento)` is true only after the panel, for a seat account whose `y` sat. The seat account was already public as the claim transaction's source, so INV-17 is unchanged.
+Measured on the test host after the change:
+- the sixth `claim` 29,684,570 instructions;
+- `recuse` 2,926,704;
+- `finalize` 351,363;
+- `reveal` 2,979,856.
+The other costs of DEC-033 are unchanged. The kleroterion Wasm is 61,927 bytes.
+Alternatives: a list of seated accounts written at `finalize` — rejected: `finalize` does not know the seat accounts without this map anyway.
+Consequences: §4 INV-23, §9 T-047.
 
 ---
 

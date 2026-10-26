@@ -122,6 +122,7 @@
       <nav class="nav" aria-label="Navegação principal">
         <a href="./index.html">O princípio</a>
         <a href="./processo.html" aria-current="page">O processo</a>
+        <a href="./vivo/index.html">Ao vivo</a>
         <button class="apresentar" id="apresentar" type="button" title="Um passo por tela, para gravar ou projetar (setas ou espaço)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 5v14l12-7Z" fill="currentColor"/></svg>Apresentar
         </button>
@@ -278,16 +279,35 @@
 
   async function principal() {
     const params = new URLSearchParams(location.search);
-    const registro = await json(params.get("registro") || "../docs/evidencia-processo-registro.json");
-    const indice = await json("../docs/caso-demo/indice.json");
+    // `?registro=local` is the case just run live in web/vivo/: its record and
+    // the documents typed there, from this browser's storage.
+    const local = params.get("registro") === "local";
+    let registro, indice;
     const docs = {};
-    for (const d of indice.documentos) {
-      const r = await fetch(`../docs/caso-demo/${d.arquivo}`);
-      if (!r.ok) continue;
-      const bytes = new Uint8Array(await r.arrayBuffer());
-      const h = hex(await sha256(bytes));
-      docs[h] = d.arquivo;
-      textos.set(h, { titulo: d.titulo, texto: new TextDecoder().decode(bytes) });
+    if (local) {
+      let guardados = null;
+      try { registro = JSON.parse(localStorage.getItem("pinakion:registro")); guardados = JSON.parse(localStorage.getItem("pinakion:docs")); } catch { registro = null; }
+      if (!registro) throw new Error("Nenhum caso ao vivo neste navegador. Abra um em vivo/.");
+      indice = { documentos: [] };
+      for (const [h, d] of Object.entries(guardados || {})) {
+        const conferido = hex(await sha256(new TextEncoder().encode(d.texto)));
+        if (conferido !== h) continue;
+        docs[h] = d.nome;
+        indice.documentos.push({ arquivo: d.nome, titulo: d.nome });
+        textos.set(h, { titulo: d.nome, texto: d.texto });
+      }
+      $("quando").textContent = "aberto ao vivo neste navegador";
+    } else {
+      registro = await json(params.get("registro") || "../docs/evidencia-processo-registro.json");
+      indice = await json("../docs/caso-demo/indice.json");
+      for (const d of indice.documentos) {
+        const r = await fetch(`../docs/caso-demo/${d.arquivo}`);
+        if (!r.ok) continue;
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        const h = hex(await sha256(bytes));
+        docs[h] = d.arquivo;
+        textos.set(h, { titulo: d.titulo, texto: new TextDecoder().decode(bytes) });
+      }
     }
     const P = criarPoseidon(await json("../tests/poseidon-bn254.json"));
     const r = await verificarProcesso(registro, { P, raiz, docs });

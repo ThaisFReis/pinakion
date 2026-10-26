@@ -383,6 +383,8 @@ Asked by the human on 2026-10-26: *build the full cycle — the opening of the c
 | T-050 | Check the case from the ledger | T-049 | §4 | review | `scripts/verificar_processo.py` and `web/processo.mjs` reach the same checks from the record alone: the draw (with `verificar_painel`), the opening, the record against the documents, attendance against the panel, Tessera's voter root against the attendees, the verdict against Tessera's score; G6 and G5 check the recorded run and fail on mutations |
 | T-051 | The case page | T-050 | `DESIGN.md` | review | `web/processo.html`: verdict first, the case in five figures, nine phases each with what happened, how it is checked and its transactions, documents opened and hashed in the browser, the Tessera disclosure in the vote phase, a presentation mode (one phase per screen, keys, auto-advance) for the video; light, dark and phone width checked in a browser |
 | T-052 | Landing, README, thesis, demo script, submission | T-051 | §2 | review | the landing page leads to the case; `THESIS.md`, `README.md`, `docs/SUBMISSAO.md` say what the cycle is and that the vote is Tessera's; `docs/DEMO.md` is the video script for the case; G1–G8 green |
+| T-053 | The live case, run from the browser | T-052 | §7, `DESIGN.md` | review | Asked by the human 2026-10-26 (*a demo looks like a pitch deck; make it a dapp*). `web/vivo/`: one click opens a whole case on testnet from the tab — accounts, the ticket, both contracts deployed, 40 enrolments, the lock against an enrolled party, the record typed by the visitor, the drand seal, seat proofs made in the browser, the panel, attendance, a Tessera vote bound to the attendees, the visitor choosing the ballots, Tessera's time-locked tally, the verdict, the reveals; then the record is read back from the ledger and checked with `web/processo.mjs`; every step's transaction is linked as it lands; the case page opens the live case; the same engine runs from Node against testnet |
+| T-053 | Study: how real councils meet and produce documents | — | §4 INV-23..26, `docs/desenho-sorteio-e-sigilo.md`, `docs/desenho-rol-sorteio-recusas.md` | review | `docs/desenho-como-os-conselhos-funcionam.md` answers how five families of council meet, who writes the record and what is published, each fact read in the primary source and logged in `docs/SOURCES.md` with its date; the eight divergences from what the contract already does are named; five proposals (P-1..P-5) written down, none built; the positive test for *a council that commits documents by hash* and for *an asynchronous rite* run and recorded in *Checked and not found*; limits section; nothing built, no gate added |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
@@ -703,6 +705,30 @@ The other costs of DEC-033 are unchanged. The kleroterion Wasm is 61,927 bytes.
 Alternatives: a list of seated accounts written at `finalize` — rejected: `finalize` does not know the seat accounts without this map anyway.
 Consequences: §4 INV-23, §9 T-047.
 
+
+### DEC-038: The live case runs in the visitor's tab (2026-10-26, T-053)
+Context: the human found the recorded case read like a pitch deck, because nobody acts in it, and chose a live case run from the browser.
+Decision:
+- **`web/vivo/motor.mjs` runs the whole case.** Every key is born in the tab, one friendbot account funds them all, and every step is a real testnet transaction. It is the same sequence as `scripts/sequencia_processo.sh`.
+- **The same module runs in Node,** with the dependencies injected, so it was debugged against testnet before the page used it.
+- **Libraries:**
+  - `@stellar/stellar-sdk` 16.3.1, from jsDelivr. Testnet is on protocol 29, and 15.1.0 cannot read its `SorobanCredentialsType` 2 (*XDR Read Error … value 2*, observed). 16.3.1 is the newest release more than two weeks old.
+  - `snarkjs` 0.7.6, from jsDelivr.
+  - Tessera's wasm client, built unchanged at `356c22f` into `web/vivo/tessera/` (MIT).
+- **The prover** for the browser is `circuits/navegador.mjs`. It sits in `circuits/` so the GPL-3.0 boundary stays where DEC-021 put it.
+- **Enrolments and claims go one at a time.** Each rewrites the roster and a tree path, so two in the same ledger are simulated on stale state and fail on apply. The SDK's `signAndSend` returned those failures without throwing (observed: 40 sent, 5 on-chain), so the engine now checks `SUCCESS` on every transaction.
+- **The vote runs on Tessera in ring mode with a time lock**, as Tessera's own dapp does: no committee, the tally unlocked by a drand round, and one section.
+- **The case page reads the live case** from `localStorage` (`?registro=local`) and re-hashes each document before it shows it.
+
+Alternatives:
+- A wallet and a juror role — rejected by the human: it depends on other people and windows, and cannot be shown alone in minutes.
+- Live reads of a recorded case — rejected: the visitor still does nothing.
+
+Consequences:
+- **Spec sections:** §3, §9 T-053; `DESIGN.md`.
+- **Seat accounts:** they are funded by the same account that funds the jurors, so the link the relayer would remove is visible on the ledger. The page says so.
+- **Closing the tab** halfway leaves a half-run case on testnet.
+
 ---
 
 ## §11 Open questions
@@ -737,3 +763,8 @@ Consequences: §4 INV-23, §9 T-047.
 | Q-26 | **The person judged can sit on their own case.** Nothing makes the clerk impede the party before `lock`; if they are drawn, their `claim` is sealed and they sit unseen until the reveal. Found 2026-10-26 while studying the human's request. T-045 closes it (INV-18). Until then the README's limits should say it. **Closed in the code by T-045 (2026-10-26):** `lock` impedes the party (INV-18). Not on testnet: the 2026-10-26 run predates it. | — |
 | Q-27 | **The reporter's conflict.** The Contributor Covenant requires the reporter's privacy, and no event names them. If the reporter is drawn, impeding them publicly exposes them, and letting them sit puts a party on the panel. Today the best course is not to claim the seat, which shows at reveal as *drawn and absent* with no reason. Not solved. | — |
 | Q-28 | ~~**For the human: approve INV-18 to INV-21 and the defaults** of the study (§5 and §1): the four-level table (`k` 3/5/7/9, roster floors 16/40/40/100, 2/3 recommended for level 4), `afastamento`, and `espera_minima` = 30 days. INV-19 takes the choice of `k` away from the clerk; INV-18 changes `lock`'s signature (a new DEC when built).~~ **Answered 2026-10-26: the human approved INV-18 to INV-21 and the defaults** (levels 3/5/7/9, floors 16/40/40/100, 2/3 at level 4, `espera_minima` 30 days). No value was proposed for `afastamento`; it is a constructor argument with no default, and the testnet script uses a short demo value. | — |
+| Q-29 | **The Pinakion session is not a meeting.** T-053 read the rite of five families of council: every one allows video and not one gives up the synchronous gathering — the PSF and the Rust council write the hierarchy down (asynchronous only when the synchronous fails). Our quorum is a count inside a window of ledgers. It may be the right translation for a community across time zones, but nothing in this repository defends it. **For the human: record the asynchrony as a DEC (P-2), and decide whether the verifiable summons (P-4) belongs in the next milestone.** | — |
+| Q-30 | **Nobody writes the minutes.** In every source read, the record has a designated author — a secretary, a scribe, the author of the winning vote — and is never optional. In `processo`, the clerk's minutes and a juror's minutes are both optional, and nothing requires that **one** record of the session exist. **For the human: approve P-1** (`decidir` refuses without a clerk's minutes filed after the session opened). | — |
+| Q-31 | **The Optimism finding is secondhand.** The evidence that voting on conduct with the whole electorate failed — two cases, then a dedicated committee — is Arbitrum recounting Optimism's history on 2024-10-22 (`docs/SOURCES.md`). It is the most direct empirical support this project's thesis has, and **for that reason** it cannot go into the video, the deck or the submission until someone reads Optimism's own source. **For the human: read it, or do not use it.** | the submission |
+| Q-32 | **The impediment belongs to the clerk, not to the person.** In the four families with a written rite, whoever has the conflict withdraws, and the CNCF has alternates decide in their place; none gives a third party the power to strike a member from a case. `recuse(juror, s)` is already open and self-declared, but the documentation treats `impede` as the normal path (P-3). This is also the backdrop of Q-27. | — |
+| Q-33 | **The Genesis rubric is unverified and the two sources disagree.** `hackmeridian.com/build` (2026-10-25) gives seven weighted criteria, which DEC-013 and §9 are written against; the Scout curated record (2026-10-26) gives four unweighted ones — problem clarity, MVP quality, Stellar integration, continued development potential. The official rules page is behind sign-in. Both agree the review is async over the **demo video, the pitch deck, the repo and the submission answers**, and neither of the first two exists (`PLAN.md`). Logged in `docs/SOURCES.md` → *Conflicting sources*; both scored in `docs/avaliacao-genesis-unlocked.md`. **For the human: which rubric, and is the video or the deck being made before 12:00?** | the submission |

@@ -154,8 +154,9 @@ def verificar(registro, autos=None):
         p = t.get("proposta") or {}
         raiz = raiz_dos_aptos(presentes)
         confere("a votacao vinculada e a do Tessera registrada", vinc["proposta"] == t.get("id"))
-        confere("o identificador e o do nome da votacao no Tessera",
-                hashlib.sha256(b"TESSERA-V1-PROPOSTA" + t.get("nome", "").encode()).hexdigest() == vinc["proposta"])
+        if t.get("nome"):  # Tessera's CLI derives the id from a name; its dapp draws it at random
+            confere("o identificador e o do nome da votacao no Tessera",
+                    hashlib.sha256(b"TESSERA-V1-PROPOSTA" + t["nome"].encode()).hexdigest() == vinc["proposta"])
         confere("a raiz dos aptos e a dos presentes, pela regra do Tessera", vinc["raiz_aptos"] == raiz)
         confere("o Tessera guarda essa mesma raiz", p.get("raiz_aptos") == raiz)
         confere("a lista de votantes do Tessera e a dos presentes, na ordem", t.get("aptos") == presentes)

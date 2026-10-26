@@ -18,7 +18,17 @@
 
 ## Try it
 
-**The demo: a whole case, from the roster to the verdict:** [thaisfreis.github.io/pinakion/web/processo.html](https://thaisfreis.github.io/pinakion/web/processo.html). It is a fictional code-of-conduct case with real testnet transactions:
+**The dapp: open a case yourself, live:** [thaisfreis.github.io/pinakion/web/vivo/](https://thaisfreis.github.io/pinakion/web/vivo/). One click runs a whole case on testnet from your tab, in about 12 minutes, and links every transaction as it lands:
+- 40 enrolments, and a lock against an enrolled party;
+- a record you type;
+- the drand seal, and seat proofs made in your browser;
+- attendance;
+- a secret Tessera vote whose ballots you choose;
+- the verdict and the reveals.
+
+Then the page reads the case back from the ledger and checks it.
+
+**The recorded case:** [thaisfreis.github.io/pinakion/web/processo.html](https://thaisfreis.github.io/pinakion/web/processo.html). It is a fictional code-of-conduct case with real testnet transactions:
 - 40 people on the roster, and a level-3 case with 7 seats;
 - the person judged was on the roster and was impeded by the lock itself;
 - the complaint, the evidence, the defence and the minutes were filed by their hashes;

@@ -51,7 +51,8 @@ The independent check, reading only the events and drand, returns **`CONFERE`, 7
 
 `scripts/verificar_processo.py` checks the whole case from the record alone, and so does the page.
 
-- Demo: https://thaisfreis.github.io/pinakion/web/processo.html
+- Dapp, a live case from your browser: https://thaisfreis.github.io/pinakion/web/vivo/
+- The recorded case, phase by phase: https://thaisfreis.github.io/pinakion/web/processo.html
 - The sealed draw, person by person: https://thaisfreis.github.io/pinakion/web/bilhetes.html
 - Code: https://github.com/ThaisFReis/pinakion
 

@@ -144,9 +144,12 @@ export async function verificarProcesso(registro, { P, raiz, docs = null }) {
   if (vinc) {
     const p = t.proposta || {};
     raizPresentes = await raizDosAptos(presentes);
-    const idEsperado = hex(await sha256(juntar(enc.encode("TESSERA-V1-PROPOSTA"), enc.encode(t.nome || ""))));
     confere("a votacao vinculada e a do Tessera registrada", vinc.proposta === t.id);
-    confere("o identificador e o do nome da votacao no Tessera", idEsperado === vinc.proposta);
+    // Tessera's CLI derives the id from a name; its dapp draws it at random.
+    if (t.nome) {
+      const idEsperado = hex(await sha256(juntar(enc.encode("TESSERA-V1-PROPOSTA"), enc.encode(t.nome))));
+      confere("o identificador e o do nome da votacao no Tessera", idEsperado === vinc.proposta);
+    }
     confere("a raiz dos aptos e a dos presentes, pela regra do Tessera", vinc.raiz_aptos === raizPresentes);
     confere("o Tessera guarda essa mesma raiz", p.raiz_aptos === raizPresentes);
     confere("a lista de votantes do Tessera e a dos presentes, na ordem",

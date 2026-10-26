@@ -171,6 +171,15 @@ def main():
         print(f"  FALHA a rodada de testnet registrada: {ruins}")
     else:
         print(f"  ok    a rodada de testnet registrada: {len(conf_tn)} conferencias, painel de {len(painel_tn)}")
+    # T-042: the Tessera export in docs/ is what the exporter writes today.
+    import subprocess  # noqa: E402
+    exportado = subprocess.run([sys.executable, str(RAIZ / "scripts" / "exportar_tessera.py"), str(registro)],
+                               capture_output=True, text=True).stdout
+    if exportado == (RAIZ / "docs" / "evidencia-testnet-aptos.txt").read_text():
+        print("  ok    a exportacao para o Tessera e a registrada")
+    else:
+        falhas += 1
+        print("  FALHA docs/evidencia-testnet-aptos.txt divergiu de scripts/exportar_tessera.py")
 
     if falhas:
         print(f"\n{falhas} falha(s).")

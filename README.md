@@ -35,6 +35,15 @@ It prints each juror's state and **`CONFERE — 77 conferencias, 0 falha(s)`**. 
 python3 scripts/registro.py CCRBKLS64WDUSKQSQF4ON4GJF4Q5KPEAF54TQD4RIWDAJ5TOERKU2NVL 5390695 > registro.json
 ```
 
+**The same check in a browser, person by person:** [thaisfreis.github.io/pinakion/web/bilhetes.html](https://thaisfreis.github.io/pinakion/web/bilhetes.html). It is read-only. It shows each roster account as *enrolled · impeded · recused · seated · revealed · silent*, with the transaction links, the root, the drand round, the seed and `T`, and runs the same recomputation in your browser.
+
+**On the ledger itself:**
+- the asset, on [stellar.expert](https://stellar.expert/explorer/testnet/asset/PINAKION-GC5Z55ME4WQPSLT7GIFOOJEGZVKWDUVVGGACXQ4LDVWOLTOJK7KGZXEL);
+- the roster, as any Horizon sees it: [`/accounts?asset=PINAKION:GC5Z55ME…`](https://horizon-testnet.stellar.org/accounts?asset=PINAKION:GC5Z55ME4WQPSLT7GIFOOJEGZVKWDUVVGGACXQ4LDVWOLTOJK7KGZXEL);
+- the contract, [`CCRBKLS6…`](https://stellar.expert/explorer/testnet/contract/CCRBKLS64WDUSKQSQF4ON4GJF4Q5KPEAF54TQD4RIWDAJ5TOERKU2NVL).
+
+**Hand the panel to Tessera:** `python3 scripts/exportar_tessera.py docs/evidencia-testnet-registro.json` writes the seat accounts in panel order, in the format Tessera's `--aptos` reads. The output for this run is [`docs/evidencia-testnet-aptos.txt`](docs/evidencia-testnet-aptos.txt).
+
 **The open draw, in a browser:** [thaisfreis.github.io/pinakion/web/index.html](https://thaisfreis.github.io/pinakion/web/index.html) recomputes a Fisher-Yates panel from a drand round. That is `beacon-verifier`'s draw, the one the project began with.
 
 ---
@@ -147,8 +156,9 @@ circuits/                    the seat-claim circuit, its setup and `pinakion pro
 scripts/verificar_sorteio.py an independent recomputation, no dependencies
 scripts/verificar_painel.py  the sealed panel, checked from the contract's events and drand alone
 scripts/sequencia_bilhete.sh the sealed sequence on testnet, end to end
-scripts/registro.py          the contract's events, read from the network
-web/                         the same recomputation, in a browser
+scripts/registro.py          the contract's events, read from the network, with tx hashes
+scripts/exportar_tessera.py  the panel's seat accounts, as Tessera's --aptos list
+web/                         the recomputations in a browser; bilhetes.html is the sealed panel, person by person
 ```
 
 ---

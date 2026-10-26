@@ -25,7 +25,8 @@ From those alone it recomputes, without trusting the contract:
   whether it is complete, against `Finalizado`;
 - since T-045, when the record has `Constituido`: the level in `Fechado` is in
   the table, k is that level's, the roll reaches its floor, the suspension
-  ends `afastamento` ledgers after the lock; and when `Fechado` names the
+  ends `afastamento` ledgers after the lock, the reveal ledger is at least
+  `espera_minima` after it (T-046); and when `Fechado` names the
   party (`acusado`): an enrolled party was impeded before the lock and never
   sits. Records of the contract before T-045 carry neither and are checked as
   they were.
@@ -102,6 +103,9 @@ def verificar(registro):
         if "ledger" in fechado:
             confere("o afastamento e o do construtor",
                     fechado["afastado_ate"] == fechado["ledger"] + constituido["afastamento"])
+            if "espera_minima" in constituido:
+                confere("a revelacao respeita a espera minima",
+                        fechado["revela_em"] >= fechado["ledger"] + constituido["espera_minima"])
     parte = fechado.get("acusado")
     if parte in jurados:
         antes = eventos[:eventos.index(fechado)]

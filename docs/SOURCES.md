@@ -98,6 +98,9 @@ Every external fact this project relies on, and every piece of code copied in. A
 | 2026-10-26 | Testnet state archival and ledger close | `min_persistent_ttl` 120,960 ledgers; `max_entry_ttl` 3,110,400; `ledger_target_close_time_milliseconds` 5,000 | testnet, read today | `stellar network settings --network testnet` (CLI 28.1.0) |
 | 2026-10-26 | `Storage::max_ttl()` | ledgers until `max_live_until_ledger`, the ceiling for any `extend_ttl` | soroban-sdk 29.0.1 | `~/.cargo/registry/src/*/soroban-sdk-29.0.1/src/storage.rs:153` |
 | 2026-10-26 | `kleroterion` never extends a TTL | no `extend_ttl` call in the contract | this repo at `08cacaf` | `grep extend_ttl contracts/kleroterion/src/lib.rs` |
+| 2026-10-26 | Who may extend a TTL | anyone: `ExtendFootprintTTLOp` has no access control | current docs | https://developers.stellar.org/docs/build/guides/storage/storage-strategies#the-three-storage-tiers |
+| 2026-10-26 | Restoring archived contract data | since Protocol 23 (CAP-66), archived persistent or instance entries in the transaction's restore list (filled by simulation) are restored before the host function runs; normal rent and fees apply | Protocol 23+ | https://developers.stellar.org/docs/learn/fundamentals/contract-development/storage/state-archival#contract-data-automatic-restoration ; soroban-env-host 29.0.1 `src/storage.rs:800` |
+| 2026-10-26 | Test-host TTL defaults | `min_persistent_entry_ttl` 4,096, `max_entry_ttl` 6,312,000 | soroban-sdk 29.0.1 | `src/testutils.rs:303` |
 
 ## Conflicting sources
 

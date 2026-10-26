@@ -173,6 +173,9 @@ export function verificarSelado(registro, P, raiz) {
     }
     if ("ledger" in fechado) {
       confere("o afastamento e o do construtor", fechado.afastado_ate === fechado.ledger + constituido.afastamento);
+      if ("espera_minima" in constituido) {
+        confere("a revelacao respeita a espera minima", fechado.revela_em >= fechado.ledger + constituido.espera_minima);
+      }
     }
   }
   const parte = fechado.acusado;

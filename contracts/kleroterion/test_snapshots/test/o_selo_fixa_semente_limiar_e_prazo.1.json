@@ -708,7 +708,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -735,7 +735,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -762,7 +762,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -789,7 +789,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -816,7 +816,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -843,7 +843,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -870,7 +870,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -897,7 +897,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -1987,6 +1987,18 @@
                       "key": {
                         "vec": [
                           {
+                            "symbol": "EsperaMinima"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 1000
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
                             "symbol": "Fechamento"
                           }
                         ]
@@ -2365,7 +2377,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -3058,7 +3070,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {

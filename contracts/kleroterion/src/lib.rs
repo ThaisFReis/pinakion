@@ -37,6 +37,11 @@
 //! a pessoa julgada, se inscrita, é impedida no próprio fechamento e nunca
 //! senta no próprio caso (INV-18); e `suspended()` diz, a quem quiser ler,
 //! que ela está afastada até um prazo também fixado no construtor (INV-20).
+//!
+//! A revelação tardia (T-046): o construtor fixa `espera_minima`, e o
+//! `lock()` recusa um `revela_em` mais cedo que isso. Como a revelação pode
+//! vir meses depois, o `lock()` e o `finalize()` estendem o TTL de tudo o que
+//! `reveal` lê até `revela_em + janela`, no máximo o teto da rede (INV-21).
 
 use pinakion_poseidon::Sponge;
 use soroban_sdk::{
@@ -181,6 +186,8 @@ pub enum Erro {
     EscrivaoEParte = 28,
     /// A tabela de gravidade é vazia ou tem um nível com `k = 0`.
     TabelaInvalida = 29,
+    /// `revela_em` vem antes de `lock + espera_minima` (INV-21).
+    RevelacaoCedoDemais = 30,
 }
 
 /// Um nível da tabela de gravidade: quantos assentos e o menor rol que pode
@@ -220,6 +227,7 @@ pub struct Fechamento {
 pub struct Constituido {
     pub niveis: Vec<Nivel>,
     pub afastamento: u32,
+    pub espera_minima: u32,
 }
 
 /// Um jurado entrou no rol, na posição `indice`, com o compromisso `c`. Com
@@ -377,6 +385,8 @@ pub enum DataKey {
     Niveis,
     /// Quantos ledgers dura o afastamento da pessoa julgada.
     Afastamento,
+    /// O menor intervalo, em ledgers, entre o fechamento e a revelação.
+    EsperaMinima,
     Rol,
     Fechamento,
     Painel,
@@ -404,7 +414,10 @@ impl Kleroterion {
     /// reivindicar (T-038). `niveis` é a tabela de gravidade — o nível `g`
     /// senta `niveis[g-1].k` e só fecha com pelo menos `rol_minimo` inscritos
     /// —, e `afastamento` é quantos ledgers a pessoa julgada fica afastada a
-    /// partir do fechamento (T-045). Os dois ficam publicados em `Constituido`.
+    /// partir do fechamento (T-045). `espera_minima` é o menor intervalo, em
+    /// ledgers, entre o fechamento e `revela_em` (T-046). Os três ficam
+    /// publicados em `Constituido`.
+    #[allow(clippy::too_many_arguments)]
     pub fn __constructor(
         env: Env,
         escrivao: Address,
@@ -413,6 +426,7 @@ impl Kleroterion {
         janela: u32,
         niveis: Vec<Nivel>,
         afastamento: u32,
+        espera_minima: u32,
     ) {
         if niveis.is_empty() || niveis.iter().any(|n| n.k == 0) {
             panic_with_error!(&env, Erro::TabelaInvalida);
@@ -424,12 +438,14 @@ impl Kleroterion {
         s.set(&DataKey::Bilhete, &bilhete);
         s.set(&DataKey::Niveis, &niveis);
         s.set(&DataKey::Afastamento, &afastamento);
+        s.set(&DataKey::EsperaMinima, &espera_minima);
         s.set(&DataKey::Autorizados, &0u32);
         let vazio: Vec<Address> = Vec::new(&env);
         env.storage().persistent().set(&DataKey::Rol, &vazio);
         Constituido {
             niveis,
             afastamento,
+            espera_minima,
         }
         .publish(&env);
     }
@@ -487,8 +503,10 @@ impl Kleroterion {
     /// Se `acusado` está inscrito e autorizado, é impedido nesta mesma
     /// chamada, antes de a raiz ser fixada: a folha dele vira zero e ele
     /// nunca senta no próprio caso (INV-18). Quem fecha não pode ser ele.
-    /// Recusa abaixo do rol mínimo do nível (INV-09) e `k` acima de `N`,
-    /// sendo `N` os inscritos ainda autorizados.
+    /// Recusa abaixo do rol mínimo do nível (INV-09), `k` acima de `N`, sendo
+    /// `N` os inscritos ainda autorizados, e `revela_em` antes de
+    /// `ledger + espera_minima` (INV-21). Estende o TTL da instância e do
+    /// compromisso de cada inscrito até a revelação.
     pub fn lock(env: Env, gravidade: u32, revela_em: u32, acusado: Address) -> Fechamento {
         let escrivao = Self::escrivao(&env);
         escrivao.require_auth();
@@ -519,6 +537,14 @@ impl Kleroterion {
         let afastamento: u32 = env.storage().instance().get(&DataKey::Afastamento).unwrap();
         let tempo = env.ledger().timestamp();
         let ledger = env.ledger().sequence();
+        let espera: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::EsperaMinima)
+            .unwrap();
+        if revela_em < ledger.saturating_add(espera) {
+            panic_with_error!(&env, Erro::RevelacaoCedoDemais);
+        }
         let f = Fechamento {
             ledger,
             tempo,
@@ -532,6 +558,12 @@ impl Kleroterion {
             afastado_ate: ledger.saturating_add(afastamento),
         };
         env.storage().instance().set(&DataKey::Fechamento, &f);
+        let alvo = Self::ate_a_revelacao(&env, &f);
+        env.storage().instance().extend_ttl(alvo, alvo);
+        let p = env.storage().persistent();
+        for jurado in Self::roster(env.clone()).iter() {
+            p.extend_ttl(&DataKey::Compromisso(jurado), alvo, alvo);
+        }
         Fechado {
             acusado: f.acusado.clone(),
             raiz: f.raiz.clone(),
@@ -784,6 +816,11 @@ impl Kleroterion {
             ledger: env.ledger().sequence(),
         };
         env.storage().persistent().set(&DataKey::Painel, &fim);
+        let alvo = Self::ate_a_revelacao(&env, &Self::closing(env.clone()).unwrap());
+        env.storage().instance().extend_ttl(alvo, alvo);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Painel, alvo, alvo);
         Finalizado {
             painel: fim.painel.clone(),
             completo: fim.completo,
@@ -828,6 +865,18 @@ impl Kleroterion {
         }
         .publish(&env);
         r
+    }
+
+    /// Quantos ledgers, a partir de agora, o que `reveal` lê precisa viver:
+    /// até `revela_em + janela`, e nunca além do teto da rede (INV-21). Se a
+    /// revelação passar do teto, alguém precisa estender de novo no caminho
+    /// — qualquer conta pode, `ExtendFootprintTTLOp` não tem controle de acesso.
+    fn ate_a_revelacao(env: &Env, f: &Fechamento) -> u32 {
+        let janela: u32 = env.storage().instance().get(&DataKey::Janela).unwrap();
+        f.revela_em
+            .saturating_add(janela)
+            .saturating_sub(env.ledger().sequence())
+            .min(env.storage().max_ttl())
     }
 
     /// O selo, se há e o painel ainda não saiu.

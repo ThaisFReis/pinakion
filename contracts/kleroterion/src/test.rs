@@ -53,6 +53,9 @@ const JANELA: u32 = 100;
 /// Afastamento da pessoa julgada, em ledgers, nos testes.
 const AFASTAMENTO: u32 = 500;
 
+/// O menor intervalo entre fechamento e revelação, em ledgers, nos testes.
+const ESPERA: u32 = 1_000;
+
 /// A pessoa julgada dos testes: um C-strkey fixo, para que o `Fechado` do
 /// vetor de ouro seja o mesmo em toda execução (scripts/gerar_vetor_selado.py
 /// o deriva de `sha256("pinakion:fluxo:acusado")`). Não está inscrita, a não
@@ -113,6 +116,7 @@ fn mesa_com_minimo(minimo: u32) -> Mesa {
             &JANELA,
             niveis_de_teste(&env, minimo),
             &AFASTAMENTO,
+            &ESPERA,
         ),
     );
     let constituido = env.events().all().filter_by_contract(&id).events().to_vec();
@@ -244,6 +248,7 @@ fn inscrever_sem_escrivao_e_recusado() {
             &JANELA,
             niveis_de_teste(&env, MINIMO),
             &AFASTAMENTO,
+            &ESPERA,
         ),
     );
     env.mock_all_auths();
@@ -1140,6 +1145,7 @@ fn mesa_padrao() -> Mesa {
             &JANELA,
             niveis_padrao(&m.env),
             &AFASTAMENTO,
+            &ESPERA,
         ),
     );
     token::StellarAssetClient::new(&m.env, &bilhete).set_admin(&id);
@@ -1221,6 +1227,7 @@ fn tabela_vazia_ou_k_zero_e_recusada() {
                     &JANELA,
                     niveis,
                     &AFASTAMENTO,
+                    &ESPERA,
                 ),
             )
         }));
@@ -1235,6 +1242,7 @@ fn constituir_publica_a_tabela_e_o_afastamento() {
     let esperado = Constituido {
         niveis: niveis_de_teste(&m.env, MINIMO),
         afastamento: AFASTAMENTO,
+        espera_minima: ESPERA,
     };
     assert_eq!(m.constituido, [esperado.to_xdr(&m.env, &m.id)]);
 }
@@ -1380,6 +1388,80 @@ fn afastado_so_para_o_acusado_e_so_no_prazo() {
         .ledger()
         .with_mut(|l| l.sequence_number = f.afastado_ate);
     assert!(!m.c.suspended(&m.acusado), "o prazo vence sozinho");
+}
+
+// ---- a revelação tardia (T-046) -----------------------------------------
+
+/// INV-21: o `lock` recusa `revela_em` antes de `ledger + espera_minima`, e
+/// aceita exatamente no limite.
+#[test]
+fn revelar_antes_da_espera_minima_e_recusado() {
+    let m = mesa();
+    inscrever_todos(&m, &jurados(&m, MINIMO as usize));
+    m.env.ledger().with_mut(|l| l.sequence_number = 5_000);
+    assert_eq!(
+        m.c.try_lock(&K, &(5_000 + ESPERA - 1), &m.acusado),
+        Err(Ok(Erro::RevelacaoCedoDemais.into()))
+    );
+    assert_eq!(m.c.closing(), None);
+    assert_eq!(m.c.lock(&K, &(5_000 + ESPERA), &m.acusado).revela_em, 6_000);
+}
+
+fn ttl_persistente(m: &Mesa, chave: &DataKey) -> u32 {
+    use soroban_sdk::testutils::storage::Persistent as _;
+    m.env
+        .as_contract(&m.id, || m.env.storage().persistent().get_ttl(chave))
+}
+
+fn ttl_da_instancia(m: &Mesa) -> u32 {
+    use soroban_sdk::testutils::storage::Instance as _;
+    m.env
+        .as_contract(&m.id, || m.env.storage().instance().get_ttl())
+}
+
+/// INV-21: depois do `lock` e do `finalize`, o que `reveal` lê — a instância,
+/// o compromisso de cada inscrito e o painel — vive até `revela_em + janela`.
+/// Sem a extensão, o compromisso morreria em `min_persistent_entry_ttl`
+/// (4.096 ledgers no host de teste), bem antes da revelação.
+#[test]
+fn o_que_o_reveal_le_vive_ate_a_revelacao() {
+    let f = fluxo();
+    let m = &f.m;
+    let revela_em = m.c.closing().unwrap().revela_em;
+    let ate = |agora: u32| revela_em + JANELA - agora;
+    let agora = m.env.ledger().sequence();
+    for j in &f.js {
+        assert!(ttl_persistente(m, &DataKey::Compromisso(j.principal.clone())) >= ate(agora));
+    }
+    assert!(ttl_da_instancia(m) >= ate(agora));
+    f.selar();
+    for i in [1, 2, 3, 5, 7] {
+        f.reivindicar(i);
+    }
+    f.passar_o_prazo();
+    f.m.c.finalize();
+    let agora = m.env.ledger().sequence();
+    assert!(ttl_persistente(m, &DataKey::Painel) >= ate(agora));
+    assert!(ttl_da_instancia(m) >= ate(agora));
+    f.chegar_a_revelacao();
+    assert!(m.c.reveal(&f.js[1].principal, &f.js[1].s).sentado);
+}
+
+/// INV-21, o teto: uma revelação além do máximo da rede leva o TTL ao
+/// máximo, não além; o resto do caminho é de quem estender depois.
+#[test]
+fn a_extensao_para_no_teto_da_rede() {
+    let m = mesa();
+    let js = jurados(&m, MINIMO as usize);
+    inscrever_todos(&m, &js);
+    m.env.ledger().with_mut(|l| l.max_entry_ttl = 20_000);
+    m.c.lock(&K, &1_000_000, &m.acusado);
+    let teto = m.env.as_contract(&m.id, || m.env.storage().max_ttl());
+    assert_eq!(
+        ttl_persistente(&m, &DataKey::Compromisso(js[0].clone())),
+        teto
+    );
+    assert_eq!(ttl_da_instancia(&m), teto);
 }
 
 // ---- a prova de assento (T-037) ----------------------------------------
@@ -1534,7 +1616,7 @@ fn o_verificador_e_o_do_construtor() {
 
 /// Custo, no host de teste, de conferir uma prova pelo kleroterion: montar
 /// as entradas, o SHA-256 do endereço e a chamada ao verificador.
-const CUSTO_PROVA: (u64, u64) = (29_285_140, 328_883);
+const CUSTO_PROVA: (u64, u64) = (29_293_686, 331_523);
 
 #[test]
 fn custo_medido_da_prova() {
@@ -1566,9 +1648,9 @@ fn rodada_real_verifica() {
 /// a inscrição do 64.º jurado (o caminho inteiro da árvore e as três chamadas
 /// ao SAC), um impedimento e o fechamento. Mudou, fica vermelho (G2); G7
 /// confere que docs/SPEC.md ainda diz estes números.
-const CUSTO_ENROLL: (u64, u64) = (10_589_550, 1_786_609);
-const CUSTO_IMPEDE: (u64, u64) = (8_792_764, 1_109_530);
-const CUSTO_LOCK: (u64, u64) = (861_209, 402_181);
+const CUSTO_ENROLL: (u64, u64) = (10_600_843, 1_789_937);
+const CUSTO_IMPEDE: (u64, u64) = (8_804_057, 1_112_858);
+const CUSTO_LOCK: (u64, u64) = (10_781_627, 3_780_731);
 
 #[test]
 fn custo_medido_de_enroll_impede_lock() {
@@ -1596,11 +1678,11 @@ fn custo_medido_de_enroll_impede_lock() {
 /// N = 8, k = 3: o selo (verificação BLS12-381 e o limiar), a sexta
 /// reivindicação (a prova e a inserção), uma recusa, o `finalize` e um
 /// `reveal`. Mudou, fica vermelho (G2); G7 confere docs/SPEC.md.
-const CUSTO_SEAL: (u64, u64) = (27_015_477, 297_285);
-const CUSTO_CLAIM: (u64, u64) = (29_599_984, 432_445);
-const CUSTO_RECUSE: (u64, u64) = (2_912_530, 358_922);
-const CUSTO_FINALIZE: (u64, u64) = (264_892, 155_929);
-const CUSTO_REVEAL: (u64, u64) = (3_028_049, 426_060);
+const CUSTO_SEAL: (u64, u64) = (27_026_910, 300_613);
+const CUSTO_CLAIM: (u64, u64) = (29_605_336, 435_085);
+const CUSTO_RECUSE: (u64, u64) = (2_917_882, 361_562);
+const CUSTO_FINALIZE: (u64, u64) = (351_771, 181_966);
+const CUSTO_REVEAL: (u64, u64) = (2_967_446, 405_531);
 
 #[test]
 fn custo_medido_do_fluxo_selado() {
@@ -1677,6 +1759,7 @@ fn bate_com_o_vetor_selado() {
     let esperado = Constituido {
         niveis,
         afastamento: v["afastamento"].as_u64().unwrap() as u32,
+        espera_minima: v["espera_minima"].as_u64().unwrap() as u32,
     };
     assert_eq!(m.constituido, [esperado.to_xdr(env, &m.id)], "Constituido");
 

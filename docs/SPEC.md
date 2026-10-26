@@ -171,7 +171,7 @@ Numbered; each with the test that enforces it, or marked `[proposed]` where noth
 | INV-18 | The person judged never sits on their own case: `lock` names them and, if enrolled and authorized, impedes them in the same call, before the root is fixed; the clerk cannot be the party. *Approved by the human 2026-10-26 (Q-28).* | `o_acusado_inscrito_e_impedido_no_fechamento`, `a_parte_nao_prova_assento_no_proprio_caso`, `escrivao_acusado_e_recusado`, `acusado_ja_impedido_ou_fora_do_rol_nao_muda_o_rol` (T-045); both verifiers check that an enrolled party has an `Impedido` before `Fechado` and never sits, and a mutated vector fails by name (G5, G6) |
 | INV-19 | `k` comes from the severity table fixed at construction; nobody chooses `k` at `lock`; below the level's roster floor, `lock` is refused (INV-09 per level). *Approved 2026-10-26.* | `k_vem_da_gravidade`, `rol_abaixo_do_minimo_do_nivel_e_recusado`, `gravidade_fora_da_tabela_e_recusada`, `tabela_vazia_ou_k_zero_e_recusada`, `constituir_publica_a_tabela_e_o_afastamento` (T-045); the verifiers check `k` against `Constituido` |
 | INV-20 | `suspended(a)` is true only for the party, from `lock` to `lock + afastamento` (exclusive), and nothing extends it. *Approved 2026-10-26.* | `afastado_so_para_o_acusado_e_so_no_prazo` (T-045); the verifiers check `afastado_ate` against `Constituido` when the record carries the lock's ledger |
-| INV-21 | `revela_em ≥ lock + espera_minima`; what `reveal` reads lives at least until `revela_em + janela`, or the network maximum if sooner. *Approved 2026-10-26.* | **not built** — T-046 |
+| INV-21 | `revela_em ≥ lock + espera_minima`; what `reveal` reads lives at least until `revela_em + janela`, or the network maximum if sooner. *Approved 2026-10-26.* | `revelar_antes_da_espera_minima_e_recusado`, `o_que_o_reveal_le_vive_ate_a_revelacao` (red without the extension, checked 2026-10-26), `a_extensao_para_no_teto_da_rede` (T-046); the verifiers check `revela_em` against `Constituido.espera_minima` when the record has the lock's ledger |
 
 ---
 
@@ -249,7 +249,7 @@ Run from a clean checkout — **verified**: on 2026-10-25 a fresh clone ran G1 t
 | # | Command | Baseline (25 Oct, before any change) | Now | Note |
 |---|---|---|---|---|
 | G1 | `cargo fmt --all --check` | FAIL | **PASS** | fixed by T-004 |
-| G2 | `cargo test --locked --workspace` | PASS, 10 tests | **PASS, 95 tests** | +2 from T-007, +4 from T-026, +22 from T-029, +3 from T-033, +11 from T-034, +10 from T-035, +1 from T-036, +9 from T-037, +12 net from T-038, +1 from T-039, +10 from T-045 (16 `beacon-verifier`, 56 `kleroterion`, 9 `groth16-verifier`, 4 `pinakion-poseidon`) |
+| G2 | `cargo test --locked --workspace` | PASS, 10 tests | **PASS, 98 tests** | +2 from T-007, +4 from T-026, +22 from T-029, +3 from T-033, +11 from T-034, +10 from T-035, +1 from T-036, +9 from T-037, +12 net from T-038, +1 from T-039, +10 from T-045, +3 from T-046 (16 `beacon-verifier`, 56 `kleroterion`, 9 `groth16-verifier`, 4 `pinakion-poseidon`) |
 | G3 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | FAIL, 5 deprecated aliases | **PASS** | fixed by T-004 |
 | G4 | `stellar contract build` | PASS | **PASS** | beacon-verifier, 2,576 B optimised |
 | G5 | `npm test` | FAIL | **PASS, 4 vectors, 22 Poseidon, 4 trees, 1 sealed** | was a placeholder; T-006 replaced it with `web/test.mjs`; T-035 adds Poseidon and the commitment root; T-045 adds two mutations of the sealed vector that must fail by name |
@@ -362,7 +362,7 @@ Asked by the human on 2026-10-26: a council decides more than expulsion, so seve
 |---|---|---|---|---|---|
 | T-044 | Study: severity and panel size, interim suspension, late reveal | — | §4, `docs/limite-inferior-do-rol.md`, `docs/desenho-sorteio-e-sigilo.md` | review | `docs/desenho-gravidade-afastamento-revelacao.md` answers the three requests; every table is printed by `scripts/tamanho_do_painel.py` and G6 fails when one figure drifts; the re-check of `limite-inferior-do-rol.md` §4 matches; proposed invariants, defaults and the two build tasks written down; limits section; nothing built |
 | T-045 | Severity table, the party impeded at `lock`, `afastado` | T-044, Q-28 | §4 INV-18..20, §5, the study §1–§2 | review | constructor takes the level table (`k`, roster floor) and `afastamento`, and emits `Constituido`; `lock(gravidade, revela_em, acusado)` takes `k` from the table, refuses below the level's floor and `acusado == escrivão`, impedes an enrolled party in the same call; `Fechado` carries `gravidade`, `acusado`, `afastado_ate`; `afastado(endereco)` true only for the party, only in the window; Python and JS verifiers check `k` against `Constituido` and that the party never sits; sealed golden vector regenerated; costs re-pinned; G1–G8 green |
-| T-046 | Late reveal: a floor on `revela_em`, TTL to match | T-045, Q-28 | §4 INV-21, §6, the study §3 | todo | constructor takes `espera_minima`; `lock` refuses `revela_em < lock + espera_minima`; `lock` and `finalize` extend the TTL of what `reveal` reads to `revela_em + janela`, capped at `max_ttl()`; a test advances the ledger past `min_persistent_ttl` and reveals; the two `[VERIFY]` of the study's §3 settled; `bilhetes.html` shows *sealed until ledger X*; G1–G8 green |
+| T-046 | Late reveal: a floor on `revela_em`, TTL to match | T-045, Q-28 | §4 INV-21, §6, the study §3 | review | constructor takes `espera_minima`; `lock` refuses `revela_em < lock + espera_minima`; `lock` and `finalize` extend the TTL of what `reveal` reads to `revela_em + janela`, capped at `max_ttl()`; a test advances the ledger past `min_persistent_ttl` and reveals; the two `[VERIFY]` of the study's §3 settled; `bilhetes.html` shows *sealed until ledger X*; G1–G8 green |
 
 Statuses: `todo` → `doing` → `review` → `done` (human only), or `blocked` with a §11 link.
 
@@ -602,6 +602,37 @@ Consequences:
 - **Interface:** this changes the constructor, `lock` and `Fechado`. A deploy of this contract is not compatible with `scripts/sequencia_bilhete.sh` as run on 2026-10-26; the script is updated and **has not been run** against it.
 - **Tests:** the new tests were written against the new signatures, so they could not be run red against the old code first.
 
+
+### DEC-033: A floor on the reveal, and TTL that reaches it (2026-10-26, T-046)
+Context: INV-21 was approved on 2026-10-26 (Q-28), with `espera_minima` of 30 days. The contract never extended a TTL, so with a late reveal the data `reveal` reads could be archived first. On testnet, `min_persistent_ttl` is 120,960 ledgers and `max_entry_ttl` is 3,110,400 (cited, read 2026-10-26).
+Decision:
+- **Floor:** the constructor takes `espera_minima`, after `afastamento`, and `Constituido` publishes it. `lock` refuses `revela_em < ledger + espera_minima` (`RevelacaoCedoDemais`).
+- **TTL extension:**
+  - `lock` extends the instance (with the code) and every enrolled juror's `Compromisso` to `revela_em + janela − now`.
+  - `finalize` extends the instance and `Painel` the same way.
+  - Both are capped at `Storage::max_ttl()`. Past that cap, someone must extend again. Any account can: `ExtendFootprintTTLOp` has no access control.
+  - An archived entry is restored automatically when an invocation touches it (Protocol 23, CAP-66), at normal rent and fees.
+- **Verifiers:** they check `revela_em` against `espera_minima` when the record carries the lock's ledger.
+- **Ticket page:** shows the reveal ledger, and the level and party when the record has them.
+
+Measured on the test host:
+- `lock` with 64 enrolled: 10,781,627 instructions (was 861,209); the cost is the 64 extensions.
+- `enroll` 10,600,843; `impede` 8,804,057; the proof check 29,293,686.
+- `seal` 27,026,910; the sixth `claim` 29,605,336; `recuse` 2,917,882.
+- `finalize` 351,771; `reveal` 2,967,446.
+
+The `lock` cost is 2.7 % of the 400 M per-transaction ceiling (estimated from those two figures). The optimised Wasm is 61,349 bytes.
+
+Alternatives:
+- Extending at each `enroll` — rejected: `revela_em` is not known yet.
+- Asking the jurors to extend before revealing — rejected: it moves the liveness of the record onto the people it protects.
+
+Consequences:
+- **Spec sections:** §4 INV-21, §8 G2, §9 T-046, §11 Q-24.
+- **Not extended:** the SAC's own instance, which `reveal` reads through `balance`. The contract cannot extend it; anyone can, through `ExtendFootprintTTLOp`.
+- **Not measured:** the network cost of a restore.
+- **Not on testnet:** this version has not run there.
+
 ---
 
 ## §11 Open questions
@@ -631,7 +662,7 @@ Consequences:
 | Q-21 | ~~**The clerk's `impede` is discretionary.**~~ After `lock()` the clerk can strike any juror; the substitute is the next in the drawn order, so selective striking shapes the panel. Every strike is a transaction with a name and a time, so it is auditable, not prevented. The grounds-and-contestation rules of `docs/desenho-rol-sorteio-recusas.md` are not built. Raised in `docs/avaliacao-genesis-unlocked.md` as the objection a judge will make. **For the human: say it in the video, and decide whether the recusal rules are the next milestone.** | the submission; the next milestone  **Closed by T-033 (2026-10-25):** `impede` is refused after `lock` (`impedir_depois_de_fechar_e_recusado`). Before `lock` the clerk can still strike, but the drand round is not yet fixed, let alone published, so a strike cannot aim at the drawn order. Grounds and contestation remain unbuilt. |
 | Q-22 | CAP-75 exposes the Poseidon/Poseidon2 **permutation**, not the full hash (Raven skill `zk-proofs`, 2026-10-25). The sponge and padding assembled in the contract (`stellar/rs-soroban-poseidon`) must match circomlib byte for byte, for t = 2 and t = 3. ~~`[VERIFY: with vectors, T-034]`~~ **Answered 2026-10-25 (T-034, DEC-022):** 22 circomlibjs vectors, t = 2 and t = 3, match byte for byte (`bate_com_a_circomlib`). | — |
 | Q-23 | The per-transaction CPU ceiling: Q-09 holds 100 M (old whitepaper) against 400 M (Tessera, bisection on testnet, cited). No fraction of the ceiling is published until it is read from `developers.stellar.org` and logged. **Answered 2026-10-25 (T-034):** 400,000,000 on testnet (`tx_max_instructions`), read with `stellar network settings`; `developers.stellar.org` prints no figure and points to that command. Mainnet not read. | — |
-| Q-24 | The default for `reveal_after`. The contract takes a ledger number; the demo uses a small one. With `reveal_after = 0` the seal buys only the claim window, and the spec must say so. **For the human:** is "after the verdict" the documented default? **Answered by the human 2026-10-26: reveal late (option B).** The contract will enforce a floor, `espera_minima`, fixed at construction; proposed default 30 days. Built in T-046. | T-046 |
+| Q-24 | The default for `reveal_after`. The contract takes a ledger number; the demo uses a small one. With `reveal_after = 0` the seal buys only the claim window, and the spec must say so. **For the human:** is "after the verdict" the documented default? **Answered by the human 2026-10-26: reveal late (option B).** The contract will enforce a floor, `espera_minima`, fixed at construction; proposed default 30 days. Built in T-046: `lock` refuses `revela_em < lock + espera_minima`. | — |
 | Q-25 | ~~Tessera's voter-list format for the export (`--aptos` takes CLI identity names or a file with one name per line, per its CLI README — addresses or names? `[VERIFY]`).~~ **Answered 2026-10-26 (T-042):** `tessera abrir --aptos` takes a comma list or a file, one entry per line, `#` for comments; an entry is a 56-character G-address or a local identity; the order is the Merkle root (`ThaisFReis/tessera` `cli/src/comandos.rs` at `39ec925`). `scripts/exportar_tessera.py` writes the seat accounts one per line, in panel order. | — |
 | Q-26 | **The person judged can sit on their own case.** Nothing makes the clerk impede the party before `lock`; if they are drawn, their `claim` is sealed and they sit unseen until the reveal. Found 2026-10-26 while studying the human's request. T-045 closes it (INV-18). Until then the README's limits should say it. **Closed in the code by T-045 (2026-10-26):** `lock` impedes the party (INV-18). Not on testnet: the 2026-10-26 run predates it. | — |
 | Q-27 | **The reporter's conflict.** The Contributor Covenant requires the reporter's privacy, and no event names them. If the reporter is drawn, impeding them publicly exposes them, and letting them sit puts a party on the panel. Today the best course is not to claim the seat, which shows at reveal as *drawn and absent* with no reason. Not solved. | — |

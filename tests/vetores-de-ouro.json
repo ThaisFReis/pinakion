@@ -137,7 +137,8 @@
        "rol_minimo": 1
       }
      ],
-     "afastamento": 500
+     "afastamento": 500,
+     "espera_minima": 1000
     },
     {
      "evento": "Inscrito",

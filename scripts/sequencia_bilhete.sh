@@ -39,6 +39,10 @@ P=${1:-t040}; N="--network testnet"; JURADOS=${JURADOS:-20}; K=3; JANELA=${JANEL
 # demo value, not a recommendation.
 NIVEIS='[{"k":3,"rol_minimo":16},{"k":5,"rol_minimo":40},{"k":7,"rol_minimo":40},{"k":9,"rol_minimo":100}]'
 GRAVIDADE=${GRAVIDADE:-1}; AFASTAMENTO=${AFASTAMENTO:-120}
+# T-046: the reveal floor. The approved default is 30 days (518,400 ledgers
+# at 5 s, an estimate); a demo cannot wait that long, so this run uses the
+# claim window. REVELA below is lock + JANELA + MARGEM, which clears it.
+ESPERA_MINIMA=${ESPERA_MINIMA:-$JANELA}
 D=build/$P; mkdir -p "$D"; HASHES=$D/hashes.tsv; : > "$HASHES"; SEGREDOS=$D/segredos.json; echo '{}' > "$SEGREDOS"
 export STELLAR_NO_CACHE=true
 log() { printf '\n== %s\n' "$*"; }
@@ -85,7 +89,7 @@ log "3. deploy the verifier, then kleroterion (window $JANELA ledgers, suspensio
 VERIF=$(stellar contract deploy --wasm target/wasm32v1-none/release/groth16_verifier.wasm --source "$P-escrivao" $N 2>/dev/null | tail -1); echo "verifier $VERIF"
 KLERO=$(stellar contract deploy --wasm target/wasm32v1-none/release/kleroterion.wasm --source "$P-escrivao" $N -- \
   --escrivao "$ESCRIVAO" --bilhete "$SAC" --verificador "$VERIF" --janela "$JANELA" \
-  --niveis "$NIVEIS" --afastamento "$AFASTAMENTO" 2>/dev/null | tail -1)
+  --niveis "$NIVEIS" --afastamento "$AFASTAMENTO" --espera_minima "$ESPERA_MINIMA" 2>/dev/null | tail -1)
 echo "kleroterion $KLERO"; INICIO=$(( $(ledger) - 2 ))
 printf 'EMISSOR=%s\nSAC=%s\nVERIF=%s\nKLERO=%s\nINICIO=%s\n' "$EMISSOR" "$SAC" "$VERIF" "$KLERO" "$INICIO" > "$D/ids.env"
 

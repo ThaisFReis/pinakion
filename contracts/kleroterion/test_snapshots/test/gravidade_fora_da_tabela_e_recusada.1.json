@@ -1330,6 +1330,18 @@
                       "key": {
                         "vec": [
                           {
+                            "symbol": "EsperaMinima"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 1000
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
                             "symbol": "Janela"
                           }
                         ]
@@ -3992,6 +4004,18 @@
                       },
                       "val": {
                         "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "EsperaMinima"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 1000
                       }
                     },
                     {

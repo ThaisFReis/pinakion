@@ -22,16 +22,16 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent
 TESTE_RUST = RAIZ / "contracts" / "beacon-verifier" / "src" / "test.rs"
 # T-034: (cpu, mem) tuples, `const NOME: (u64, u64) = (cpu, mem);`.
 TUPLAS = {
-    "groth16": (RAIZ / "contracts" / "groth16-verifier" / "src" / "test.rs", ["CUSTO_VERIFY"]),
+    "groth16": (RAIZ / "contracts" / "groth16-verifier" / "src" / "test.rs", ["VERIFY_COST"]),
     "poseidon": (
         RAIZ / "contracts" / "poseidon" / "src" / "test.rs",
-        ["CUSTO_HASH1", "CUSTO_HASH2", "CUSTO_ARVORE_6"],
+        ["HASH1_COST", "HASH2_COST", "TREE_6_COST"],
     ),
     "kleroterion": (
         RAIZ / "contracts" / "kleroterion" / "src" / "test.rs",
         [
-            "CUSTO_ENROLL", "CUSTO_IMPEDE", "CUSTO_LOCK", "CUSTO_PROVA",
-            "CUSTO_SEAL", "CUSTO_CLAIM", "CUSTO_RECUSE", "CUSTO_FINALIZE", "CUSTO_REVEAL",
+            "ENROLL_COST", "IMPEDE_COST", "LOCK_COST", "PROOF_COST",
+            "SEAL_COST", "CLAIM_COST", "RECUSE_COST", "FINALIZE_COST", "REVEAL_COST",
         ],
     ),
 }
@@ -48,17 +48,17 @@ ONDE = {
     "THESIS.md": ["verify_cpu", "draw_1000_cpu"],
     "docs/SPEC.md": [
         "verify_cpu", "verify_mem",
-        "kleroterion_custo_enroll_cpu", "kleroterion_custo_impede_cpu", "kleroterion_custo_lock_cpu",
-        "kleroterion_custo_prova_cpu", "groth16_custo_verify_cpu",
-        "kleroterion_custo_seal_cpu", "kleroterion_custo_claim_cpu", "kleroterion_custo_recuse_cpu",
-        "kleroterion_custo_finalize_cpu", "kleroterion_custo_reveal_cpu",
+        "kleroterion_enroll_cost_cpu", "kleroterion_impede_cost_cpu", "kleroterion_lock_cost_cpu",
+        "kleroterion_proof_cost_cpu", "groth16_verify_cost_cpu",
+        "kleroterion_seal_cost_cpu", "kleroterion_claim_cost_cpu", "kleroterion_recuse_cost_cpu",
+        "kleroterion_finalize_cost_cpu", "kleroterion_reveal_cost_cpu",
     ],
     "docs/SOURCES.md": ["verify_cpu", "verify_mem"],
     "docs/DEMO.md": ["verify_cpu"],
     "docs/evidencia-testnet-spike.md": [
-        "groth16_custo_verify_cpu", "groth16_custo_verify_mem",
-        "poseidon_custo_hash1_cpu", "poseidon_custo_hash2_cpu",
-        "poseidon_custo_arvore_6_cpu", "poseidon_custo_arvore_6_mem",
+        "groth16_verify_cost_cpu", "groth16_verify_cost_mem",
+        "poseidon_hash1_cost_cpu", "poseidon_hash2_cost_cpu",
+        "poseidon_tree_6_cost_cpu", "poseidon_tree_6_cost_mem",
     ],
 }
 
@@ -71,11 +71,11 @@ def numeros_do_teste_rust(fonte):
             raise SystemExit(f"constante {nome} não achada em test.rs")
         return int(m.group(1).replace("_", ""))
 
-    vals = {"verify_cpu": u64("CUSTO_VERIFY_CPU"), "verify_mem": u64("CUSTO_VERIFY_MEM")}
+    vals = {"verify_cpu": u64("VERIFY_CPU_COST"), "verify_mem": u64("VERIFY_MEM_COST")}
 
-    bloco = re.search(r"const CUSTO_DRAW: \[\(u32, u64, u64\); \d+\] = \[(.*?)\];", fonte, re.S)
+    bloco = re.search(r"const DRAW_COST: \[\(u32, u64, u64\); \d+\] = \[(.*?)\];", fonte, re.S)
     if not bloco:
-        raise SystemExit("constante CUSTO_DRAW não achada em test.rs")
+        raise SystemExit("constante DRAW_COST não achada em test.rs")
     for n, cpu, mem in re.findall(r"\(([\d_]+), ([\d_]+), ([\d_]+)\)", bloco.group(1)):
         n = n.replace("_", "")
         vals[f"draw_{n}_cpu"] = int(cpu.replace("_", ""))

@@ -152,7 +152,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Rol"
+                    "symbol": "Roster"
                   }
                 ]
               },
@@ -185,19 +185,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Afastamento"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "u32": 500
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Autorizados"
+                            "symbol": "Authorized"
                           }
                         ]
                       },
@@ -209,19 +197,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Bilhete"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Escrivao"
+                            "symbol": "Clerk"
                           }
                         ]
                       },
@@ -233,31 +209,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "EsperaMinima"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "u32": 1000
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Janela"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "u32": 100
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Niveis"
+                            "symbol": "Levels"
                           }
                         ]
                       },
@@ -275,7 +227,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 7
@@ -295,7 +247,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 7
@@ -315,7 +267,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 7
@@ -335,7 +287,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 7
@@ -355,7 +307,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 7
@@ -375,7 +327,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 7
@@ -395,7 +347,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 7
@@ -415,7 +367,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 7
@@ -435,7 +387,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 7
@@ -455,7 +407,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 7
@@ -470,12 +422,60 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Verificador"
+                            "symbol": "MinimumWait"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 1000
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Suspension"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 500
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Ticket"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Verifier"
                           }
                         ]
                       },
                       "val": {
                         "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Window"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 100
                       }
                     }
                   ]

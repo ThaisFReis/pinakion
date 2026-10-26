@@ -31,10 +31,15 @@ From those alone it recomputes, without trusting the contract:
   sits. Records of the contract before T-045 carry neither and are checked as
   they were.
 
-It then says, for each enrolled juror, one of: sentou · revelou, nao sentou ·
-sorteado e ausente (below T, never claimed) · nao revelou · recusado ·
-impedido. It also says how many seats nobody has revealed yet. Exit 0 when
+It then says, for each enrolled juror, one of: sat · revealed, did not sit ·
+drawn and absent (below T, never claimed) · did not reveal · recused ·
+impeded. It also says how many seats nobody has revealed yet. Exit 0 when
 everything matches, 1 when anything does not.
+
+`verificar()` returns each state as its key (`sentou`, `revelou, nao sentou`,
+`sorteado e ausente`, `nao revelou`, `recusado`, `impedido`): the golden
+vectors in tests/vetores-de-ouro.json hold those exact strings. Only the
+printed report uses the English labels in `ESTADOS`.
 
 Open draw (the pre-T-038 contract, kept so docs/evidencia-testnet-bilhete.md
 stays reproducible):
@@ -53,6 +58,16 @@ from poseidon import R, hash1, hash2  # noqa: E402
 from verificar_sorteio import painel  # noqa: E402
 
 CHAIN = "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971"
+
+# The state keys verificar() returns, and how the report prints them.
+ESTADOS = {
+    "sentou": "sat",
+    "revelou, nao sentou": "revealed, did not sit",
+    "sorteado e ausente": "drawn and absent",
+    "nao revelou": "did not reveal",
+    "recusado": "recused",
+    "impedido": "impeded",
+}
 
 
 def aleatoriedade_da_rodada(rodada):
@@ -85,31 +100,31 @@ def verificar(registro):
             folhas.append({"evento": "impede", "indice": e["indice"]})
 
     fechado = um("Fechado")
-    confere("houve fechamento", fechado)
+    confere("there was a lock", fechado)
     if not fechado:
         return {}, [], False, 0, conferencias
-    confere("a raiz do fechamento e a dos compromissos", str(raiz(folhas)) == fechado["raiz"])
+    confere("the lock root is the root of the commitments", str(raiz(folhas)) == fechado["raiz"])
     n, k = fechado["n"], fechado["k"]
-    confere("N e quem estava autorizado", n == len(ordem) - len(impedidos))
+    confere("N is the number of authorized jurors", n == len(ordem) - len(impedidos))
 
     constituido = um("Constituido")
     if constituido:
         niveis, g = constituido["niveis"], fechado.get("gravidade")
         no_quadro = isinstance(g, int) and 1 <= g <= len(niveis)
-        confere("o nivel do fechamento esta na tabela", no_quadro)
+        confere("the lock level is in the table", no_quadro)
         if no_quadro:
-            confere("k e o do nivel", k == niveis[g - 1]["k"])
-            confere("o rol chega ao minimo do nivel", len(ordem) >= niveis[g - 1]["rol_minimo"])
+            confere("k is the k of the level", k == niveis[g - 1]["k"])
+            confere("the roster reaches the level minimum", len(ordem) >= niveis[g - 1]["rol_minimo"])
         if "ledger" in fechado:
-            confere("o afastamento e o do construtor",
+            confere("the suspension is the one set at construction",
                     fechado["afastado_ate"] == fechado["ledger"] + constituido["afastamento"])
             if "espera_minima" in constituido:
-                confere("a revelacao respeita a espera minima",
+                confere("the reveal respects the minimum wait",
                         fechado["revela_em"] >= fechado["ledger"] + constituido["espera_minima"])
     parte = fechado.get("acusado")
     if parte in jurados:
         antes = eventos[:eventos.index(fechado)]
-        confere("a parte inscrita foi impedida antes do fechamento",
+        confere("the enrolled party was impeded before the lock",
                 any(e["evento"] == "Impedido" and e["jurado"] == parte for e in antes))
 
     aleatoriedade = registro.get("aleatoriedade") or aleatoriedade_da_rodada(fechado["rodada"])
@@ -117,27 +132,27 @@ def verificar(registro):
     limiar = R if 2 * k >= n else R * 2 * k // n
 
     selado = um("Selado")
-    confere("houve selo", selado)
+    confere("there was a seal", selado)
     if not selado:
         return {}, [], False, 0, conferencias
-    confere("a semente e a da rodada drand >> 8", int(selado["seed"]) == seed)
-    confere("o limiar e floor(r*2k/N)", int(selado["limiar"]) == limiar)
+    confere("the seed is the drand round >> 8", int(selado["seed"]) == seed)
+    confere("the threshold is floor(r*2k/N)", int(selado["limiar"]) == limiar)
 
     reivindicados, recusados, revelados = [], {}, {}
     for e in eventos:
         if e["evento"] == "Ampliado":
             limiar = R
-            confere("a ampliacao leva o limiar ao campo", int(e["limiar"]) == R)
+            confere("the widening takes the threshold to the field", int(e["limiar"]) == R)
         elif e["evento"] == "Reivindicado":
             y = int(e["y"])
-            confere(f"reivindicacao {y} abaixo do limiar", y < limiar)
-            confere(f"reivindicacao {y} unica", y not in reivindicados)
+            confere(f"claim {y} below the threshold", y < limiar)
+            confere(f"claim {y} unique", y not in reivindicados)
             reivindicados.append(y)
         elif e["evento"] in ("Recusado", "Revelado"):
             quem, s, y = e["jurado"], int(e["s"]), int(e["y"])
             c = jurados.get(quem, {}).get("c")
-            confere(f"{e['evento']} de {quem}: Poseidon(s) = c", c is not None and hash1(s) == c)
-            confere(f"{e['evento']} de {quem}: y = Poseidon(seed, s)", hash2(seed, s) == y)
+            confere(f"{e['evento']} by {quem}: Poseidon(s) = c", c is not None and hash1(s) == c)
+            confere(f"{e['evento']} by {quem}: y = Poseidon(seed, s)", hash2(seed, s) == y)
             if e["evento"] == "Recusado":
                 recusados[quem] = y
             else:
@@ -146,14 +161,14 @@ def verificar(registro):
     restantes = sorted(y for y in reivindicados if y not in recusados.values())
     meu_painel = restantes[:k]
     final = um("Finalizado")
-    confere("houve painel", final)
+    confere("there was a panel", final)
     if final:
-        confere("o painel sao os k menores y que ficaram", [int(v) for v in final["painel"]] == meu_painel)
-        confere("completo se e so se chegou a k", final["completo"] == (len(meu_painel) == k))
+        confere("the panel is the k smallest remaining y", [int(v) for v in final["painel"]] == meu_painel)
+        confere("complete if and only if it reached k", final["completo"] == (len(meu_painel) == k))
     for quem, e in revelados.items():
-        confere(f"Revelado de {quem}: sentado confere", e["sentado"] == (int(e["y"]) in meu_painel))
+        confere(f"Revelado by {quem}: the sat flag matches", e["sentado"] == (int(e["y"]) in meu_painel))
     if parte:
-        confere("a parte nao senta no proprio caso", not (parte in revelados and revelados[parte]["sentado"]))
+        confere("the party does not sit in their own case", not (parte in revelados and revelados[parte]["sentado"]))
 
     estados = {}
     for quem in ordem:
@@ -190,13 +205,13 @@ def main(argv):
         json.loads(pathlib.Path(argv[1]).read_text())
     )
     for quem, estado in estados.items():
-        print(f"  {estado:<22} {quem}")
-    print(f"\n  painel: {len(meu_painel)} assento(s){'' if completo else ', INCOMPLETO'}; "
-          f"{sem_revelacao} sem revelacao")
+        print(f"  {ESTADOS.get(estado, estado):<22} {quem}")
+    print(f"\n  panel: {len(meu_painel)} seat(s){'' if completo else ', INCOMPLETE'}; "
+          f"{sem_revelacao} without a reveal")
     falhas = [nome for nome, ok in conferencias if not ok]
     for nome in falhas:
-        print(f"  NAO CONFERE: {nome}")
-    print(f"\n{'CONFERE' if not falhas else 'NAO CONFERE'} — {len(conferencias)} conferencias, {len(falhas)} falha(s).")
+        print(f"  DOES NOT MATCH: {nome}")
+    print(f"\n{'MATCHES' if not falhas else 'DOES NOT MATCH'} — {len(conferencias)} checks, {len(falhas)} failure(s).")
     return 0 if not falhas else 1
 
 

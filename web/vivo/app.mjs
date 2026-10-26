@@ -9,15 +9,15 @@ import { montarDemo } from './ui.mjs';
 let P;
 async function buscar(caminho, json = false) {
   const r = await fetch(caminho);
-  if (!r.ok) throw new Error(`Falha ao carregar ${caminho} (HTTP ${r.status}).`);
+  if (!r.ok) throw new Error(`Could not load ${caminho} (HTTP ${r.status}).`);
   return json ? r.json() : r.text();
 }
 montarDemo({
   plano: PLANO,
   async carregar() {
-    if (!window.StellarSdk || !window.snarkjs) throw new Error('As bibliotecas da demonstração não carregaram.');
+    if (!window.StellarSdk || !window.snarkjs) throw new Error('The demonstration’s libraries did not load.');
     const [textos, parametros] = await Promise.all([
-      Promise.all(['01-denuncia.md', '02-prova.md', '03-defesa.md', '04-ata-jurado.md'].map((nome) => buscar(`../../docs/caso-demo/${nome}`))),
+      Promise.all(['01-complaint.md', '02-evidence.md', '03-defence.md', '04-juror-minutes.md'].map((nome) => buscar(`../../docs/demo-case/${nome}`))),
       buscar('../../tests/poseidon-bn254.json', true),
       initTessera(),
     ]);

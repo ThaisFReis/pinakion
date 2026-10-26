@@ -41,6 +41,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from verificar_painel import verificar as verificar_sorteio  # noqa: E402
 
 
+# The phase keys verificar() returns, and how the report prints them.
+FASES = {"sorteio": "draw", "abertura": "opening", "quorum": "quorum", "autos": "case record",
+         "votacao": "vote", "veredito": "verdict", "revelacao": "reveal"}
+
+
 def xdr_do_endereco(s):
     """ScVal of an address, as Address::to_xdr writes it (Tessera's leaf)."""
     dado = base64.b32decode(s)
@@ -83,7 +88,7 @@ def verificar(registro, autos=None):
     proc = [e for e in evs if e.get("contrato") == "processo"]
     estados, painel, completo, _, conferencias = verificar_sorteio(
         {"eventos": klero, "aleatoriedade": registro["aleatoriedade"]})
-    conferencias = [("sorteio: " + n, ok) for n, ok in conferencias]
+    conferencias = [("draw: " + n, ok) for n, ok in conferencias]
 
     def confere(nome, ok):
         conferencias.append((nome, bool(ok)))
@@ -94,23 +99,23 @@ def verificar(registro, autos=None):
     fases = {"sorteio": completo and all(ok for _, ok in conferencias)}
     inst, aberto = um("Instituido"), um("CasoAberto")
     fechado = um("Fechado", klero)
-    confere("houve a regra (Instituido)", inst)
-    confere("o caso abriu", aberto)
+    confere("there was a rule (Instituido)", inst)
+    confere("the case opened", aberto)
     if not (inst and aberto and fechado):
         return fases, conferencias, estados, [], []
     contratos = registro.get("contratos", {})
     if contratos:
-        confere("a regra aponta para este kleroterion", inst["kleroterion"] == contratos["kleroterion"])
-        confere("a regra aponta para este Tessera", inst["tessera"] == contratos["tessera"])
-    confere("o caso abriu depois do fechamento", evs.index(aberto) > evs.index(fechado))
-    confere("a parte e a do fechamento", aberto["acusado"] == fechado["acusado"])
-    confere("o nivel e o do fechamento", aberto["gravidade"] == fechado["gravidade"])
+        confere("the rule points to this kleroterion", inst["kleroterion"] == contratos["kleroterion"])
+        confere("the rule points to this Tessera", inst["tessera"] == contratos["tessera"])
+    confere("the case opened after the lock", evs.index(aberto) > evs.index(fechado))
+    confere("the party is the one in the lock", aberto["acusado"] == fechado["acusado"])
+    confere("the level is the one in the lock", aberto["gravidade"] == fechado["gravidade"])
     k = fechado["k"]
-    confere("k e o do fechamento", aberto["k"] == k)
-    confere("o quorum e a maioria do painel, nunca abaixo do piso de votos",
+    confere("k is the one in the lock", aberto["k"] == k)
+    confere("the quorum is a majority of the panel, never below the vote floor",
             aberto["quorum"] == max(k // 2 + 1, inst["votos_minimos"]))
     exigidos = -(-2 * k // 3) if fechado["gravidade"] >= inst["dois_tercos_desde"] else k // 2 + 1
-    confere("os votos exigidos seguem a regra do nivel", aberto["exigidos"] == exigidos)
+    confere("the required votes follow the level rule", aberto["exigidos"] == exigidos)
     fases["abertura"] = True
 
     # Seats that sat: the seat account of each claim whose y is on the panel.
@@ -118,32 +123,32 @@ def verificar(registro, autos=None):
     presentes, sessao = [], None
     for e in proc:
         if e["evento"] == "Compareceu":
-            confere(f"presenca de {e['assento'][:8]}: e um assento que sentou", e["assento"] in sentados)
-            confere(f"presenca de {e['assento'][:8]}: uma vez so", e["assento"] not in presentes)
+            confere(f"attendance of {e['assento'][:8]}: a seat that sat", e["assento"] in sentados)
+            confere(f"attendance of {e['assento'][:8]}: once only", e["assento"] not in presentes)
             presentes.append(e["assento"])
-            confere(f"presenca de {e['assento'][:8]}: a contagem confere", e["presentes"] == len(presentes))
+            confere(f"attendance of {e['assento'][:8]}: the count matches", e["presentes"] == len(presentes))
         elif e["evento"] == "SessaoInstalada":
             sessao = e
-            confere("a sessao se instala exatamente no quorum",
+            confere("the session opens exactly at the quorum",
                     len(presentes) == aberto["quorum"] == e["quorum"] == e["presentes"])
-    confere("a parte nunca compareceu como jurada", aberto["acusado"] not in presentes)
+    confere("the party never attended as a juror", aberto["acusado"] not in presentes)
     fases["quorum"] = sessao is not None
 
     docs = hashes_dos_autos(autos)
     regs = [e for e in proc if e["evento"] == "Registrado"]
-    confere("o primeiro registro e a denuncia, do escrivao",
+    confere("the first filing is the complaint, from the clerk",
             regs and regs[0]["tipo"] == 0 and regs[0]["papel"] == 0)
     escrivao = regs[0]["autor"] if regs else None
     vistos = []
     for i, r in enumerate(regs):
-        confere(f"registro {i}: em sequencia", r["seq"] == i)
+        confere(f"filing {i}: in sequence", r["seq"] == i)
         antes = [e["assento"] for e in proc[:proc.index(r)] if e["evento"] == "Compareceu"]
         papel_ok = {0: r["autor"] == escrivao and r["tipo"] in (0, 1, 3),
                     1: r["autor"] == aberto["acusado"] and r["tipo"] == 2,
                     2: r["autor"] in antes and r["tipo"] == 3}.get(r["papel"], False)
-        confere(f"registro {i}: o papel pode registrar este tipo", papel_ok)
+        confere(f"filing {i}: the role may file this type", papel_ok)
         if docs is not None:
-            confere(f"registro {i}: o documento confere com o hash", r["hash"] in docs)
+            confere(f"filing {i}: the document matches the hash", r["hash"] in docs)
             vistos.append(docs.get(r["hash"]))
     fases["autos"] = bool(regs)
 
@@ -153,26 +158,26 @@ def verificar(registro, autos=None):
     if vinc:
         p = t.get("proposta") or {}
         raiz = raiz_dos_aptos(presentes)
-        confere("a votacao vinculada e a do Tessera registrada", vinc["proposta"] == t.get("id"))
+        confere("the bound vote is the recorded Tessera vote", vinc["proposta"] == t.get("id"))
         if t.get("nome"):  # Tessera's CLI derives the id from a name; its dapp draws it at random
-            confere("o identificador e o do nome da votacao no Tessera",
+            confere("the identifier comes from the vote name in Tessera",
                     hashlib.sha256(b"TESSERA-V1-PROPOSTA" + t["nome"].encode()).hexdigest() == vinc["proposta"])
-        confere("a raiz dos aptos e a dos presentes, pela regra do Tessera", vinc["raiz_aptos"] == raiz)
-        confere("o Tessera guarda essa mesma raiz", p.get("raiz_aptos") == raiz)
-        confere("a lista de votantes do Tessera e a dos presentes, na ordem", t.get("aptos") == presentes)
-        confere("a mesa do Tessera e de presentes", all(m in presentes for m in p.get("mesa", [])))
-        confere("a cedula e uma pergunta sigilosa de duas opcoes",
+        confere("the voter root is the root of the attendees, under the Tessera rule", vinc["raiz_aptos"] == raiz)
+        confere("Tessera stores that same root", p.get("raiz_aptos") == raiz)
+        confere("the Tessera voter list is the attendees, in order", t.get("aptos") == presentes)
+        confere("the Tessera committee is made of attendees", all(m in presentes for m in p.get("mesa", [])))
+        confere("the ballot is one confidential question with two options",
                 p.get("perguntas") == [{"opcoes": 2, "confidencial": True}])
         if sessao and "ledger" in sessao:
-            confere("a votacao abriu depois da sessao", p.get("abre_em", 0) >= sessao["ledger"])
+            confere("the vote opened after the session", p.get("abre_em", 0) >= sessao["ledger"])
     fases["veredito"] = decid is not None
     if decid:
         res = t.get("resultado") or []
-        confere("o placar e o que o Tessera publicou", [decid["sim"], decid["nao"]] == res)
-        confere("os votos exigidos sao os da abertura", decid["exigidos"] == aberto["exigidos"])
-        confere("procedente se e so se sim alcanca os exigidos",
+        confere("the score is the one Tessera published", [decid["sim"], decid["nao"]] == res)
+        confere("the required votes are the ones fixed at opening", decid["exigidos"] == aberto["exigidos"])
+        confere("upheld if and only if yes reaches the required votes",
                 decid["procedente"] == (decid["sim"] >= decid["exigidos"]))
-        confere("o veredito veio depois da votacao", proc.index(decid) > proc.index(vinc))
+        confere("the verdict came after the vote", proc.index(decid) > proc.index(vinc))
     fases["revelacao"] = any(e["evento"] == "Revelado" for e in klero)
     return fases, conferencias, estados, presentes, vistos
 
@@ -185,11 +190,11 @@ def main(argv):
     r = verificar(json.loads(pathlib.Path(argv[1]).read_text()), autos)
     fases, conferencias = r[0], r[1]
     for f, ok in fases.items():
-        print(f"  {'ok ' if ok else '-- '} {f}")
+        print(f"  {'ok ' if ok else '-- '} {FASES.get(f, f)}")
     falhas = [n for n, ok in conferencias if not ok]
     for n in falhas:
-        print(f"  NAO CONFERE: {n}")
-    print(f"\n{'CONFERE' if not falhas else 'NAO CONFERE'} — {len(conferencias)} conferencias, {len(falhas)} falha(s).")
+        print(f"  DOES NOT MATCH: {n}")
+    print(f"\n{'MATCHES' if not falhas else 'DOES NOT MATCH'} — {len(conferencias)} checks, {len(falhas)} failure(s).")
     return 0 if not falhas else 1
 
 

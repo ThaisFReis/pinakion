@@ -4,20 +4,24 @@ use super::*;
 use soroban_sdk::{Bytes, BytesN, Env, Vec, U256};
 use std::borrow::ToOwned;
 
-/// Uma prova do circuito do Pinakion (`circuits/pinakion_claim.circom`,
-/// profundidade 6, públicos `[root, seed, y, claimer]`), com o setup de TESTE
-/// do spike (`circuits/provar.sh`). Dados, não código.
-const PROVA: &str = include_str!("../../../tests/prova-claim-spike.json");
+/// A proof from Pinakion's circuit (`circuits/pinakion_claim.circom`, depth 6,
+/// publics `[root, seed, y, claimer]`), under the spike's TEST setup
+/// (`circuits/provar.sh`). Data, not code.
+///
+/// The fixture paths are still Portuguese: the vector and fixture files are
+/// renamed in one step of T-058, together with every reader.
+const SPIKE_PROOF: &str = include_str!("../../../tests/prova-claim-spike.json");
 
-/// A prova sob a chave do setup de T-036 (`circuits/setup/`), feita por
+/// The proof under the key of the T-036 setup (`circuits/setup/`), made by
 /// `pinakion prove` (`circuits/gerar_fixture.mjs`).
-const PROVA_T036: &str = include_str!("../../../tests/prova-claim.json");
+const CLI_PROOF: &str = include_str!("../../../tests/prova-claim.json");
 
-/// Custo de um `verify` válido pelo contrato, com a chave embutida (T-037),
-/// no host de teste, `(cpu, mem)`. Não é número de transação da testnet. O
-/// spike mediu 29,128,335 com a chave lida do armazenamento; essa versão do
-/// contrato não existe mais (docs/evidencia-testnet-spike.md).
-const CUSTO_VERIFY: (u64, u64) = (29_105_202, 208_994);
+/// Cost of one valid `verify` through the contract, with the embedded key
+/// (T-037), in the test host, `(cpu, mem)`. Not a figure from a testnet
+/// transaction. The spike measured 29,128,335 with the key read from storage;
+/// that version of the contract no longer exists
+/// (docs/evidencia-testnet-spike.md).
+const VERIFY_COST: (u64, u64) = (29_105_202, 208_994);
 
 fn bytes<const N: usize>(env: &Env, hex_str: &str) -> BytesN<N> {
     let raw = hex::decode(hex_str).unwrap();
@@ -25,11 +29,11 @@ fn bytes<const N: usize>(env: &Env, hex_str: &str) -> BytesN<N> {
 }
 
 fn load(env: &Env) -> (VerificationKey, Proof, Vec<U256>) {
-    load_de(env, PROVA)
+    load_from(env, SPIKE_PROOF)
 }
 
-fn load_de(env: &Env, fonte: &str) -> (VerificationKey, Proof, Vec<U256>) {
-    let j: serde_json::Value = serde_json::from_str(fonte).unwrap();
+fn load_from(env: &Env, source: &str) -> (VerificationKey, Proof, Vec<U256>) {
+    let j: serde_json::Value = serde_json::from_str(source).unwrap();
     let s = |v: &serde_json::Value| v.as_str().unwrap().to_owned();
     let mut ic = Vec::new(env);
     for p in j["vk"]["ic"].as_array().unwrap() {
@@ -55,9 +59,9 @@ fn load_de(env: &Env, fonte: &str) -> (VerificationKey, Proof, Vec<U256>) {
     (vk, proof, public)
 }
 
-/// O verificador do spike: a função pura `verify_proof` com a chave de
-/// T-034, dentro de um contrato registrado (o contrato em si, desde T-037,
-/// só conhece a chave de T-036).
+/// The spike's verifier: the pure `verify_proof` with the T-034 key, inside a
+/// registered contract (the contract itself, since T-037, knows only the
+/// T-036 key).
 struct Spike<'a> {
     env: &'a Env,
     id: soroban_sdk::Address,
@@ -71,128 +75,129 @@ impl Spike<'_> {
     }
 }
 
-fn cliente(env: &Env, vk: VerificationKey) -> Spike<'_> {
+fn client(env: &Env, vk: VerificationKey) -> Spike<'_> {
     let id = env.register(Groth16Verifier, ());
     Spike { env, id, vk }
 }
 
 #[test]
-fn prova_do_spike_verifica_com_a_chave_do_spike() {
+fn the_spike_proof_verifies_under_the_spike_key() {
     let env = Env::default();
     let (vk, proof, public) = load(&env);
     assert_eq!(public.len(), 4, "[root, seed, y, claimer]");
-    let c = cliente(&env, vk);
+    let c = client(&env, vk);
     env.cost_estimate().budget().reset_unlimited();
     assert!(c.verify(&proof, &public));
 }
 
-/// Outro `y` com a mesma prova: falha. É o que impede trocar o bilhete.
+/// Another `y` with the same proof: fails. This is what stops a ticket being
+/// swapped.
 #[test]
-fn y_trocado_falha() {
+fn a_swapped_y_fails() {
     let env = Env::default();
     env.cost_estimate().budget().reset_unlimited();
     let (vk, proof, mut public) = load(&env);
     public.set(2, U256::from_u32(&env, 1));
-    assert!(!cliente(&env, vk).verify(&proof, &public));
+    assert!(!client(&env, vk).verify(&proof, &public));
 }
 
-/// Outra conta de assento com a mesma prova: falha. Uma prova copiada da
-/// mempool não serve a quem a copiou.
+/// Another seat account with the same proof: fails. A proof copied from the
+/// mempool is no use to whoever copied it.
 #[test]
-fn claimer_trocado_falha() {
+fn a_swapped_claimer_fails() {
     let env = Env::default();
     env.cost_estimate().budget().reset_unlimited();
     let (vk, proof, mut public) = load(&env);
     public.set(3, public.get(3).unwrap().add(&U256::from_u32(&env, 1)));
-    assert!(!cliente(&env, vk).verify(&proof, &public));
+    assert!(!client(&env, vk).verify(&proof, &public));
 }
 
 #[test]
-fn entradas_permutadas_falham() {
+fn permuted_inputs_fail() {
     let env = Env::default();
     env.cost_estimate().budget().reset_unlimited();
     let (vk, proof, public) = load(&env);
-    let mut trocado = public.clone();
-    trocado.set(0, public.get(1).unwrap());
-    trocado.set(1, public.get(0).unwrap());
-    assert!(!cliente(&env, vk).verify(&proof, &trocado));
+    let mut swapped = public.clone();
+    swapped.set(0, public.get(1).unwrap());
+    swapped.set(1, public.get(0).unwrap());
+    assert!(!client(&env, vk).verify(&proof, &swapped));
 }
 
-/// Um byte alterado na prova: ou o ponto deixa de ser válido e o host recusa,
-/// ou a equação de pareamento não fecha. Nunca `true`.
+/// One byte changed in the proof: either the point stops being valid and the
+/// host refuses it, or the pairing equation does not close. Never `true`.
 #[test]
-fn um_byte_da_prova_alterado_nao_passa() {
+fn one_altered_proof_byte_does_not_pass() {
     let env = Env::default();
     env.cost_estimate().budget().reset_unlimited();
     let (vk, proof, public) = load(&env);
-    let c = cliente(&env, vk);
-    for (campo, i) in [("c", 63usize), ("a", 40)] {
+    let c = client(&env, vk);
+    for (field, i) in [("c", 63usize), ("a", 40)] {
         let mut p = proof.clone();
-        let mut raw = match campo {
+        let mut raw = match field {
             "c" => p.c.to_array(),
             _ => p.a.to_array(),
         };
         raw[i] ^= 0x01;
-        match campo {
+        match field {
             "c" => p.c = BytesN::from_array(&env, &raw),
             _ => p.a = BytesN::from_array(&env, &raw),
         }
         let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.verify(&p, &public)));
-        assert!(!r.unwrap_or(false), "{} alterado passou", campo);
+        assert!(!r.unwrap_or(false), "altered {} passed", field);
     }
 }
 
 #[test]
 #[should_panic(expected = "Error(Contract, #2)")]
-fn entrada_fora_do_campo_e_recusada() {
+fn an_input_outside_the_field_is_refused() {
     let env = Env::default();
     env.cost_estimate().budget().reset_unlimited();
     let (vk, proof, mut public) = load(&env);
     let r = U256::from_be_bytes(&env, &Bytes::from_array(&env, &SCALAR_MODULUS));
     public.set(2, public.get(2).unwrap().add(&r));
-    cliente(&env, vk).verify(&proof, &public);
+    client(&env, vk).verify(&proof, &public);
 }
 
 #[test]
 #[should_panic(expected = "Error(Contract, #1)")]
-fn numero_de_entradas_errado_e_recusado() {
+fn the_wrong_number_of_inputs_is_refused() {
     let env = Env::default();
     env.cost_estimate().budget().reset_unlimited();
     let (vk, proof, mut public) = load(&env);
     public.pop_back();
-    cliente(&env, vk).verify(&proof, &public);
+    client(&env, vk).verify(&proof, &public);
 }
 
-/// A chave embutida é a de circuits/setup/vk.json, e a prova de
-/// `pinakion prove` (tests/prova-claim.json) verifica pelo contrato — e com
-/// `y` trocado não verifica. O custo é o de qualquer verificação de quatro
-/// entradas públicas.
+/// The embedded key is the one in circuits/setup/vk.json, and the proof from
+/// `pinakion prove` (tests/prova-claim.json) verifies through the contract —
+/// and does not verify with `y` swapped. The cost is that of any verification
+/// with four public inputs.
 #[test]
-fn a_chave_embutida_e_a_do_setup_e_a_prova_da_cli_verifica() {
+fn the_embedded_key_is_the_setups_and_the_cli_proof_verifies() {
     let env = Env::default();
-    let (vk_fixture, proof, public) = load_de(&env, PROVA_T036);
+    let (fixture_vk, proof, public) = load_from(&env, CLI_PROOF);
     let id = env.register(Groth16Verifier, ());
     let c = Groth16VerifierClient::new(&env, &id);
     let vk = c.vk();
-    assert!(vk.alpha == vk_fixture.alpha && vk.beta == vk_fixture.beta);
-    assert!(vk.gamma == vk_fixture.gamma && vk.delta == vk_fixture.delta);
-    assert_eq!(vk.ic, vk_fixture.ic);
+    assert!(vk.alpha == fixture_vk.alpha && vk.beta == fixture_vk.beta);
+    assert!(vk.gamma == fixture_vk.gamma && vk.delta == fixture_vk.delta);
+    assert_eq!(vk.ic, fixture_vk.ic);
     env.cost_estimate().budget().reset_unlimited();
     assert!(c.verify(&proof, &public));
     let b = env.cost_estimate().budget();
     assert_eq!(
         (b.cpu_instruction_cost(), b.memory_bytes_cost()),
-        CUSTO_VERIFY,
+        VERIFY_COST,
         "verify (cpu, mem)"
     );
-    let mut errado = public.clone();
-    errado.set(2, U256::from_u32(&env, 1));
-    assert!(!c.verify(&proof, &errado));
+    let mut wrong = public.clone();
+    wrong.set(2, U256::from_u32(&env, 1));
+    assert!(!c.verify(&proof, &wrong));
 }
 
-/// A prova do spike, feita sob outra chave, não passa pelo contrato.
+/// The spike's proof, made under another key, does not pass the contract.
 #[test]
-fn a_prova_do_spike_nao_passa_pela_chave_embutida() {
+fn the_spike_proof_does_not_pass_the_embedded_key() {
     let env = Env::default();
     env.cost_estimate().budget().reset_unlimited();
     let (_, proof, public) = load(&env);

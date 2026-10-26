@@ -20,7 +20,7 @@ export function raiz(eventos, hash2) {
   for (const e of eventos) {
     if (e.evento === "enroll") nivel.set(e.indice, BigInt(e.c));
     else if (e.evento === "impede") nivel.set(e.indice, 0n);
-    else throw new Error(`evento desconhecido: ${e.evento}`);
+    else throw new Error(`unknown event: ${e.evento}`);
   }
   const z = zeros(hash2);
   for (let d = 0; d < PROFUNDIDADE; d++) {
@@ -43,7 +43,7 @@ export function caminho(eventos, indice, hash2) {
   for (const e of eventos) {
     if (e.evento === "enroll") folhas.set(e.indice, BigInt(e.c));
     else if (e.evento === "impede") folhas.set(e.indice, 0n);
-    else throw new Error(`evento desconhecido: ${e.evento}`);
+    else throw new Error(`unknown event: ${e.evento}`);
   }
   const z = zeros(hash2);
   let nivel = folhas;

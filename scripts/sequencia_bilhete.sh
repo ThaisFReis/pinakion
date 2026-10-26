@@ -1,60 +1,96 @@
 #!/usr/bin/env bash
-# The classic sequence, on testnet, end to end — the evidence behind DEC-014.
+# The sealed sequence, on testnet, end to end (T-040) — the evidence behind
+# docs/evidencia-testnet-bilhete.md.
 #
-#   scripts/sequencia_bilhete.sh <issuer-identity> <clerk-identity> <juror-identity>...
+#   scripts/sequencia_bilhete.sh [prefix]
 #
-# Needs: a built contracts/kleroterion (stellar contract build), funded testnet
-# identities for the clerk and every juror (stellar keys generate NAME --fund),
-# and the issuer identity NOT yet existing — it is generated, funded and locked
-# here. Every transaction hash is printed; nothing is hidden.
+# Needs: the Stellar CLI (28.1.0), `stellar contract build` done, `npm ci`
+# done (circuits/pinakion.mjs proves with snarkjs), network access. It
+# generates and funds its own identities through friendbot, named
+# <prefix>-…, so nothing of yours is touched. Every transaction hash goes
+# to build/<prefix>/hashes.tsv; every juror's secret s to
+# build/<prefix>/segredos.json (git-ignored: losing s is losing the seat).
 #
-#   1. issuer: AUTH_REQUIRED + AUTH_REVOCABLE            (classic, since 2015)
-#   2. SAC for PINAKION:issuer                           (SAC)
-#   3. deploy the Groth16 verifier, then kleroterion(clerk, SAC, minimum = #jurors, verifier)
+#   1. issuer: AUTH_REQUIRED + AUTH_REVOCABLE, then AUTH_IMMUTABLE
+#   2. SAC for PINAKION:issuer
+#   3. deploy the Groth16 verifier (key embedded), then kleroterion
+#      (clerk, SAC, minimum = #jurors, verifier, claim window)
 #   4. SAC admin -> kleroterion
-#   5. issuer master weight 0: nobody can ever issue or authorize a ticket
-#      again except the contract                        (the commitment)
-#   6. enroll each juror with c = Poseidon(s): SAC trust (CAP-73) + set_authorized + mint;
-#      the contract updates the commitment tree
-#   7. impede the first juror of the enrolment order    (art. 463; refused after lock)
-#   8. lock(k = 3, reveal_after ledger): ledger, timestamp, the drand round, k, root, N
-#   9. wait for that round, then seal with its signature (once; no round is chosen):
-#      the seed and the threshold T are fixed
-#  10. print what seal fixed; claims, finalize and reveals are T-040
+#   5. issuer master weight 0: nobody but the contract issues or authorizes
+#   6. enroll 20 jurors with c = Poseidon(s)
+#   7. impede one (before lock; refused after)
+#   8. lock(k = 3, reveal_after): round, k, root, N
+#   9. wait for that drand round; seal: seed and threshold T
+#  10. every juror with y < T proves its seat (circuits/pinakion.mjs) and
+#      claims it from a fresh friendbot seat account; one claim is resent
+#      and refused
+#  11. one claimant recuses, openly
+#  12. after the window: finalize (widening once if fewer than k)
+#  13. after reveal_after: 18 reveals
+#  14. read the events back (scripts/registro.py) and recompute everything
+#      (scripts/verificar_painel.py): it must say CONFERE
 set -euo pipefail
-N="--network testnet"
-ISSUER=$1; CLERK=$2; shift 2; JURORS=("$@")
-WASM=target/wasm32v1-none/release/kleroterion.wasm
+cd "$(dirname "$0")/.."
+P=${1:-t040}; N="--network testnet"; JURADOS=${JURADOS:-20}; K=3; JANELA=${JANELA:-60}; MARGEM=${MARGEM:-60}
+D=build/$P; mkdir -p "$D"; HASHES=$D/hashes.tsv; : > "$HASHES"; SEGREDOS=$D/segredos.json; echo '{}' > "$SEGREDOS"
+export STELLAR_NO_CACHE=true
 log() { printf '\n== %s\n' "$*"; }
+ledger() { curl -s https://horizon-testnet.stellar.org/ | python3 -c "import sys,json;print(json.load(sys.stdin)['history_latest_ledger'])"; }
+esperar_ledger() { while [ "$(ledger)" -le "$1" ]; do sleep 5; done; }
+conta() { # generate and fund an identity, retrying friendbot; print its address
+  local t
+  for t in 1 2 3 4 5; do
+    stellar keys address "$1" >/dev/null 2>&1 || stellar keys generate "$1" $N >/dev/null 2>&1 || true
+    stellar keys fund "$1" $N >/dev/null 2>&1 && { stellar keys address "$1" 2>/dev/null; return 0; }
+    sleep $((t * 3))
+  done
+  echo "could not fund $1" >&2; return 1
+}
+# invoke <op> <contract> <source> -- args… : sends, records the hash, prints the return value
+invocar() {
+  local op=$1 id=$2 src=$3; shift 4
+  local out; out=$(stellar contract invoke --id "$id" --source "$src" $N --send=yes -- "$@" 2>&1) || { echo "$out" >&2; return 1; }
+  local h; h=$(printf '%s' "$out" | grep -o 'tx/[0-9a-f]\{64\}' | head -1 | cut -d/ -f2)
+  [ -n "$h" ] && printf '%s\t%s\n' "$op" "$h" >> "$HASHES"
+  printf '%s' "$out" | grep -v '^ℹ️\|^⚠️\|^🌎\|^📅\|^ *Run `stellar\|^ *$\|Signing\|Submitting\|stellar.expert\|Simulat' | tail -1 || true
+}
+classic() { # op, source identity, then the stellar tx new … arguments
+  local op=$1 src=$2; shift 2
+  stellar tx new "$@" --source "$src" $N >/dev/null 2>&1
+  sleep 6 # the hash is the source account's latest transaction, read from Horizon
+  local h; h=$(curl -s "https://horizon-testnet.stellar.org/accounts/$(stellar keys address "$src" 2>/dev/null)/transactions?order=desc&limit=1" \
+    | python3 -c "import sys,json;print(json.load(sys.stdin)['_embedded']['records'][0]['hash'])")
+  printf '%s\t%s\n' "$op" "$h" >> "$HASHES"; echo "tx $h"
+}
 
-log "0. issuer identity $ISSUER (generated and funded)"
-stellar keys generate "$ISSUER" $N --fund >/dev/null 2>&1 || true
-EMISSOR=$(stellar keys address "$ISSUER"); ESCRIVAO=$(stellar keys address "$CLERK")
-echo "issuer   $EMISSOR"; echo "clerk    $ESCRIVAO"; sleep 3
+log "0. identities (friendbot)"
+EMISSOR=$(conta "$P-emissor"); ESCRIVAO=$(conta "$P-escrivao")
+echo "issuer $EMISSOR"; echo "clerk  $ESCRIVAO"
 
-log "1. issuer flags AUTH_REQUIRED + AUTH_REVOCABLE"
-stellar tx new set-options --source "$ISSUER" $N --set-required --set-revocable 2>&1 | grep -o '[0-9a-f]\{64\}' | sed 's/^/tx /'
+log "1. issuer flags: AUTH_REQUIRED + AUTH_REVOCABLE, then AUTH_IMMUTABLE"
+classic flags "$P-emissor" set-options --set-required --set-revocable
+classic immutable "$P-emissor" set-options --set-immutable
 
 log "2. SAC for PINAKION:$EMISSOR"
-SAC=$(stellar contract asset deploy --asset "PINAKION:$EMISSOR" --source "$ISSUER" $N 2>/dev/null | tail -1); echo "sac      $SAC"
+SAC=$(stellar contract asset deploy --asset "PINAKION:$EMISSOR" --source "$P-emissor" $N 2>/dev/null | tail -1); echo "sac $SAC"
 
-log "3. deploy the Groth16 verifier (key embedded), then kleroterion (clerk, SAC, minimum ${#JURORS[@]}, verifier)"
-VERIF=$(stellar contract deploy --wasm target/wasm32v1-none/release/groth16_verifier.wasm --source "$CLERK" $N 2>/dev/null | tail -1); echo "verifier $VERIF"
-KLERO=$(stellar contract deploy --wasm "$WASM" --source "$CLERK" $N -- --escrivao "$ESCRIVAO" --bilhete "$SAC" --minimo "${#JURORS[@]}" --verificador "$VERIF" --janela "${JANELA:-120}" 2>/dev/null | tail -1); echo "contract $KLERO"
+log "3. deploy the verifier, then kleroterion (minimum $JURADOS, window $JANELA ledgers)"
+VERIF=$(stellar contract deploy --wasm target/wasm32v1-none/release/groth16_verifier.wasm --source "$P-escrivao" $N 2>/dev/null | tail -1); echo "verifier $VERIF"
+KLERO=$(stellar contract deploy --wasm target/wasm32v1-none/release/kleroterion.wasm --source "$P-escrivao" $N -- \
+  --escrivao "$ESCRIVAO" --bilhete "$SAC" --minimo "$JURADOS" --verificador "$VERIF" --janela "$JANELA" 2>/dev/null | tail -1)
+echo "kleroterion $KLERO"; INICIO=$(( $(ledger) - 2 ))
+printf 'EMISSOR=%s\nSAC=%s\nVERIF=%s\nKLERO=%s\nINICIO=%s\n' "$EMISSOR" "$SAC" "$VERIF" "$KLERO" "$INICIO" > "$D/ids.env"
 
 log "4. SAC admin -> kleroterion"
-stellar contract invoke --id "$SAC" --source "$ISSUER" $N -- set_admin --new_admin "$KLERO" 2>&1 | grep -o 'tx/[0-9a-f]*' | sed 's#tx/#tx #'
+invocar set_admin "$SAC" "$P-emissor" -- set_admin --new_admin "$KLERO" >/dev/null; echo ok
 
 log "5. issuer master weight 0"
-stellar tx new set-options --source "$ISSUER" $N --master-weight 0 2>&1 | grep -o '[0-9a-f]\{64\}' | sed 's/^/tx /'
+classic master_weight_0 "$P-emissor" set-options --master-weight 0
 curl -s "https://horizon-testnet.stellar.org/accounts/$EMISSOR" | python3 -c "import sys,json;d=json.load(sys.stdin);print('flags',d['flags']);print('master weight',[s['weight'] for s in d['signers'] if s['key']==d['account_id']])"
 
-log "6. enroll ${#JURORS[@]} jurors with c = Poseidon(s) (clerk signs the envelope; the CLI signs each juror's auth entry)"
-# Each juror's secret s is drawn here and kept in build/ (git-ignored): losing
-# it means losing the seat (T-036/T-038 need it). Only c goes on-chain.
-mkdir -p build; SEGREDOS=build/segredos-$KLERO.json; echo '{}' > "$SEGREDOS"
-for J in "${JURORS[@]}"; do
-  A=$(stellar keys address "$J")
+log "6. enroll $JURADOS jurors with c = Poseidon(s)"
+for i in $(seq 0 $((JURADOS - 1))); do
+  A=$(conta "$P-j$i")
   C=$(python3 - "$SEGREDOS" "$A" <<'PY'
 import json, secrets, sys
 sys.path.insert(0, "scripts")
@@ -65,32 +101,94 @@ d = json.load(open(caminho)); d[endereco] = str(s); json.dump(d, open(caminho, "
 print(hash1(s))
 PY
 )
-  H=$(stellar contract invoke --id "$KLERO" --source "$CLERK" $N -- enroll --jurado "$A" --c "$C" 2>&1 | grep -o 'tx/[0-9a-f]*' | cut -d/ -f2)
-  printf '%-8s %s  tx %s\n' "$J" "$A" "$H"
+  invocar enroll "$KLERO" "$P-escrivao" -- enroll --jurado "$A" --c "$C" >/dev/null
+  printf '  j%-2s %s\n' "$i" "$A"
 done
 
-log "7. impede the first of the enrolment order (before lock: after it, impede is refused)"
-PRIMEIRO=$(stellar keys address "${JURORS[0]}")
-stellar contract invoke --id "$KLERO" --source "$CLERK" $N -- impede --jurado "$PRIMEIRO" 2>&1 | grep -o 'tx/[0-9a-f]*' | sed 's#tx/#tx #'
+log "7. impede j0 (before lock)"
+invocar impede "$KLERO" "$P-escrivao" -- impede --jurado "$(stellar keys address "$P-j0")" >/dev/null; echo ok
 
-log "8. lock, k = 3; reveal_after = the ledger about one day ahead (unused until T-038)"
-LEDGER=$(curl -s https://horizon-testnet.stellar.org/ | python3 -c "import sys,json;print(json.load(sys.stdin)['history_latest_ledger'])")
-stellar contract invoke --id "$KLERO" --source "$CLERK" $N -- lock --k 3 --revela_em $(( LEDGER + 17280 )) 2>&1 | grep -E 'tx/|ledger|tempo|rodada' | sed 's#.*tx/#tx #'
-FECHAMENTO=$(stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=no -- closing 2>/dev/null | tail -1); echo "$FECHAMENTO"
-RODADA=$(printf '%s' "$FECHAMENTO" | python3 -c "import sys,json;print(json.load(sys.stdin)['rodada'])")
+log "8. lock, k = $K"
+L=$(ledger); REVELA=$(( L + JANELA + MARGEM ))
+invocar lock "$KLERO" "$P-escrivao" -- lock --k "$K" --revela_em "$REVELA"
+RODADA=$(stellar contract invoke --id "$KLERO" --source "$P-escrivao" $N --send=no -- closing 2>/dev/null | tail -1 | python3 -c "import sys,json;print(json.load(sys.stdin)['rodada'])")
 
-log "9. wait for round $RODADA, then seal: the seed and the threshold T"
+log "9. wait for drand round $RODADA, then seal"
 QUANDO=$(( 1692803367 + (RODADA - 1) * 3 )); ESPERA=$(( QUANDO - $(date +%s) + 3 ))
-[ "$ESPERA" -gt 0 ] && { echo "round $RODADA is published at $QUANDO; waiting ${ESPERA}s"; sleep "$ESPERA"; }
+[ "$ESPERA" -gt 0 ] && sleep "$ESPERA"
 SIG=$(python3 scripts/rodada.py "$RODADA" | awk '/^signature/{print $2}')
-echo "round    $RODADA"
-stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=yes -- seal --sig "$SIG" 2>&1 | grep -E 'tx/|^\[' | sed 's#.*tx/#tx #'
+invocar seal "$KLERO" "$P-escrivao" -- seal --sig "$SIG"
 
-log "10. what seal fixed"
-stellar contract invoke --id "$KLERO" --source "$CLERK" $N --send=no -- seal_state 2>/dev/null | tail -1
-# Claims from fresh seat accounts (circuits/pinakion.mjs prove), finalize,
-# reveals and recusal are T-040; the open-draw recomputation that used to
-# follow here no longer applies — kleroterion draws sealed since T-038.
+# claim <juror-index>: prove from the events so far, claim from a new seat account
+reivindicar() {
+  local i=$1 A S ASSENTO
+  A=$(stellar keys address "$P-j$i"); S=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))[sys.argv[2]])" "$SEGREDOS" "$A")
+  ASSENTO=$(conta "$P-assento$i")
+  python3 scripts/registro.py "$KLERO" "$INICIO" > "$D/registro.json"
+  SEED=$(python3 -c "import json;print(next(e['seed'] for e in json.load(open('$D/registro.json'))['eventos'] if e['evento']=='Selado'))")
+  node circuits/pinakion.mjs prove --eventos "$D/registro.json" --s "$S" --seed "$SEED" --assento "$ASSENTO" --saida "$D/prova$i.json" 2>/dev/null
+  PROVA=$(python3 -c "import json;print(json.dumps(json.load(open('$D/prova$i.json'))['proof']))"); Y=$(python3 -c "import json;print(json.load(open('$D/prova$i.json'))['decimal']['y'])")
+  invocar claim "$KLERO" "$P-assento$i" -- claim --assento "$ASSENTO" --prova "$PROVA" --y "$Y" >/dev/null
+  printf '  j%-2s claimed from %s\n' "$i" "$ASSENTO"
+}
+# below <index>: does this juror's y fall under the threshold in force?
+abaixo() {
+  python3 - "$SEGREDOS" "$(stellar keys address "$P-j$1")" "$KLERO" "$P-escrivao" <<'PY'
+import json, subprocess, sys
+sys.path.insert(0, "scripts")
+from poseidon import hash2
+s = int(json.load(open(sys.argv[1]))[sys.argv[2]])
+selo = json.loads(subprocess.run(["stellar", "contract", "invoke", "--id", sys.argv[3], "--source", sys.argv[4],
+                                  "--network", "testnet", "--send=no", "--", "seal_state"],
+                                 capture_output=True, text=True).stdout.strip().splitlines()[-1])
+sys.exit(0 if hash2(int(selo["seed"]), s) < int(selo["limiar"]) else 1)
+PY
+}
+
+log "10. claims: every juror below T, each from a fresh seat account"
+REIVINDICARAM=()
+for i in $(seq 1 $((JURADOS - 1))); do
+  if abaixo "$i"; then reivindicar "$i"; REIVINDICARAM+=("$i"); fi
+done
+echo "  ${#REIVINDICARAM[@]} claim(s)"
+P1=${REIVINDICARAM[0]}
+echo "  resending j$P1's claim:"
+PROVA=$(python3 -c "import json;print(json.dumps(json.load(open('$D/prova$P1.json'))['proof']))"); Y=$(python3 -c "import json;print(json.load(open('$D/prova$P1.json'))['decimal']['y'])")
+stellar contract invoke --id "$KLERO" --source "$P-assento$P1" $N --send=yes -- claim --assento "$(stellar keys address "$P-assento$P1")" --prova "$PROVA" --y "$Y" 2>&1 \
+  | grep -o 'Error(Contract, #[0-9]*)' | head -1 | sed 's/^/  refused: /' || true
+
+log "11. one claimant recuses: j${REIVINDICARAM[1]}"
+R=${REIVINDICARAM[1]}; AR=$(stellar keys address "$P-j$R")
+invocar recuse "$KLERO" "$P-j$R" -- recuse --jurado "$AR" --s "$(python3 -c "import json;print(json.load(open('$SEGREDOS'))['$AR'])")" >/dev/null; echo ok
+
+log "12. after the window: finalize"
+PRAZO=$(stellar contract invoke --id "$KLERO" --source "$P-escrivao" $N --send=no -- seal_state 2>/dev/null | tail -1 | python3 -c "import sys,json;print(json.load(sys.stdin)['prazo'])")
+esperar_ledger "$PRAZO"; sleep 6
+FIM=$(invocar finalize "$KLERO" "$P-escrivao" -- finalize); echo "  $FIM"
+if [ "$FIM" = "null" ] || [ -z "$FIM" ]; then
+  echo "  fewer than $K: T widened to the field; the next jurors claim"
+  for i in $(seq 1 $((JURADOS - 1))); do
+    case " ${REIVINDICARAM[*]} " in *" $i "*) continue ;; esac
+    reivindicar "$i"; REIVINDICARAM+=("$i")
+    [ "$(stellar contract invoke --id "$KLERO" --source "$P-escrivao" $N --send=no -- claims 2>/dev/null | tail -1 | python3 -c "import sys,json;print(len(json.load(sys.stdin)))")" -ge "$K" ] && break
+  done
+  PRAZO=$(stellar contract invoke --id "$KLERO" --source "$P-escrivao" $N --send=no -- seal_state 2>/dev/null | tail -1 | python3 -c "import sys,json;print(json.load(sys.stdin)['prazo'])")
+  esperar_ledger "$PRAZO"; sleep 6
+  invocar finalize "$KLERO" "$P-escrivao" -- finalize
+fi
+
+log "13. after reveal_after (ledger $REVELA): reveals"
+esperar_ledger "$REVELA"
+for i in $(seq 1 $((JURADOS - 1))); do
+  [ "$i" = "$R" ] && continue
+  A=$(stellar keys address "$P-j$i")
+  invocar reveal "$KLERO" "$P-j$i" -- reveal --jurado "$A" --s "$(python3 -c "import json;print(json.load(open('$SEGREDOS'))['$A'])")" >/dev/null
+done
+echo "  $(grep -c '^reveal' "$HASHES") reveal(s)"
+
+log "14. read the events back and recompute everything"
+python3 scripts/registro.py "$KLERO" "$INICIO" > "$D/registro.json"
+python3 scripts/verificar_painel.py "$D/registro.json"
 
 log "the roster, as any Horizon client sees it"
 curl -s "https://horizon-testnet.stellar.org/accounts?asset=PINAKION:$EMISSOR&limit=200" | python3 -c "
@@ -98,4 +196,4 @@ import sys,json
 for r in json.load(sys.stdin)['_embedded']['records']:
     b=[x for x in r['balances'] if x.get('asset_code')=='PINAKION'][0]
     print(' ', r['account_id'], b['balance'], 'authorized' if b['is_authorized'] else 'IMPEDED')"
-echo; echo "ISSUER=$EMISSOR  SAC=$SAC  KLEROTERION=$KLERO"
+echo; cat "$D/ids.env"; echo "hashes: $HASHES"

@@ -162,6 +162,16 @@ def main():
             if estados != esperado["jurados"]:
                 print("        os estados dos jurados divergem")
 
+    # T-040: the recorded testnet run still checks out under today's verifier.
+    registro = RAIZ / "docs" / "evidencia-testnet-registro.json"
+    _, painel_tn, completo_tn, _, conf_tn = verificar(json.loads(registro.read_text()))
+    ruins = [nome for nome, ok in conf_tn if not ok]
+    if ruins or not completo_tn:
+        falhas += 1
+        print(f"  FALHA a rodada de testnet registrada: {ruins}")
+    else:
+        print(f"  ok    a rodada de testnet registrada: {len(conf_tn)} conferencias, painel de {len(painel_tn)}")
+
     if falhas:
         print(f"\n{falhas} falha(s).")
         return 1

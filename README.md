@@ -56,9 +56,9 @@ Verifying a drand round on Soroban is not new: [`AshFrancis/splicers`](https://g
 
 ## What is not
 
-- The case lifecycle is designed and **not built**. Of the roster cycle, enrol → impede → lock → seal → claim → finalize → reveal exists in `kleroterion` and has passed unit tests only.
+- The case lifecycle is designed and **not built**. Of the roster cycle, enrol → impede → lock → seal → claim → finalize → reveal exists in `kleroterion`, passes its unit tests, and ran once on testnet (2026-10-26).
 - **Since T-038 `kleroterion` draws sealed** (each juror proves a seat from a fresh account; the panel is public after the verdict). The Fisher-Yates draw described above is `beacon-verifier`'s, and was `kleroterion`'s in the testnet run linked here; this page is rewritten in T-041.
-- The evidence is one run with seven jurors on one machine; `AUTH_IMMUTABLE` was not set; the costs of `enroll`, `lock` and `draw_round` were not measured. That run used the pre-T-033 contract (`draw_round` with a caller-given round); the current `lock(k, reveal_after)` → `seal(sig)` has passed its unit tests and has **not** been run on testnet.
+- The sealed draw ran once on testnet with twenty jurors, all driven from one machine (`docs/evidencia-testnet-bilhete.md`, 2026-10-26): `AUTH_IMMUTABLE` set, every cost read from the transactions, and the panel checked from the ledger and drand alone (`CONFERE`). The earlier open-draw run had seven jurors, no `AUTH_IMMUTABLE`, and unmeasured costs. That run used the pre-T-033 contract (`draw_round` with a caller-given round).
 - Nothing has been audited. Nothing has run on mainnet.
 - Below a roster of about sixteen the draw guarantees nothing, and the contract should refuse rather than pretend — see [`docs/limite-inferior-do-rol.md`](docs/limite-inferior-do-rol.md).
 
@@ -87,10 +87,10 @@ stellar contract deploy --wasm target/wasm32v1-none/release/beacon_verifier.wasm
 Then `verify --round <n> --sig <hex>`, `beacon`, and `draw --seed <hex> --n <size> --k <panel>`.
 The beacon key is pinned in the contract — there is no key to pass.
 
-The whole ticket sequence — issue, lock the issuer, enrol, impede, close, wait for the round, draw, recompute — is one script, and it prints every hash. It was last run before T-033 changed `lock` and replaced `draw_round` with `seal`; the current version has not been run (T-040):
+The whole sealed sequence — issue, lock the issuer, enrol, impede, close, seal, prove and claim from fresh seat accounts, recuse, finalize, reveal, read the events back and recompute — is one script, and it records every hash. Its last run (2026-10-26) is `docs/evidencia-testnet-bilhete.md`:
 
 ```bash
-scripts/sequencia_bilhete.sh <issuer-identity> <clerk-identity> <juror-identity>...
+scripts/sequencia_bilhete.sh <prefix>
 ```
 
 ---

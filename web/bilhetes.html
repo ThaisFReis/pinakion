@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Pinakion: o sorteio selado da testnet, pessoa por pessoa, conferido no seu navegador a partir dos eventos do ledger e do drand.">
+  <title>Pinakion — Os bilhetes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    /* Only what this page adds to style.css: the two tables and the facts list. */
+    .fatos { display: grid; grid-template-columns: max-content 1fr; gap: 6px 24px; font-size: var(--t-small); margin: 0; }
+    .fatos dt { color: var(--muted); }
+    .fatos dd { margin: 0; font-family: var(--mono); font-size: var(--t-data); overflow-wrap: anywhere; }
+    .tabela { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+    .tabela th { text-align: left; font: 500 var(--t-label)/1.4 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); }
+    .tabela td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .tabela .mono { font-family: var(--mono); font-size: var(--t-data); overflow-wrap: anywhere; }
+    .tabela a { color: var(--patina); }
+    .rolagem { overflow-x: auto; }
+    .estado { display: inline-block; padding: 2px 8px; border: 1px solid var(--line); font-size: var(--t-data); white-space: nowrap; }
+    .estado.sentou { border-color: var(--patina); color: var(--patina); }
+    .estado.impedido, .estado.recusou { color: var(--muted); }
+    .estado.silencio { border-color: var(--bronze); color: var(--bronze); }
+    .veredito-final { font: 600 var(--t-display)/1.1 var(--display); margin: 8px 0 0; }
+    .veredito-final.bad { color: var(--error); }
+    @media (max-width: 720px) { .fatos { grid-template-columns: 1fr; } .tabela .opcional { display: none; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#conteudo">Ir para o conteúdo</a>
+  <div class="shell">
+    <header class="masthead">
+      <a class="brand" href="./index.html" aria-label="Pinakion, início">
+        <svg viewBox="0 0 24 28" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="23" rx="1" stroke="currentColor"/><path d="M7 8h10M7 20h10" stroke="currentColor" stroke-width="1.5"/><path d="M7 14h10" stroke="currentColor" stroke-width="3"/></svg>
+        Pinakion
+      </a>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="./index.html">O princípio</a>
+        <a href="#pessoas">As pessoas</a>
+        <button class="theme" id="tema" aria-label="Alternar tema" title="Alternar tema">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg>
+        </button>
+      </nav>
+    </header>
+
+    <main id="conteudo">
+      <section class="section" aria-labelledby="titulo">
+        <div class="section-heading">
+          <p class="eyebrow">Sorteio selado · testnet · 26 out 2026</p>
+          <div class="section-intro">
+            <h1 id="titulo" class="veredito-final" aria-live="polite">Conferindo…</h1>
+            <p id="resumo">Esta página lê os eventos do contrato e a aleatoriedade do drand, e refaz cada passo no seu navegador, sem confiar no contrato: a raiz, a semente, o limiar, cada reivindicação, cada revelação e o painel.</p>
+            <p class="status-note"><strong>Somente leitura.</strong> Nada aqui assina ou envia transações.</p>
+          </div>
+        </div>
+        <dl class="fatos" id="fatos"></dl>
+      </section>
+
+      <section class="section" id="pessoas" aria-labelledby="pessoas-titulo">
+        <div class="section-heading">
+          <p class="eyebrow">Pessoa por pessoa</p>
+          <div class="section-intro">
+            <h2 id="pessoas-titulo">Inscrito · impedido · recusou · sentou · revelou · em silêncio</h2>
+            <p>Cada linha é uma conta do rol. Até o veredito, o ledger não liga nenhum assento a um nome. A ligação vem da revelação, quando a pessoa mostra o segredo dela.</p>
+          </div>
+        </div>
+        <div class="rolagem"><table class="tabela" id="tabelaPessoas"><thead><tr><th>#</th><th>Conta</th><th>Estado</th><th>Inscrição</th><th>Recusa ou revelação</th><th class="opcional">y</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section class="section" aria-labelledby="assentos-titulo">
+        <div class="section-heading">
+          <p class="eyebrow">As reivindicações</p>
+          <div class="section-intro">
+            <h2 id="assentos-titulo">Cada assento, de uma conta nova</h2>
+            <p>O evento leva só o <code>y</code>. A conta de assento é a origem da transação, e nunca é a conta do rol. O painel são os <var>k</var> menores <code>y</code> que ficaram depois das recusas.</p>
+          </div>
+        </div>
+        <div class="rolagem"><table class="tabela" id="tabelaAssentos"><thead><tr><th>y</th><th>Conta de assento</th><th>Transação</th><th>No painel</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section class="section" aria-labelledby="limites-titulo">
+        <div class="limit">
+          <h3 id="limites-titulo">O que esta conferência não mostra</h3>
+          <p>O setup do circuito foi feito por uma só parte. A ligação entre conta de assento e pessoa depende de como a conta foi financiada, e nesta rodada todas vieram do friendbot. A assinatura do drand foi verificada pelo contrato no <code>seal</code>; aqui, a página só recebe a aleatoriedade. Uma única máquina fez o papel de todos os jurados. É só testnet, e nada foi auditado.</p>
+        </div>
+        <p class="status-note">Registro: <a href="../docs/evidencia-testnet-registro.json">docs/evidencia-testnet-registro.json</a>. Pela linha de comando: <code>python3 scripts/verificar_painel.py docs/evidencia-testnet-registro.json</code>. Rol na Horizon: <a id="horizon" href="#">/accounts?asset=PINAKION</a>.</p>
+      </section>
+    </main>
+
+    <footer class="footer"><p>Pinakion · Sealed jury selection for governance on Stellar.</p><a href="https://github.com/ThaisFReis/pinakion">Código aberto · MIT, circuito GPL-3.0</a></footer>
+  </div>
+
+<script type="module">
+  import { verificarSelado } from "./sorteio.mjs";
+  import { criarPoseidon } from "./poseidon.mjs";
+  import { raiz } from "./arvore.mjs";
+
+  const $ = (id) => document.getElementById(id);
+  const EXPLORER = "https://stellar.expert/explorer/testnet";
+  const CHAIN = "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971";
+  const curto = (s, n = 8) => (s && s.length > 2 * n ? `${s.slice(0, n)}…${s.slice(-4)}` : s);
+  const el = (tag, attrs = {}, ...filhos) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    for (const f of filhos) e.append(f instanceof Node ? f : document.createTextNode(String(f)));
+    return e;
+  };
+  const link = (href, texto) => el("a", { href, rel: "noopener" }, texto);
+  const tx = (h) => (h ? link(`${EXPLORER}/tx/${h}`, curto(h)) : "—");
+  const conta = (a) => link(`${EXPLORER}/account/${a}`, curto(a, 6));
+  const ROTULO = {
+    "sentou": ["sentou · revelou", "sentou"],
+    "revelou, nao sentou": ["revelou", ""],
+    "sorteado e ausente": ["sorteado e ausente", "silencio"],
+    "nao revelou": ["em silêncio", "silencio"],
+    "recusado": ["recusou", "recusou"],
+    "impedido": ["impedido", "impedido"],
+  };
+
+  async function ler(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${url}: ${r.status}`);
+    return r.json();
+  }
+
+  async function principal() {
+    const params = new URLSearchParams(location.search);
+    const registro = await ler(params.get("registro") || "../docs/evidencia-testnet-registro.json");
+    const P = criarPoseidon(await ler("../tests/poseidon-bn254.json"));
+    const r = verificarSelado(registro, P, raiz);
+    const ruins = r.conferencias.filter(([, ok]) => !ok);
+    const ev = registro.eventos;
+    const um = (n) => ev.find((e) => e.evento === n);
+    const fechado = um("Fechado"), selado = um("Selado"), final = um("Finalizado");
+
+    const titulo = $("titulo");
+    titulo.textContent = ruins.length ? "Não confere." : "Confere.";
+    titulo.classList.toggle("bad", ruins.length > 0);
+    $("resumo").textContent = ruins.length
+      ? `${ruins.length} de ${r.conferencias.length} conferências falharam: ${ruins.map(([n]) => n).join("; ")}.`
+      : `${r.conferencias.length} conferências, nenhuma falha. Painel de ${r.painel.length}${r.completo ? ", completo" : ", INCOMPLETO"}; ${r.semRevelacao} assento(s) sem revelação.`;
+
+    const fatos = [
+      ["Contrato", link(`${EXPLORER}/contract/${registro.contrato}`, registro.contrato)],
+      ["Raiz dos compromissos", fechado.raiz],
+      ["N autorizados · k assentos", `${fechado.n} · ${fechado.k}`],
+      ["Rodada drand", link(`https://api.drand.sh/${CHAIN}/public/${fechado.rodada}`, String(fechado.rodada))],
+      ["Semente (aleatoriedade >> 8)", selado.seed],
+      ["Limiar T = ⌊r·2k/N⌋", selado.limiar],
+      ["Painel (y, em ordem)", final ? final.painel.join(", ") : "ainda não saiu"],
+    ];
+    for (const [k, v] of fatos) $("fatos").append(el("dt", {}, k), el("dd", {}, v));
+
+    const inscricao = new Map(), saida = new Map(), yDe = new Map();
+    for (const e of ev) {
+      if (e.evento === "Inscrito") inscricao.set(e.jurado, e);
+      if (e.evento === "Recusado" || e.evento === "Revelado") { saida.set(e.jurado, e); yDe.set(e.jurado, e.y); }
+    }
+    const corpo = $("tabelaPessoas").querySelector("tbody");
+    for (const [quem, estado] of r.estados) {
+      const [texto, classe] = ROTULO[estado] || [estado, ""];
+      const i = inscricao.get(quem);
+      const s = saida.get(quem);
+      corpo.append(el("tr", {},
+        el("td", {}, i.indice),
+        el("td", { class: "mono" }, conta(quem)),
+        el("td", {}, el("span", { class: `estado ${classe}` }, texto)),
+        el("td", { class: "mono" }, tx(i.tx)),
+        el("td", { class: "mono" }, s ? tx(s.tx) : "—"),
+        el("td", { class: "mono opcional" }, yDe.has(quem) ? curto(yDe.get(quem), 10) : "—"),
+      ));
+    }
+
+    const recusados = new Set(ev.filter((e) => e.evento === "Recusado").map((e) => e.y));
+    const assentos = $("tabelaAssentos").querySelector("tbody");
+    for (const e of ev.filter((x) => x.evento === "Reivindicado")) {
+      const noPainel = final && final.painel.includes(e.y);
+      assentos.append(el("tr", {},
+        el("td", { class: "mono" }, curto(e.y, 10)),
+        el("td", { class: "mono" }, e.assento ? conta(e.assento) : "—"),
+        el("td", { class: "mono" }, tx(e.tx)),
+        el("td", {}, noPainel ? "sim" : recusados.has(e.y) ? "recusado" : "não"),
+      ));
+    }
+
+    // The record holds the contract's events, not the asset; the issuer is the
+    // one in docs/evidencia-testnet-bilhete.md, or ?emissor=G… for another run.
+    const emissor = params.get("emissor") || "GC5Z55ME4WQPSLT7GIFOOJEGZVKWDUVVGGACXQ4LDVWOLTOJK7KGZXEL";
+    $("horizon").href = `https://horizon-testnet.stellar.org/accounts?asset=PINAKION:${emissor}`;
+  }
+
+  principal().catch((e) => {
+    $("titulo").textContent = "Não foi possível conferir.";
+    $("titulo").classList.add("bad");
+    $("resumo").textContent = String(e.message || e);
+  });
+
+  const tema = $("tema");
+  const preferencia = matchMedia("(prefers-color-scheme: dark)");
+  function temaEscuro() {
+    return document.documentElement.dataset.theme
+      ? document.documentElement.dataset.theme === "dark" : preferencia.matches;
+  }
+  function rotularTema() {
+    const label = temaEscuro() ? "Usar tema claro" : "Usar tema escuro";
+    tema.setAttribute("aria-label", label);
+    tema.title = label;
+  }
+  tema.addEventListener("click", () => {
+    document.documentElement.dataset.theme = temaEscuro() ? "light" : "dark";
+    rotularTema();
+  });
+  rotularTema();
+</script>
+</body>
+</html>

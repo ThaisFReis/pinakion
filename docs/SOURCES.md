@@ -91,6 +91,9 @@ Every external fact this project relies on, and every piece of code copied in. A
 | 2026-10-26 | The sealed sequence runs end to end on testnet | 20 jurors, N = 19, k = 3, round 33391343; 6 claims, 1 refused resend, 1 recusal, complete panel, 18 reveals; independent check `CONFERE`, 77 checks | testnet, kleroterion `CCRBKLS64WDUSKQSQF4ON4GJF4Q5KPEAF54TQD4RIWDAJ5TOERKU2NVL` | `docs/evidencia-testnet-bilhete.md`, `docs/evidencia-testnet-hashes.tsv` — measured (T-040) |
 | 2026-10-26 | `stellar events --output json` decodes a contract's events by name from its on-chain spec, one JSON object per line (`event_name`, `params`) | — | Stellar CLI 28.1.0 | observed on testnet; `scripts/registro.py` |
 | 2026-10-26 | `STELLAR_NO_CACHE` accepts `true`/`false` only; `1` makes every CLI command fail | — | Stellar CLI 28.1.0 | observed: `error: invalid value '1' for '--no-cache'` |
+| 2026-10-26 | Tessera's voter-list input | `tessera abrir --aptos` = comma list or file path; file: one entry per line, `#` starts a comment; entry = 56-char G-address or a local identity name (`resolver`); leaf `H(0x00 ‖ addr_xdr ‖ peso)` in list order | `ThaisFReis/tessera` `39ec925abeb2e219b61ef9bca8129c98d402f33c`, MIT | `cli/src/comandos.rs` (`lista`, `resolver`, `folhas_de`), read via the GitHub API; answers Q-25 |
+| 2026-10-26 | Soroban RPC `getEvents` returns each event's `txHash` and the same event `id` as `stellar events` | — | testnet RPC | observed (`scripts/registro.py`) |
+| 2026-10-26 | `soroban-testnet.stellar.org` and Horizon answered urllib's default User-Agent with HTTP 403 | worked with a custom User-Agent and with curl | — | observed |
 
 ## Conflicting sources
 

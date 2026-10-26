@@ -60,25 +60,29 @@ From that ledger on, nobody but the contract issues or authorizes a ticket, and 
 
 ## Why Stellar
 
-These are specific reasons, each one measured or read from source. "Because blockchain" is not one of them.
+These are specific reasons, each one measured or read from source. "Because blockchain" is not one of them. They are in order of what only this project does.
+
+**The roster is a classic asset whose issuer locks itself out.**
+- The flags are from 2015: `AUTH_REQUIRED`, `AUTH_REVOCABLE`, `AUTH_IMMUTABLE`, and the issuer at master weight 0.
+- The ecosystem reads these flags as an issuer's power over its holders. Here the issuer uses them to give that power away, and from then on nobody can issue or authorize a ticket except the contract.
+- An `AUTH_REQUIRED` asset cannot be held without the issuer's say-so, and the issuer is now the contract.
+- These are protocol rules, not contract code, and any Horizon client reads the roster without trusting us.
+- No other use of these flags as a jury roster was visible in three searches (`docs/SOURCES.md`, *Checked and not found*). The indexes lag.
 
 **The beacon verification is affordable on-chain.** A drand round is a BLS12-381 signature, and Stellar's host functions verify it (CAP-59).
 - It costs **26,719,483 CPU instructions**, measured in the Soroban test host.
 - It ran on testnet in [transaction `c74150ee…`](https://stellar.expert/explorer/testnet/tx/c74150eeb7b73d0a196d20b44ed851a140812b3ac67e579b670b87ee2c3ffeea).
 - The open draw that `beacon-verifier` keeps costs 2,274,884 instructions for a roster of a thousand.
-
-**The roster can live in the classic ledger, frozen by the ledger's own rules.**
-- A locked issuer cannot sign.
-- An `AUTH_REQUIRED` asset cannot be held without the issuer's say-so, and the issuer is now the contract.
-- These are protocol rules, not contract code, and any Horizon client reads the result without trusting us.
+- Verifying drand on Soroban was done before us (`AshFrancis/splicers`, `NibrasD/Stellar-VRF`). We claim the use, not the verification.
 
 **The randomness the chain offers is not good enough, and the chain says so.** The `soroban-sdk` documents that its PRNG seed is under validator control. So the entropy comes from drand, and the chain's job is to *verify* it.
 
-**A seat can be proven without being named, and that only became possible this year.**
+**A seat can be proven without being named: this is what Protocol 25 unlocked.**
 - Poseidon and BN254 became host functions in Protocol 25 (CAP-74 and CAP-75, January 2026).
 - A Groth16 proof of seat over a Poseidon Merkle tree is one ordinary transaction: about 32 M instructions declared on testnet, **8 %** of the 400 M per-transaction ceiling.
 - The contract builds the tree itself, one path per enrolment.
-- This is the only piece of the design that was impossible a year ago, and it is the piece that makes the second sentence of the guarantee true.
+
+**Would this have existed a year ago?** The open draw would have, whole. Everything it needs was on mainnet in October 2025: the drand pairing, the PRNG reseeded by the beacon, Fisher-Yates over the roster, the asset flags and the locked issuer. The only loss would be CAP-73: each juror would send their own `changeTrust`, one transaction more and no guarantee lost. That is the fallback the plan wrote down as its kill path (T-033 alone). **The seal would not have existed.** A Groth16 path over BLS12-381 was open in theory (CAP-59), but circom targets BN254, and Poseidon would have had to run as Wasm inside the contract, at a cost nobody here measured. What is known is today's figure, about 32 M instructions. So the sealed seat is the part of the design that Protocol 25 made possible, and the second sentence of the guarantee rests on it.
 
 ---
 

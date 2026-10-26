@@ -5,8 +5,8 @@
 //   node circuits/pinakion.mjs prove --eventos E.json --s S --seed SEED \
 //        --assento ADDRESS [--saida prova.json]
 //
-//   E.json   the contract's Inscrito/Impedido events in ledger order, as
-//            scripts/arvore.py reads them
+//   E.json   the contract's events in ledger order: a list, or the record
+//            scripts/registro.py writes (Inscrito/Impedido are used)
 //   S        the juror's secret, decimal; c = Poseidon(S) must be a leaf
 //   SEED     the seed `seal` fixed, decimal field element
 //   ADDRESS  the seat account the claim will be sent from (G… or C…)
@@ -37,8 +37,19 @@ const P = criarPoseidon(JSON.parse(readFileSync(join(RAIZ, "tests", "poseidon-bn
 export const claimer = (endereco) =>
   BigInt("0x" + createHash("sha256").update(endereco, "ascii").digest("hex")) >> 8n;
 
+// The contract names its events Inscrito/Impedido (scripts/registro.py);
+// the tree code calls them enroll/impede. Everything else is irrelevant here.
+const paraArvore = (eventos) =>
+  eventos.flatMap((e) =>
+    e.evento === "Inscrito" ? [{ evento: "enroll", indice: e.indice, c: e.c }]
+      : e.evento === "Impedido" ? [{ evento: "impede", indice: e.indice }]
+      : e.evento === "enroll" || e.evento === "impede" ? [e]
+      : [],
+  );
+
 // The witness input for the circuit, or an Error saying why there is none.
-export function entrada(eventos, s, seed, assento) {
+export function entrada(todos, s, seed, assento) {
+  const eventos = paraArvore(todos);
   const c = P.hash1(s);
   const inscricao = eventos.find((e) => e.evento === "enroll" && BigInt(e.c) === c);
   if (!inscricao) throw new Error("Poseidon(s) não é compromisso de ninguém nestes eventos");
@@ -92,7 +103,8 @@ async function main() {
   for (const k of ["eventos", "s", "seed", "assento"]) {
     if (!a[k]) { console.error(`falta --${k}`); process.exit(2); }
   }
-  const eventos = JSON.parse(readFileSync(a.eventos, "utf8"));
+  const lido = JSON.parse(readFileSync(a.eventos, "utf8"));
+  const eventos = Array.isArray(lido) ? lido : lido.eventos;
   const prova = await provar(entrada(eventos, BigInt(a.s), BigInt(a.seed), a.assento));
   if (!(await verificar(prova.snarkjs.proof, prova.snarkjs.publicSignals))) {
     throw new Error("a prova gerada não verifica contra circuits/setup/vk.json");

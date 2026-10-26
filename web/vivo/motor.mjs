@@ -105,10 +105,10 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
     for (let i = 0; i < 90; i++) {
       const r = await server.getTransaction(hash);
       if (r.status === "SUCCESS") return r;
-      if (r.status === "FAILED") throw new Error(`transação ${hash.slice(0, 8)}… falhou`);
+      if (r.status === "FAILED") throw new Error(`transaction ${hash.slice(0, 8)}… failed`);
       await dormir(1500);
     }
-    throw new Error(`transação ${hash.slice(0, 8)}… não entrou num ledger`);
+    throw new Error(`transaction ${hash.slice(0, 8)}… did not make it into a ledger`);
   }
 
   async function classico(kp, ops) {
@@ -118,7 +118,7 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
     const tx = b.setTimeout(120).build();
     tx.sign(kp);
     const r = await server.sendTransaction(tx);
-    if (r.status === "ERROR") throw new Error(`rede recusou: ${r.errorResult?.result().switch().name}`);
+    if (r.status === "ERROR") throw new Error(`the network refused it: ${r.errorResult?.result().switch().name}`);
     await esperarTx(r.hash);
     return r.hash;
   }
@@ -129,7 +129,7 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
     const tx = await server.prepareTransaction(bruta);
     tx.sign(kp);
     const r = await server.sendTransaction(tx);
-    if (r.status === "ERROR") throw new Error(`rede recusou: ${r.errorResult?.result().switch().name}`);
+    if (r.status === "ERROR") throw new Error(`the network refused it: ${r.errorResult?.result().switch().name}`);
     await esperarTx(r.hash);
     return r.hash;
   }
@@ -155,7 +155,7 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
         const hash = enviada.sendTransactionResponse?.hash ?? enviada.getTransactionResponse?.txHash;
         // signAndSend can return a transaction the ledger applied and failed: check.
         const estado = enviada.getTransactionResponse?.status;
-        if (estado !== "SUCCESS") throw new Error(`transação ${String(hash).slice(0, 8)}… terminou em ${estado}`);
+        if (estado !== "SUCCESS") throw new Error(`transaction ${String(hash).slice(0, 8)}… ended in ${estado}`);
         // The SDK's `result` getter throws on a function that returns nothing.
         let valor;
         try { valor = enviada.result; } catch { valor = undefined; }
@@ -171,11 +171,11 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
 
   // ---- 1. people and the ticket ------------------------------------------
 
-  fase("contas", "Criando as contas de todas as pessoas do caso");
+  fase("contas", "Creating the accounts for everyone in the case");
   const banco = Keypair.random();
   const fb = await fetch(`${FRIENDBOT}?addr=${banco.publicKey()}`);
   if (!fb.ok) throw new Error(`friendbot: ${fb.status}`);
-  nota(`uma conta financiadora, pelo friendbot: ${banco.publicKey()}`);
+  nota(`one funding account, from friendbot: ${banco.publicKey()}`);
   const escrivao = Keypair.random(), emissor = Keypair.random(), apurador = Keypair.random();
   const jurados = Array.from({ length: PLANO.jurados }, () => Keypair.random());
   const assentos = Array.from({ length: 26 }, () => Keypair.random());
@@ -185,85 +185,85 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
   for (let i = 0; i < contas.length; i += 50) {
     const h = await classico(banco, contas.slice(i, i + 50).map(([k, saldo]) =>
       Operation.createAccount({ destination: k.publicKey(), startingBalance: saldo })));
-    marcar("contas", h);
+    marcar("accounts", h);
   }
 
-  fase("bilhete", "Emitindo o bilhete PINAKION com o emissor travado");
+  fase("bilhete", "Issuing the PINAKION ticket with the issuer locked");
   const inicio = (await ledger()) - 2;
-  marcar("emissor: AUTH_REQUIRED, AUTH_REVOCABLE, AUTH_IMMUTABLE", await classico(emissor, [Operation.setOptions({ setFlags: 1 | 2 | 4 })]));
+  marcar("issuer: AUTH_REQUIRED, AUTH_REVOCABLE, AUTH_IMMUTABLE", await classico(emissor, [Operation.setOptions({ setFlags: 1 | 2 | 4 })]));
   const ativo = new Asset("PINAKION", emissor.publicKey());
   const sac = ativo.contractId(PASSA);
-  marcar("o contrato do ativo (SAC)", await invocarBruto(emissor, Operation.createStellarAssetContract({ asset: ativo })));
+  marcar("the asset’s contract (SAC)", await invocarBruto(emissor, Operation.createStellarAssetContract({ asset: ativo })));
 
   // ---- 2. the contracts ----------------------------------------------------
 
-  fase("contratos", "Implantando o rol (kleroterion) e o caso (processo)");
+  fase("contratos", "Deploying the roster (kleroterion) and the case (processo)");
   const base = { networkPassphrase: PASSA, rpcUrl: RPC, publicKey: escrivao.publicKey(), ...contract.basicNodeSigner(escrivao, PASSA) };
   const dk = await (await contract.Client.deploy(
     { escrivao: escrivao.publicKey(), bilhete: sac, verificador: VERIFICADOR, janela: PLANO.janela, niveis: NIVEIS,
       afastamento: PLANO.afastamento, espera_minima: PLANO.espera },
     { ...base, wasmHash: WASM.kleroterion, ...OPC })).signAndSend();
   const klero = dk.result.options.contractId;
-  marcar("kleroterion implantado", dk.sendTransactionResponse?.hash);
+  marcar("kleroterion deployed", dk.sendTransactionResponse?.hash);
   aviso({ dado: "kleroterion", valor: klero });
   const dp = await (await contract.Client.deploy(
     { escrivao: escrivao.publicKey(), kleroterion: klero, tessera: TESSERA, prazo_quorum: PLANO.prazoQuorum,
       votos_minimos: PLANO.votosMinimos, dois_tercos_desde: PLANO.doisTercosDesde },
     { ...base, wasmHash: WASM.processo, ...OPC })).signAndSend();
   const proc = dp.result.options.contractId;
-  marcar("processo implantado", dp.sendTransactionResponse?.hash);
+  marcar("processo deployed", dp.sendTransactionResponse?.hash);
   aviso({ dado: "processo", valor: proc });
-  marcar("o rol passa a ser o dono do bilhete", await invocarBruto(emissor,
+  marcar("the roster becomes the ticket’s admin", await invocarBruto(emissor,
     new Contract(sac).call("set_admin", new Address(klero).toScVal())));
-  marcar("emissor com peso 0: ninguém mais emite", await classico(emissor, [Operation.setOptions({ masterWeight: 0 })]));
+  marcar("issuer at weight 0: nobody can issue any more", await classico(emissor, [Operation.setOptions({ masterWeight: 0 })]));
 
   // ---- 3. the roster -------------------------------------------------------
 
-  fase("rol", `Inscrevendo ${PLANO.jurados} pessoas, cada uma com um compromisso`);
+  fase("rol", `Enrolling ${PLANO.jurados} people, each with a commitment`);
   const segredos = jurados.map(() => segredo());
   // One at a time: each enrolment rewrites the roster and a path of the tree,
   // so two in the same ledger would each be simulated on the other's old state.
   for (const [i, kp] of jurados.entries()) {
     const r = await mandar(async () => (await cliente(klero, kp)).enroll({ jurado: kp.publicKey(), c: P.hash1(segredos[i]) }, OPC), [escrivao]);
-    marcar(`inscrição ${i + 1} de ${jurados.length}`, r.hash);
+    marcar(`enrolment ${i + 1} of ${jurados.length}`, r.hash);
   }
   const acusado = jurados[0];
 
-  fase("fechamento", "Fechando o rol para julgar uma pessoa inscrita");
+  fase("fechamento", "Locking the roster to judge an enrolled person");
   const kEsc = await cliente(klero, escrivao);
   const revelaEm = (await ledger()) + PLANO.ateRevelar;
   const fech = await mandar(() => kEsc.lock({ gravidade: PLANO.gravidade, revela_em: revelaEm, acusado: acusado.publicKey() }, OPC));
-  marcar("fechamento: a parte é impedida na mesma chamada", fech.hash);
+  marcar("lock: the party is impeded in the same call", fech.hash);
   const fechamento = fech.valor;
   aviso({ dado: "fechamento", valor: { n: fechamento.n, k: fechamento.k, rodada: Number(fechamento.rodada), afastado_ate: fechamento.afastado_ate } });
 
   // ---- 4. the record -------------------------------------------------------
 
-  fase("autos", "Abrindo o caso e registrando os autos");
+  fase("autos", "Opening the case and filing the case record");
   const pEsc = await cliente(proc, escrivao);
   const docs = {};
   const guardar = async (nome, texto) => { const h = await sha256Hex(texto); docs[h] = { nome, texto }; return h; };
-  const hDen = await guardar("Denúncia", opcoes.textos.denuncia);
-  marcar("abertura do caso, com a denúncia", (await mandar(() => pEsc.abrir({ denuncia: B(hDen) }, OPC))).hash);
-  const hProva = await guardar("Prova", opcoes.textos.prova);
-  marcar("prova, pelo escrivão", (await mandar(() => pEsc.registrar({ autor: escrivao.publicKey(), tipo: 1, hash: B(hProva) }, OPC))).hash);
-  const hDef = await guardar("Defesa", opcoes.textos.defesa);
+  const hDen = await guardar("Complaint", opcoes.textos.denuncia);
+  marcar("the case opened, with the complaint", (await mandar(() => pEsc.abrir({ denuncia: B(hDen) }, OPC))).hash);
+  const hProva = await guardar("Evidence", opcoes.textos.prova);
+  marcar("evidence, filed by the clerk", (await mandar(() => pEsc.registrar({ autor: escrivao.publicKey(), tipo: 1, hash: B(hProva) }, OPC))).hash);
+  const hDef = await guardar("Defence", opcoes.textos.defesa);
   const pAc = await cliente(proc, acusado);
-  marcar("defesa, pela própria pessoa julgada", (await mandar(() => pAc.registrar({ autor: acusado.publicKey(), tipo: 2, hash: B(hDef) }, OPC))).hash);
+  marcar("defence, filed by the person judged", (await mandar(() => pAc.registrar({ autor: acusado.publicKey(), tipo: 2, hash: B(hDef) }, OPC))).hash);
 
   // ---- 5. the sealed draw --------------------------------------------------
 
   const rodada = Number(fechamento.rodada);
-  fase("sorteio", `Esperando a rodada ${rodada} do drand, que ainda não existe`);
+  fase("sorteio", `Waiting for drand round ${rodada}, which does not exist yet`);
   await ateInstante(GENESIS + (rodada - 1) * PERIODO + 2);
   const rd = await (await fetch(`${DRAND}/v2/chains/${CADEIA}/rounds/${rodada}`)).json();
   w.conferir_baliza(BigInt(rodada), rd.signature);
-  nota(`a assinatura da rodada ${rodada} confere com a chave da quicknet, aqui no navegador`);
+  nota(`round ${rodada}’s signature matches the quicknet key, checked here in the browser`);
   const selo = (await mandar(() => kEsc.seal({ sig: B(w.assinatura_da_baliza(rd.signature)) }, OPC)));
-  marcar("selo: o contrato verifica a assinatura do drand", selo.hash);
+  marcar("seal: the contract verifies drand’s signature", selo.hash);
   const seed = BigInt(selo.valor.seed), limiar = BigInt(selo.valor.limiar);
 
-  fase("assentos", "Cada sorteado prova o assento em conhecimento zero, de uma conta nova");
+  fase("assentos", "Each person drawn proves their seat in zero knowledge, from a new account");
   const evK = async () => (await lerEventos(klero, inicio)).filter((e) => e.evento === "Inscrito" || e.evento === "Impedido");
   const eventosArvore = await evK();
   const yDe = segredos.map((s) => P.hash2(seed, s));
@@ -275,18 +275,18 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
     const input = await deps.provar.entrada(P, eventosArvore, segredos[i], seed, assento.publicKey());
     const t0 = Date.now();
     const pr = await deps.provar.provar(deps.snarkjs, input, deps.circuito.wasm, deps.circuito.zkey);
-    nota(`prova do jurado ${i}: ${((Date.now() - t0) / 1000).toFixed(1)} s no navegador`);
+    nota(`juror ${i}’s proof: ${((Date.now() - t0) / 1000).toFixed(1)} s in the browser`);
     const prova = { a: B(pr.proof.a), b: B(pr.proof.b), c: B(pr.proof.c) };
     const r = await mandar(async () => (await cliente(klero, assento)).claim({ assento: assento.publicKey(), prova, y: BigInt(pr.y) }, OPC));
-    marcar(`assento provado (y = ${pr.y.slice(0, 6)}…)`, r.hash);
+    marcar(`seat proved (y = ${pr.y.slice(0, 6)}…)`, r.hash);
   }
   const abaixo = jurados.map((_, i) => i).filter((i) => i !== 0 && yDe[i] < limiar);
-  nota(`${abaixo.length} pessoas caíram abaixo do limiar; só cada uma sabe disso`);
+  nota(`${abaixo.length} people fell below the threshold; only each of them knows it`);
   for (const i of abaixo) await reivindicar(i);
   await ateLedger(selo.valor.prazo);
   let fim = (await mandar(() => kEsc.finalize(OPC))).valor;
   if (!fim) {
-    nota("menos de k reivindicações: o limiar se amplia uma vez");
+    nota("fewer than k claims: the threshold widens once");
     for (const i of jurados.map((_, j) => j).filter((j) => j !== 0 && !assentoDe.has(j))) {
       await reivindicar(i);
       if (assentoDe.size >= PLANO.k) break;
@@ -300,21 +300,21 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
 
   // ---- 6. attendance and the session --------------------------------------
 
-  fase("quorum", "Os jurados sentados comparecem pelas contas de assento");
+  fase("quorum", "The seated jurors attend through their seat accounts");
   const presentes = sentados.slice(0, sentados.length - 1);
   const ausente = sentados[sentados.length - 1];
   for (const [, kp] of presentes) {
-    marcar("presença, por uma conta de assento", (await mandar(async () => (await cliente(proc, kp)).comparecer({ assento: kp.publicKey() }, OPC))).hash);
+    marcar("attendance, from a seat account", (await mandar(async () => (await cliente(proc, kp)).comparecer({ assento: kp.publicKey() }, OPC))).hash);
   }
-  nota(`um jurado sorteado não compareceu: ${ausente[1].publicKey().slice(0, 6)}…`);
-  const hAta = await guardar("Ata de deliberação", opcoes.textos.ataJurado);
+  nota(`one juror drawn did not attend: ${ausente[1].publicKey().slice(0, 6)}…`);
+  const hAta = await guardar("Deliberation minutes", opcoes.textos.ataJurado);
   const primeiro = presentes[0][1];
-  marcar("ata de deliberação, por uma conta de assento", (await mandar(async () =>
+  marcar("deliberation minutes, from a seat account", (await mandar(async () =>
     (await cliente(proc, primeiro)).registrar({ autor: primeiro.publicKey(), tipo: 3, hash: B(hAta) }, OPC))).hash);
 
   // ---- 7. the vote, on Tessera --------------------------------------------
 
-  fase("votacao", "A votação abre no Tessera, com os presentes como votantes");
+  fase("votacao", "The vote opens on Tessera, with the attendees as the voters");
   const aptos = presentes.map(([, kp]) => kp.publicKey());
   const xdrs = aptos.map((a) => hex(new Address(a).toScVal().toXDR()));
   const pesos = new Uint32Array(aptos.length).fill(1);
@@ -328,8 +328,8 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
     perguntas: [{ opcoes: 2, confidencial: true }], raiz_aptos: B(raizAptos), mesa: [], limiar: 0,
     abre_em: abreEm, fecha_em: fechaEm, anel: true, secoes: 1, limite_secao: 0,
     rodada: BigInt(rodadaVoto), rodada_abertura: 0n }, OPC));
-  marcar("Tessera: votação aberta, cédula sigilosa, fechadura de tempo", ab.hash);
-  marcar("o caso vincula a votação: os votantes são exatamente os presentes",
+  marcar("Tessera: vote opened, secret ballot, time lock", ab.hash);
+  marcar("the case binds the vote: the voters are exactly the attendees",
     (await mandar(() => pEsc.vincular_votacao({ proposta: B(idVoto) }, OPC))).hash);
   const chaves = [];
   for (const [j, [, kp]] of presentes.entries()) {
@@ -338,10 +338,10 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
     const r = await mandar(async () => (await cliente(TESSERA, kp)).comparecer({ proposta: B(idVoto), votante: kp.publicKey(),
       chave_anel: B(chave.publica), caminho: cam.irmaos.map(B), indice: cam.indice, secao: 0 }, OPC));
     chaves.push(chave);
-    marcar("Tessera: comparecimento no anel", r.hash);
+    marcar("Tessera: attendance in the ring", r.hash);
   }
   const escolhas = await opcoes.escolherVotos(aptos);
-  fase("urna", "Cada presente vota em segredo, de uma chave de uso único");
+  fase("urna", "Each attendee votes in secret, from a single-use key");
   await ateLedger(abreEm - 1);
   const tLer = await cliente(TESSERA, apurador);
   const anel = (await lerValor(() => tLer.anel({ proposta: B(idVoto), secao: 0 }))).map((x) => hex(x));
@@ -359,10 +359,10 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
       provas_soma: c.cedula.provas_soma.map((p) => ({ a: B(p.a), z: BigInt("0x" + p.z) })),
       escolhas: Array.from(c.cedula.escolhas), cripto: B(c.cedula.cripto) }, OPC));
     votos.push(r.hash);
-    marcar("Tessera: uma cédula, de uma chave de uso único", r.hash);
+    marcar("Tessera: one ballot, from a single-use key", r.hash);
   }
 
-  fase("apuracao", "A urna fecha; a chave sai do drand; qualquer um apura");
+  fase("apuracao", "The ballot box closes; the key comes from drand; anyone can tally");
   await ateLedger(fechaEm);
   await ateInstante(Number(w.instante_da_rodada(BigInt(rodadaVoto))) + 3);
   const rv = await (await fetch(`${DRAND}/v2/chains/${CADEIA}/rounds/${rodadaVoto}`)).json();
@@ -372,38 +372,38 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
     .map((e) => scValToNative(e.value));
   const compromissos = cedulas.flatMap((v) => v[1].map((x) => hex(x)));
   const aberta = w.abertura_da_secao(compromissos, cedulas.map((v) => hex(v[3])), 2, h, BigInt(rodadaVoto), rv.signature);
-  marcar("Tessera: a seção apurada", (await mandar(() => tLer.apurar_secao({ proposta: B(idVoto), quem: apurador.publicKey(),
+  marcar("Tessera: the section tallied", (await mandar(() => tLer.apurar_secao({ proposta: B(idVoto), quem: apurador.publicKey(),
     secao: 0, compromissos: compromissos.map(B), abertas: Array.from(aberta.abertas) }, OPC))).hash);
   const aberturas = Array.from(aberta.totais).map((_, j) => BigInt("0x" + w.somar_aberturas([aberta.aberturas[j]])));
   const pub = await mandar(() => tLer.publicar_resultado({ proposta: B(idVoto), quem: apurador.publicKey(), secoes: [0],
     totais: Array.from(aberta.totais), aberturas }, OPC));
-  marcar(`Tessera: placar publicado, ${Array.from(aberta.totais).join(" a ")}`, pub.hash);
+  marcar(`Tessera: score published, ${Array.from(aberta.totais).join(" to ")}`, pub.hash);
 
   // ---- 8. the verdict ------------------------------------------------------
 
-  fase("veredito", "O caso lê o placar do Tessera e aplica a regra do nível");
+  fase("veredito", "The case reads Tessera’s score and applies the level’s rule");
   const dec = await mandar(() => pEsc.decidir(OPC));
-  marcar("veredito", dec.hash);
+  marcar("verdict", dec.hash);
   const d = dec.valor;
   aviso({ dado: "veredito", valor: { sim: d.sim, nao: d.nao, exigidos: d.exigidos, procedente: d.procedente } });
-  const hSessao = await guardar("Ata da sessão", `# Ata da sessão\n\nCaso de demonstração, aberto no navegador.\n\n- Presentes: ${presentes.length} de ${sentados.length}; quórum ${PLANO.votosMinimos}.\n- Votação no Tessera: \`${idVoto}\`, com os presentes como votantes.\n`);
-  marcar("ata da sessão", (await mandar(() => pEsc.registrar({ autor: escrivao.publicKey(), tipo: 3, hash: B(hSessao) }, OPC))).hash);
-  const hDec = await guardar("Ata da decisão", `# Ata da decisão\n\n- Placar do Tessera: ${d.sim} sim, ${d.nao} não; exigidos ${d.exigidos}.\n- Decisão: ${d.procedente ? "procedente" : "improcedente"}.\n`);
-  marcar("ata da decisão", (await mandar(() => pEsc.registrar({ autor: escrivao.publicKey(), tipo: 3, hash: B(hDec) }, OPC))).hash);
+  const hSessao = await guardar("Session minutes", `# Session minutes\n\nA demonstration case, opened in the browser.\n\n- Attending: ${presentes.length} of ${sentados.length}; quorum ${PLANO.votosMinimos}.\n- Vote on Tessera: \`${idVoto}\`, with the attendees as the voters.\n`);
+  marcar("session minutes", (await mandar(() => pEsc.registrar({ autor: escrivao.publicKey(), tipo: 3, hash: B(hSessao) }, OPC))).hash);
+  const hDec = await guardar("Decision minutes", `# Decision minutes\n\n- Tessera’s score: ${d.sim} yes, ${d.nao} no; ${d.exigidos} required.\n- Decision: ${d.procedente ? "upheld" : "not upheld"}.\n`);
+  marcar("decision minutes", (await mandar(() => pEsc.registrar({ autor: escrivao.publicKey(), tipo: 3, hash: B(hDec) }, OPC))).hash);
 
   // ---- 9. the reveal -------------------------------------------------------
 
-  fase("revelacao", `Esperando o ledger ${revelaEm}; depois, cada jurado mostra quem é`);
+  fase("revelacao", `Waiting for ledger ${revelaEm}; then each juror shows who they are`);
   await ateLedger(revelaEm);
   const quemRevela = jurados.map((_, i) => i).filter((i) => i !== 0 && i !== ausente[0]);
   await emLotes(quemRevela, 8, async (i) => {
     const r = await mandar(async () => (await cliente(klero, jurados[i])).reveal({ jurado: jurados[i].publicKey(), s: segredos[i] }, OPC));
-    marcar(`revelação ${i}`, r.hash);
+    marcar(`reveal ${i}`, r.hash);
   });
 
   // ---- 10. read it all back ------------------------------------------------
 
-  fase("registro", "Lendo tudo de volta do ledger, sem confiar em nenhum contrato");
+  fase("registro", "Reading everything back from the ledger, trusting no contract");
   const eventos = [
     ...(await lerEventos(klero, inicio)).map((e) => ({ ...e, contrato: "kleroterion" })),
     ...(await lerEventos(proc, inicio)).map((e) => ({ ...e, contrato: "processo" })),
@@ -419,7 +419,7 @@ export async function rodarCaso(deps, opcoes, aviso = () => {}) {
     contratos: { kleroterion: klero, processo: proc, tessera: TESSERA, bilhete: sac, verificador: VERIFICADOR, emissor: emissor.publicKey() },
     aleatoriedade,
     eventos,
-    tessera: { commit: "356c22fbf90ea396203ea411b463ae14a5480d59", id: idVoto, perguntas: [{ texto: "Aplicar a sanção?", opcoes: ["sim", "nao"], confidencial: true }],
+    tessera: { commit: "356c22fbf90ea396203ea411b463ae14a5480d59", id: idVoto, perguntas: [{ texto: "Apply the sanction?", opcoes: ["yes", "no"], confidencial: true }],
       aptos, proposta, resultado, abertura_tx: ab.hash, votos_tx: votos, apuracao: { tx: pub.hash } },
   };
   return { registro, docs, hashes };

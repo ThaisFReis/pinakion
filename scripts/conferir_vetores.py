@@ -153,14 +153,14 @@ def main():
             and sem_revelacao == esperado["assentos_sem_revelacao"]
         )
         if certo:
-            print(f"  ok    {v['nome']}: {len(conferencias)} conferencias")
+            print(f"  ok    {v['nome']}: {len(conferencias)} checks")
         else:
             falhas += 1
-            print(f"  FALHA {v['nome']}")
+            print(f"  FAIL  {v['nome']}")
             for nome in ruins:
-                print(f"        nao confere: {nome}")
+                print(f"        does not match: {nome}")
             if estados != esperado["jurados"]:
-                print("        os estados dos jurados divergem")
+                print("        the jurors' states differ")
 
     # T-045: the verifier catches a party who sits unimpeded, and a k that is
     # not the level's. Each mutation of the sealed vector must fail by name.
@@ -168,24 +168,24 @@ def main():
     for v in dados.get("selados", []):
         fech = next(e for e in v["eventos"] if e["evento"] == "Fechado")
         primeiro = next(e["jurado"] for e in v["eventos"] if e["evento"] == "Inscrito")
-        for campo, valor, nome in [("acusado", primeiro, "a parte inscrita foi impedida antes do fechamento"),
-                                   ("gravidade", fech["gravidade"] + 1, "k e o do nivel")]:
+        for campo, valor, nome in [("acusado", primeiro, "the enrolled party was impeded before the lock"),
+                                   ("gravidade", fech["gravidade"] + 1, "k is the k of the level")]:
             w = copy.deepcopy(v)
             next(e for e in w["eventos"] if e["evento"] == "Fechado")[campo] = valor
             if dict(verificar(w)[4]).get(nome, True):
                 falhas += 1
-                print(f"  FALHA a mutacao de {campo} passou sem '{nome}'")
+                print(f"  FAIL  the mutation of {campo} passed without '{nome}'")
             else:
-                print(f"  ok    mutacao de {campo}: '{nome}' nao confere")
+                print(f"  ok    mutation of {campo}: '{nome}' does not match")
     # T-040: the recorded testnet run still checks out under today's verifier.
     registro = RAIZ / "docs" / "evidencia-testnet-registro.json"
     _, painel_tn, completo_tn, _, conf_tn = verificar(json.loads(registro.read_text()))
     ruins = [nome for nome, ok in conf_tn if not ok]
     if ruins or not completo_tn:
         falhas += 1
-        print(f"  FALHA a rodada de testnet registrada: {ruins}")
+        print(f"  FAIL  the recorded testnet round: {ruins}")
     else:
-        print(f"  ok    a rodada de testnet registrada: {len(conf_tn)} conferencias, painel de {len(painel_tn)}")
+        print(f"  ok    the recorded testnet round: {len(conf_tn)} checks, panel of {len(painel_tn)}")
     # T-042: the Tessera export in docs/ is what the exporter writes today.
     import subprocess  # noqa: E402
     exportado = subprocess.run([sys.executable, str(RAIZ / "scripts" / "exportar_tessera.py"), str(registro)],
@@ -205,9 +205,9 @@ def main():
     ruins = [n for n, ok in r[1] if not ok]
     if ruins or not all(r[0].values()):
         falhas += 1
-        print(f"  FALHA o processo registrado: {ruins or r[0]}")
+        print(f"  FAIL  the recorded case: {ruins or r[0]}")
     else:
-        print(f"  ok    o processo registrado: {len(r[1])} conferencias, {len(r[0])} fases")
+        print(f"  ok    the recorded case: {len(r[1])} checks, {len(r[0])} phases")
     def mutado(f):
         w = copy.deepcopy(caso)
         f(w)
@@ -220,14 +220,14 @@ def main():
     def parte(w):
         c = next(e for e in w["eventos"] if e["evento"] == "Compareceu")
         c["assento"] = next(e for e in w["eventos"] if e["evento"] == "CasoAberto")["acusado"]
-    for nome, f, conferencia in [("aptos", aptos, "a lista de votantes do Tessera e a dos presentes, na ordem"),
-                                 ("placar", placar, "o placar e o que o Tessera publicou"),
-                                 ("parte", parte, "a parte nunca compareceu como jurada")]:
+    for nome, f, conferencia in [("voters", aptos, "the Tessera voter list is the attendees, in order"),
+                                 ("score", placar, "the score is the one Tessera published"),
+                                 ("party", parte, "the party never attended as a juror")]:
         if mutado(f).get(conferencia, True):
             falhas += 1
-            print(f"  FALHA a mutacao '{nome}' passou sem '{conferencia}'")
+            print(f"  FAIL  the mutation '{nome}' passed without '{conferencia}'")
         else:
-            print(f"  ok    mutacao do processo '{nome}': '{conferencia}' nao confere")
+            print(f"  ok    case mutation '{nome}': '{conferencia}' does not match")
     # T-049: docs/evidencia-processo.md is what its generator prints from the record.
     impresso = subprocess.run([sys.executable, str(RAIZ / "scripts" / "evidencia_processo.py"),
                                str(RAIZ / "docs" / "evidencia-processo-registro.json")],

@@ -47,7 +47,7 @@ export function criarPoseidon(constantes) {
 
   function hash(...entradas) {
     for (const x of entradas) {
-      if (x < 0n || x >= R) throw new Error("Poseidon: entrada fora do campo");
+      if (x < 0n || x >= R) throw new Error("Poseidon: input outside the field");
     }
     return permutacao([0n, ...entradas])[0];
   }

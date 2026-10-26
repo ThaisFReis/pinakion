@@ -48,7 +48,7 @@ Every hash on this page is real. They were produced on **2026-10-26** (UTC) by o
   - `Poseidon(s) = c` and `y = Poseidon(seed, s)` for the recusal and for all 18 reveals;
   - the order and the panel.
 - It found: **seated j2, j12, j13 · recused j3 · impeded j0 · 15 revealed without a seat · 0 seats without a reveal**.
-- Its verdict is **`CONFERE — 77 conferencias, 0 falha(s)`**.
+- Its verdict is **`MATCHES — 77 checks, 0 failure(s).`** (before T-058 translated the verifier's output, the same verdict printed as `CONFERE — 77 conferencias, 0 falha(s)`).
 
 Anyone can re-run the check:
 

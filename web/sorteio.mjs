@@ -1,11 +1,11 @@
-// Recomputação do sorteio do Soroban, sem dependências.
-// Roda no navegador e no Node. A única coisa de fora é o HMAC-SHA256,
-// que vem da WebCrypto padrão.
+// Recomputation of the Soroban draw, with no dependencies.
+// Runs in the browser and in Node. The only outside piece is HMAC-SHA256,
+// which comes from the standard WebCrypto.
 //
-// Receita lida do host (rs-soroban-env):
-//   1. chave = HMAC-SHA256(SALT, semente)   [crypto/mod.rs: unbias_prng_seed]
-//   2. ChaCha20Rng::from_seed(chave)        [rand_chacha 0.3.1]
-//   3. Fisher-Yates de rand 0.8.5, índices por amostragem de Lemire
+// Recipe read from the host (rs-soroban-env):
+//   1. key = HMAC-SHA256(SALT, seed)        [crypto/mod.rs: unbias_prng_seed]
+//   2. ChaCha20Rng::from_seed(key)          [rand_chacha 0.3.1]
+//   3. Fisher-Yates from rand 0.8.5, indices by Lemire sampling
 //
 // SALT = sha256("Public Global Stellar Network ; September 2015")
 
@@ -15,7 +15,7 @@ export const SALT = hexToBytes(
 
 export function hexToBytes(h) {
   const clean = h.trim().replace(/^0x/, "");
-  if (clean.length % 2) throw new Error("hex de tamanho ímpar");
+  if (clean.length % 2) throw new Error("hex of odd length");
   const out = new Uint8Array(clean.length / 2);
   for (let i = 0; i < out.length; i++) {
     out[i] = parseInt(clean.substr(i * 2, 2), 16);
@@ -37,7 +37,7 @@ function chacha20Block(key, counter) {
   st[0] = 0x61707865; st[1] = 0x3320646e; st[2] = 0x79622d32; st[3] = 0x6b206574;
   const dv = new DataView(key.buffer, key.byteOffset, key.byteLength);
   for (let i = 0; i < 8; i++) st[4 + i] = dv.getUint32(i * 4, true);
-  st[12] = counter >>> 0;                      // nonce de 12 bytes fica em zero
+  st[12] = counter >>> 0;                      // the 12-byte nonce stays zero
   const w = st.slice();
   for (let i = 0; i < 10; i++) {
     quarterRound(w, 0, 4, 8, 12); quarterRound(w, 1, 5, 9, 13);
@@ -61,7 +61,7 @@ class ChaCha20Rng {
   }
 }
 
-// rand 0.8.5: UniformInt<u32>::sample_single — método de Lemire com rejeição.
+// rand 0.8.5: UniformInt<u32>::sample_single — Lemire's method with rejection.
 function genIndex(rng, ubound) {
   if (ubound === 0) return rng.nextU32();
   const range = BigInt(ubound);
@@ -76,7 +76,7 @@ function genIndex(rng, ubound) {
   }
 }
 
-// rand 0.8.5 SliceRandom::shuffle — Fisher-Yates de trás para a frente.
+// rand 0.8.5 SliceRandom::shuffle — Fisher-Yates from back to front.
 function shuffle(arr, rng) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = genIndex(rng, i + 1);
@@ -91,7 +91,7 @@ async function hmacSha256(keyBytes, msgBytes) {
   return new Uint8Array(await crypto.subtle.sign("HMAC", k, msgBytes));
 }
 
-/** Recomputa o painel: devolve as `k` primeiras posições de um rol de `n`. */
+/** Recomputes the panel: returns the first `k` positions of a roster of `n`. */
 export async function sortear(sementeHex, n, k) {
   const chave = await hmacSha256(SALT, hexToBytes(sementeHex));
   const rng = new ChaCha20Rng(chave);
@@ -101,19 +101,19 @@ export async function sortear(sementeHex, n, k) {
 }
 
 /**
- * O painel do kleroterion: embaralha a ordem do rol inteiro e senta os `k`
- * primeiros que não estão em `inelegiveis` (impedidos ou sem bilhete). Não há
- * novo sorteio para substituir: o substituto é o próximo da ordem.
+ * The kleroterion panel: shuffles the order of the whole roster and seats the
+ * first `k` not in `inelegiveis` (impeded or without a ticket). There is no
+ * new draw to replace anyone: the substitute is the next in the order.
  */
 export async function painel(sementeHex, rol, inelegiveis, k) {
   const fora = new Set(inelegiveis);
   const ordem = await sortear(sementeHex, rol.length, rol.length);
   const sentados = ordem.map((i) => rol[i]).filter((a) => !fora.has(a));
-  if (sentados.length < k) throw new Error(`só ${sentados.length} elegíveis para ${k} assentos`);
+  if (sentados.length < k) throw new Error(`only ${sentados.length} eligible for ${k} seats`);
   return sentados.slice(0, k);
 }
 
-/** A aleatoriedade de uma rodada é o sha256 da assinatura. */
+/** The randomness of a round is the sha256 of its signature. */
 export async function aleatoriedadeDaAssinatura(sigHex) {
   const d = await crypto.subtle.digest("SHA-256", hexToBytes(sigHex));
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -153,12 +153,12 @@ export function verificarSelado(registro, P, raiz) {
   const vazio = { estados: new Map(), painel: [], completo: false, semRevelacao: 0, conferencias };
 
   const fechado = um("Fechado");
-  confere("houve fechamento", fechado);
+  confere("there was a lock", fechado);
   if (!fechado) return vazio;
-  confere("a raiz do fechamento e a dos compromissos", String(raiz(folhas, P.hash2)) === fechado.raiz);
+  confere("the lock root is the root of the commitments", String(raiz(folhas, P.hash2)) === fechado.raiz);
   const n = BigInt(fechado.n);
   const k = fechado.k;
-  confere("N e quem estava autorizado", fechado.n === ordem.length - impedidos.size);
+  confere("N is the number of authorized jurors", fechado.n === ordem.length - impedidos.size);
 
   // T-045: the severity table and the party, when the record carries them.
   const constituido = um("Constituido");
@@ -166,15 +166,15 @@ export function verificarSelado(registro, P, raiz) {
     const { niveis } = constituido;
     const g = fechado.gravidade;
     const noQuadro = Number.isInteger(g) && g >= 1 && g <= niveis.length;
-    confere("o nivel do fechamento esta na tabela", noQuadro);
+    confere("the lock level is in the table", noQuadro);
     if (noQuadro) {
-      confere("k e o do nivel", k === niveis[g - 1].k);
-      confere("o rol chega ao minimo do nivel", ordem.length >= niveis[g - 1].rol_minimo);
+      confere("k is the k of the level", k === niveis[g - 1].k);
+      confere("the roster reaches the level minimum", ordem.length >= niveis[g - 1].rol_minimo);
     }
     if ("ledger" in fechado) {
-      confere("o afastamento e o do construtor", fechado.afastado_ate === fechado.ledger + constituido.afastamento);
+      confere("the suspension is the one set at construction", fechado.afastado_ate === fechado.ledger + constituido.afastamento);
       if ("espera_minima" in constituido) {
-        confere("a revelacao respeita a espera minima", fechado.revela_em >= fechado.ledger + constituido.espera_minima);
+        confere("the reveal respects the minimum wait", fechado.revela_em >= fechado.ledger + constituido.espera_minima);
       }
     }
   }
@@ -182,7 +182,7 @@ export function verificarSelado(registro, P, raiz) {
   if (parte !== undefined && jurados.has(parte)) {
     const antes = eventos.slice(0, eventos.indexOf(fechado));
     confere(
-      "a parte inscrita foi impedida antes do fechamento",
+      "the enrolled party was impeded before the lock",
       antes.some((e) => e.evento === "Impedido" && e.jurado === parte),
     );
   }
@@ -190,10 +190,10 @@ export function verificarSelado(registro, P, raiz) {
   const seed = BigInt("0x" + registro.aleatoriedade) >> 8n;
   let limiar = 2n * BigInt(k) >= n ? P.R : (P.R * 2n * BigInt(k)) / n;
   const selado = um("Selado");
-  confere("houve selo", selado);
+  confere("there was a seal", selado);
   if (!selado) return vazio;
-  confere("a semente e a da rodada drand >> 8", BigInt(selado.seed) === seed);
-  confere("o limiar e floor(r*2k/N)", BigInt(selado.limiar) === limiar);
+  confere("the seed is the drand round >> 8", BigInt(selado.seed) === seed);
+  confere("the threshold is floor(r*2k/N)", BigInt(selado.limiar) === limiar);
 
   const reivindicados = [];
   const recusados = new Map();
@@ -201,18 +201,18 @@ export function verificarSelado(registro, P, raiz) {
   for (const e of eventos) {
     if (e.evento === "Ampliado") {
       limiar = P.R;
-      confere("a ampliacao leva o limiar ao campo", BigInt(e.limiar) === P.R);
+      confere("the widening takes the threshold to the field", BigInt(e.limiar) === P.R);
     } else if (e.evento === "Reivindicado") {
       const y = BigInt(e.y);
-      confere(`reivindicacao ${y} abaixo do limiar`, y < limiar);
-      confere(`reivindicacao ${y} unica`, !reivindicados.includes(y));
+      confere(`claim ${y} below the threshold`, y < limiar);
+      confere(`claim ${y} unique`, !reivindicados.includes(y));
       reivindicados.push(y);
     } else if (e.evento === "Recusado" || e.evento === "Revelado") {
       const s = BigInt(e.s);
       const y = BigInt(e.y);
       const c = jurados.get(e.jurado)?.c;
-      confere(`${e.evento} de ${e.jurado}: Poseidon(s) = c`, c !== undefined && P.hash1(s) === c);
-      confere(`${e.evento} de ${e.jurado}: y = Poseidon(seed, s)`, P.hash2(seed, s) === y);
+      confere(`${e.evento} by ${e.jurado}: Poseidon(s) = c`, c !== undefined && P.hash1(s) === c);
+      confere(`${e.evento} by ${e.jurado}: y = Poseidon(seed, s)`, P.hash2(seed, s) === y);
       if (e.evento === "Recusado") recusados.set(e.jurado, y);
       else revelados.set(e.jurado, e);
     }
@@ -222,21 +222,24 @@ export function verificarSelado(registro, P, raiz) {
   const restantes = reivindicados.filter((y) => !fora.has(y)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const painel = restantes.slice(0, k);
   const final = um("Finalizado");
-  confere("houve painel", final);
+  confere("there was a panel", final);
   if (final) {
     confere(
-      "o painel sao os k menores y que ficaram",
+      "the panel is the k smallest remaining y",
       final.painel.length === painel.length && final.painel.every((v, i) => BigInt(v) === painel[i]),
     );
-    confere("completo se e so se chegou a k", final.completo === (painel.length === k));
+    confere("complete if and only if it reached k", final.completo === (painel.length === k));
   }
   for (const [quem, e] of revelados) {
-    confere(`Revelado de ${quem}: sentado confere`, e.sentado === painel.includes(BigInt(e.y)));
+    confere(`Revelado by ${quem}: the sat flag matches`, e.sentado === painel.includes(BigInt(e.y)));
   }
   if (parte !== undefined) {
-    confere("a parte nao senta no proprio caso", !(revelados.has(parte) && revelados.get(parte).sentado));
+    confere("the party does not sit in their own case", !(revelados.has(parte) && revelados.get(parte).sentado));
   }
 
+  // Each juror's state is a key, not display text: the golden vectors
+  // (tests/vetores-de-ouro.json, `esperado.jurados`) and the Python verifier
+  // hold these exact strings, so the pages map them to English labels.
   const estados = new Map();
   for (const quem of ordem) {
     if (impedidos.has(quem)) estados.set(quem, "impedido");

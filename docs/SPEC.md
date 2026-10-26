@@ -264,7 +264,7 @@ Run from a clean checkout — **verified**: on 2026-10-25 a fresh clone ran G1 t
 | G7 | `python3 scripts/conferir_numeros.py` | did not exist | **PASS, 34 figures in 7 documents** | added by T-023; T-035 adds the costs of `enroll`, `impede`, `lock` in this file; T-034 adds the `(cpu, mem)` constants of `contracts/poseidon` and `contracts/groth16-verifier` and `docs/evidencia-testnet-spike.md` |
 | G8 | `node circuits/test.mjs` (`npm run test:circuito`) | did not exist | **PASS, 19 checks** | added by T-036 (T-037 adds: the key embedded in the verifier is `vk.json`): the CLI's path reaches circomlib's roots; a real claim verifies; wrong root, seed, claimer or another juror's `y` are refused; no witness exists for a false root or `y`; an impeded or unknown `s` gets no proof; the Rust fixture uses this setup's `vk`. Needs `npm ci`; no circom, no ptau |
 | G9 | `python3 scripts/custos_testnet.py docs/evidencia-testnet-hashes.tsv` | did not exist | **network, not per task** | added by T-040: reprints the cost table in `docs/evidencia-testnet-bilhete.md` from the 53 testnet transactions (declared resources, fee charged). Needs the Stellar CLI and RPC access; run when that page changes |
-| G10 | `python3 scripts/check_english.py` | did not exist | **FAIL at the start of T-058: 184 path(s), 10,284 line(s), 222 file(s)**; after DEC-045: 168 path(s), 4,776 line(s), 198 file(s) | added by T-058 as the test for DEC-044. Reads the tracked files and reports a Portuguese file name, accented letter or word as `path:line`. `ALLOWED_TESSERA` holds the names Tessera owns and only shrinks; third-party and generated paths are skipped, each with its reason in the script |
+| G10 | `python3 scripts/check_english.py` | did not exist | **FAIL at the start of T-058: 184 path(s), 10,284 line(s), 222 file(s)**; after DEC-045, on a clean checkout: 152 path(s), 4,914 line(s), 182 file(s) | added by T-058 as the test for DEC-044. Reads the tracked files and reports a Portuguese file name, accented letter or word as `path:line`. `ALLOWED_TESSERA` holds the names Tessera owns and only shrinks; third-party and generated paths are skipped, each with its reason in the script |
 
 **Published numbers.** The cost figures are asserted in `test.rs` against constants, so a change in cost turns G2 red; G7 then checks that the six documents still print those same constants, so a document drifting turns G7 red. Both directions were proven to fail (checked 2026-10-25).
 
@@ -819,7 +819,7 @@ Decision: every string a visitor reads in `web/` is English now, and the check n
 
 Alternatives: **translating `docs/caso-demo/` now** — rejected: the recorded case would stop matching its on-chain hashes and G5, G6 and the case page would go red. **Waiting for the redeploy** — rejected: the human asked for the app now, and the visible text does not depend on the contracts.
 
-Consequences: G5, G6, G7 pass; G10 goes from 4,945 to 4,776 lines. `README.md` and `docs/evidencia-testnet-bilhete.md` quote the verifier's new verdict line; DEC-028 keeps the old one, as it was printed then. Spec sections updated: §8, §9, §10.
+Consequences: G5, G6, G7 pass; G10 still fails, at 152 path(s), 4,914 line(s), 182 file(s) on a clean checkout. `README.md` and `docs/evidencia-testnet-bilhete.md` quote the verifier's new verdict line; DEC-028 keeps the old one, as it was printed then. Spec sections updated: §8, §9, §10.
 
 ## §11 Open questions
 

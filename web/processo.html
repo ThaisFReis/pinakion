@@ -19,11 +19,16 @@
     .cifras div + div { padding-left: 18px; border-left: 1px solid var(--line); }
     .cifras strong { font: 600 2.6rem/1 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
     .cifras span { color: var(--muted); font-size: var(--t-small); line-height: 1.4; }
+    .andamento { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 0; font: var(--t-data)/1.5 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+    .andamento span + span::before { content: "·"; margin-inline: 12px; color: var(--line); }
+    .andamento .feito { color: var(--patina); }
+    .hero-acoes { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; margin-top: 30px; }
 
     .trilha { position: sticky; top: 0; z-index: 5; background: var(--stone); border-bottom: 1px solid var(--line); }
     .trilha ol { list-style: none; display: flex; gap: 0; padding: 0; margin: 0; overflow-x: auto; scrollbar-width: none; }
     .trilha li { flex: 1 0 auto; }
     .trilha a { display: flex; align-items: center; gap: 8px; padding: 14px 14px 13px 0; text-decoration: none; font-size: .78rem; color: var(--muted); white-space: nowrap; border-bottom: 2px solid transparent; }
+    .trilha .num { font: 500 var(--t-data)/1 var(--mono); }
     .trilha a[aria-current="step"] { color: var(--ink); border-bottom-color: var(--patina); }
     .marca { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; font: 500 .62rem/1 var(--mono); flex: none; }
     .marca.ok { border-color: var(--patina); background: var(--patina); color: var(--on-accent); }
@@ -42,6 +47,24 @@
     .provas li { display: flex; gap: 10px; align-items: baseline; }
     .provas li::before { content: "✓"; color: var(--patina); font-weight: 700; }
     .provas li.bad::before { content: "✗"; color: var(--error); }
+    .conferido { display: flex; flex-direction: column; gap: 12px; }
+    .conferido-cabeca { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    .conferido-cabeca .eyebrow { color: var(--patina); }
+    .conferido-cabeca .conta { font: 500 var(--t-data)/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .conferido-cabeca .conta.bad { color: var(--error); }
+    .legenda { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0; font-size: var(--t-data); color: var(--muted); }
+    .legenda span { display: inline-flex; align-items: center; gap: 8px; }
+    .legenda i { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--ink); background: var(--slab); flex: none; }
+    .legenda i.sentou, .legenda i.sim { background: var(--patina); border-color: var(--patina); }
+    .legenda i.nao { background: var(--line); border-color: var(--line); }
+    .legenda i.corte { width: 2px; height: 14px; border: 0; border-radius: 0; background: var(--bronze); }
+    .limiar-fig { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+    .limiar-fig svg { width: 100%; height: auto; display: block; overflow: visible; }
+    .limiar-fig .eixo { stroke: var(--line); }
+    .limiar-fig .corte { stroke: var(--bronze); }
+    .limiar-fig .sentou { fill: var(--patina); stroke: var(--patina); }
+    .limiar-fig .ficou { fill: var(--slab); stroke: var(--ink); }
+    .limiar-fig text { font: 500 12px var(--mono); fill: var(--muted); }
     .fatos { display: grid; grid-template-columns: max-content 1fr; gap: 6px 24px; font-size: var(--t-small); margin: 0; }
     .fatos dt { color: var(--muted); }
     .fatos dd { margin: 0; font-family: var(--mono); font-size: var(--t-data); overflow-wrap: anywhere; }
@@ -69,11 +92,14 @@
     .placar div { display: flex; flex-direction: column; gap: 4px; }
     .placar strong { font: 600 4.2rem/1 var(--display); font-variant-numeric: tabular-nums; }
     .placar span { color: var(--muted); font-size: var(--t-small); }
-    .regua { display: flex; gap: 6px; }
-    .regua i { width: 22px; height: 30px; border: 1px solid var(--line); }
-    .regua i.sim { background: var(--patina); border-color: var(--patina); }
-    .regua i.nao { background: var(--line); }
-    .regua i.exigido { outline: 2px solid var(--bronze); outline-offset: 2px; }
+    .regua { display: flex; flex-direction: column; gap: 14px; }
+    .regua-barra { display: flex; gap: 6px; }
+    .regua-barra i { width: 30px; height: 42px; border: 1px solid var(--ink); background: var(--slab); }
+    .regua-barra i.sim { background: var(--patina); border-color: var(--patina); }
+    .regua-barra i.nao { background: var(--line); border-color: var(--line); }
+    .regua-barra i.exigido { outline: 2px solid var(--bronze); outline-offset: 3px; }
+    .regua .legenda i { border-radius: 0; }
+    .regua .legenda i.ausente { background: var(--slab); border-color: var(--ink); }
 
     dialog { max-width: min(760px, 92vw); width: 100%; border: 1px solid var(--line); background: var(--slab); color: var(--ink); padding: 0; }
     dialog::backdrop { background: rgb(0 0 0 / .45); }
@@ -87,7 +113,11 @@
     .apresentar { background: transparent; border: 1px solid var(--line); color: var(--ink); min-height: 42px; padding: 8px 14px; border-radius: 2px; font-size: var(--t-small); display: inline-flex; gap: 8px; align-items: center; }
     .apresentar:hover { border-color: var(--ink); }
     .palco-controles { display: none; }
-    body.palco .masthead, body.palco .hero-caso, body.palco .trilha, body.palco .limites, body.palco .footer { display: none; }
+    body.palco .masthead, body.palco .hero-caso, body.palco .trilha, body.palco .footer, body.palco .limites:not(.atual) { display: none; }
+    body.palco .limites.atual { display: grid; min-height: 100vh; align-content: center; padding-block: 48px 120px; animation: entra .5s ease both; }
+    body.palco .limites .limit h3 { font: 600 clamp(2.2rem, 4vw, 3.5rem)/1.05 var(--display); letter-spacing: -.035em; }
+    body.palco .limites .limit p { font-size: 1.15rem; color: var(--ink); max-width: 62ch; }
+    body.palco .limites .status-note { display: none; }
     body.palco .fase { display: none; min-height: 100vh; align-content: center; border: 0; padding-block: 48px 120px; }
     body.palco .fase.atual { display: grid; animation: entra .5s ease both; }
     body.palco .fase-cabeca { position: static; }
@@ -97,8 +127,15 @@
     .palco-controles .barra { flex: 1; height: 2px; background: var(--line); }
     .palco-controles .barra i { display: block; height: 100%; background: var(--patina); width: 0; transition: width .4s ease; }
     .palco-controles button { background: transparent; border: 1px solid var(--line); color: var(--ink); min-height: 40px; padding: 6px 12px; border-radius: 2px; }
+    .palco-controles button[aria-pressed="true"] { border-color: var(--patina); color: var(--patina); }
+    .palco-controles .dica { font: var(--t-data)/1 var(--mono); }
     @keyframes entra { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-    @media (prefers-reduced-motion: reduce) { body.palco .fase.atual { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { body.palco .fase.atual, body.palco .limites.atual { animation: none; } }
+
+    @media (max-width: 1100px) {
+      .trilha a .titulo { display: none; }
+      .trilha a[aria-current="step"] .titulo { display: inline; }
+    }
 
     @media (max-width: 900px) {
       .fase { grid-template-columns: 1fr; gap: 20px; padding-block: 44px; }
@@ -108,6 +145,15 @@
       .cifras div { border-bottom: 1px solid var(--line); }
       .autos li { grid-template-columns: 1fr; gap: 4px; }
       .fatos { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .hero-acoes { gap: 12px 18px; margin-top: 24px; }
+      .palco-controles { flex-wrap: wrap; gap: 10px 12px; padding: 10px 20px; }
+      .palco-controles .barra { order: -1; flex-basis: 100%; }
+      .palco-controles .dica { display: none; }
+      #palco-rotulo { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .regua-barra i { width: 24px; height: 34px; }
+      .limiar-fig text { display: none; }
     }
   </style>
 </head>
@@ -122,7 +168,7 @@
       <nav class="nav" aria-label="Navegação principal">
         <a href="./index.html">O princípio</a>
         <a href="./processo.html" aria-current="page">O processo</a>
-        <a href="./vivo/index.html">Ao vivo</a>
+        <a href="./vivo/index.html">Ao vivo <span aria-hidden="true">↗</span></a>
         <button class="apresentar" id="apresentar" type="button" title="Um passo por tela, para gravar ou projetar (setas ou espaço)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 5v14l12-7Z" fill="currentColor"/></svg>Apresentar
         </button>
@@ -137,6 +183,14 @@
         <p class="eyebrow" style="color: var(--patina)">Caso fictício · testnet da Stellar · <span id="quando">26 out 2026</span></p>
         <h1 id="titulo" class="veredito-final" aria-live="polite" style="margin-top: 18px">Conferindo o processo…</h1>
         <p class="intro" id="resumo" style="margin-top: 26px; max-width: 64ch">Um caso de código de conduta, do rol ao veredito. Esta página lê os eventos dos contratos na testnet e refaz cada passo no seu navegador, sem confiar em nenhum deles.</p>
+        <p class="andamento" id="andamento" aria-live="polite"></p>
+        <div class="hero-acoes">
+          <a class="button" href="#rol">Percorrer as nove fases <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14m0 0-6-6m6 6 6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          <button class="apresentar" type="button" title="Uma fase por tela, para gravar ou projetar (setas ou espaço)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 5v14l12-7Z" fill="currentColor"/></svg>Apresentar
+          </button>
+          <a class="quiet-link" href="./vivo/index.html">Abrir um caso ao vivo <span aria-hidden="true">↗</span></a>
+        </div>
         <p class="status-note"><strong>Somente leitura.</strong> Nada aqui assina ou envia transações. Os nomes, o projeto e os fatos do caso são inventados; as transações são reais.</p>
         <div class="cifras" id="cifras" aria-label="O caso em cinco números"></div>
       </section>
@@ -148,7 +202,7 @@
   <div class="shell">
     <ol class="fases" id="fases"></ol>
 
-    <section class="section limites" aria-labelledby="limites-titulo">
+    <section class="section limites" id="limites" aria-labelledby="limites-titulo">
       <div class="limit">
         <h3 id="limites-titulo">O que este caso não mostra</h3>
         <p>Uma única máquina fez o papel de todas as pessoas, e todas as contas vieram do friendbot: na vida real, a conta de assento precisa ser financiada sem rastro até o jurado, e falta um relayer para isso. O setup do circuito foi feito por uma só parte. Os documentos dos autos são públicos aqui; um caso real precisa de autos sigilosos com acesso justificado, que estão desenhados e não construídos. A deliberação fora da cadeia quebra o selo quando os jurados se encontram. Os prazos são curtos para caber numa demonstração: o padrão aprovado para a revelação é de 30 dias. A correção do placar é conferida pelo verificador do Tessera, não por esta página. É só testnet, e nada foi auditado.</p>
@@ -163,6 +217,7 @@
     <button type="button" id="voltar" aria-label="Fase anterior">←</button>
     <span id="palco-rotulo"></span>
     <div class="barra"><i id="palco-barra"></i></div>
+    <span class="dica" aria-hidden="true">← → ou espaço</span>
     <button type="button" id="auto" aria-pressed="false">Avançar sozinho</button>
     <button type="button" id="avancar" aria-label="Próxima fase">→</button>
     <button type="button" id="sair">Sair</button>
@@ -271,14 +326,29 @@
     "o veredito veio depois da votacao": "o veredito veio depois da votação",
   };
   const rotulo = (n) => ROTULOS[n.replace(/^sorteio: /, "")] || n.replace(/^sorteio: /, "");
+  // The checks of one phase, under a count the reader sees before the lines.
+  function conferido(itens) {
+    const ok = itens.filter(([, v]) => v).length;
+    return el("div", { class: "conferido" },
+      el("p", { class: "conferido-cabeca" }, el("span", { class: "eyebrow" }, "Conferido no navegador"), el("span", { class: ok === itens.length ? "conta" : "conta bad" }, `${ok} de ${itens.length}`)),
+      el("ul", { class: "provas" }, itens.map(([texto, v]) => el("li", { class: v ? "" : "bad" }, texto))));
+  }
   function provas(conferencias, prefixos) {
     const sel = conferencias.filter(([n]) => prefixos.some((p) => n.startsWith(p)));
-    return el("ul", { class: "provas" }, sel.map(([n, ok]) => el("li", { class: ok ? "" : "bad" }, rotulo(n))));
+    return conferido(sel.map(([n, ok]) => [rotulo(n), ok]));
   }
+  const svg = (tag, attrs = {}, texto = null) => {
+    const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (texto !== null) e.textContent = texto;
+    return e;
+  };
   const fatos = (pares) => el("dl", { class: "fatos" }, pares.flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, v)]));
 
   async function principal() {
     const params = new URLSearchParams(location.search);
+    // What the browser has done so far, as it happens: read, hashed, checked.
+    const etapa = (texto, feito = true) => $("andamento").append(el("span", { class: feito ? "feito" : "" }, texto));
     // `?registro=local` is the case just run live in web/vivo/: its record and
     // the documents typed there, from this browser's storage.
     const local = params.get("registro") === "local";
@@ -297,8 +367,11 @@
         textos.set(h, { titulo: d.nome, texto: d.texto });
       }
       $("quando").textContent = "aberto ao vivo neste navegador";
+      etapa("caso ao vivo lido deste navegador");
+      etapa(`${indice.documentos.length} documentos conferidos pelo hash`);
     } else {
       registro = await json(params.get("registro") || "../docs/evidencia-processo-registro.json");
+      etapa(`registro lido: ${registro.eventos.length} eventos`);
       indice = await json("../docs/caso-demo/indice.json");
       for (const d of indice.documentos) {
         const r = await fetch(`../docs/caso-demo/${d.arquivo}`);
@@ -309,9 +382,12 @@
         textos.set(h, { titulo: d.titulo, texto: new TextDecoder().decode(bytes) });
       }
     }
+    if (!local) etapa(`${Object.keys(docs).length} documentos baixados e conferidos pelo hash`);
     const P = criarPoseidon(await json("../tests/poseidon-bn254.json"));
+    const inicio = performance.now();
     const r = await verificarProcesso(registro, { P, raiz, docs });
     const C = r.conferencias;
+    etapa(`${C.length} conferências em ${Math.round(performance.now() - inicio)} ms`, C.every(([, ok]) => ok));
     const ruins = C.filter(([, ok]) => !ok);
     const evs = registro.eventos;
     const k = (n) => evs.filter((e) => e.contrato === "kleroterion" && e.evento === n);
@@ -331,7 +407,7 @@
     if (ruins.length) {
       titulo.textContent = "Não confere.";
       titulo.classList.add("bad");
-      $("resumo").textContent = `${ruins.length} de ${C.length} conferências falharam: ${ruins.map(([n]) => n).join("; ")}.`;
+      $("resumo").textContent = `${ruins.length} de ${C.length} conferências falharam: ${ruins.map(([n]) => rotulo(n)).join("; ")}.`;
     } else {
       titulo.textContent = decid ? (decid.procedente ? "Procedente." : "Improcedente.") : "Em andamento.";
       titulo.append(el("span", { class: "sub" }, decid
@@ -394,9 +470,32 @@
       fatos([["Semente", selado ? curto(selado.seed, 14) : "—"], ["Limiar", selado ? curto(selado.limiar, 14) : "—"], ["Transação do selo", tx(selado?.tx)]]));
 
     const reiv = k("Reivindicado");
+    // The y of every claim on the field [0, r), the threshold, and which ones sat.
+    // Drawn from the record alone: a y is a number, never a person.
+    const figuraDoLimiar = () => {
+      if (!selado || !final) return null;
+      const R = P.R, T = BigInt(selado.limiar);
+      const x = (v) => Number((BigInt(v) * 6000n) / R) / 10;
+      const sentados = new Set(final.painel.map(String));
+      const porCento = (Number((T * 1000n) / R) / 10).toFixed(1).replace(".", ",");
+      const g = svg("svg", { viewBox: "0 0 600 84", role: "img", "aria-label": `Os ${reiv.length} y reivindicados, todos abaixo do limiar; os ${final.painel.length} menores sentaram.` });
+      g.append(svg("line", { class: "eixo", x1: 0, y1: 50, x2: 600, y2: 50, "stroke-width": 1 }));
+      const xt = x(T);
+      g.append(svg("line", { class: "corte", x1: xt, y1: 24, x2: xt, y2: 76, "stroke-width": 2 }));
+      g.append(svg("text", { x: xt + 8, y: 18 }, "limiar"));
+      g.append(svg("text", { x: 0, y: 82 }, "0"));
+      g.append(svg("text", { x: 600, y: 82, "text-anchor": "end" }, "r, o campo inteiro"));
+      for (const e of reiv) g.append(svg("circle", { class: sentados.has(String(e.y)) ? "sentou" : "ficou", cx: x(e.y), cy: 50, r: 7, "stroke-width": 1.5 }));
+      return el("figure", { class: "limiar-fig" }, g,
+        el("figcaption", { class: "legenda" },
+          el("span", {}, el("i", { class: "sentou" }), `${final.painel.length} sentaram: os menores y`),
+          el("span", {}, el("i", {}), `${reiv.length - final.painel.length} provaram e não sentaram`),
+          el("span", {}, el("i", { class: "corte" }), `limiar ⌊r·2k/N⌋, ${porCento} % do campo`)));
+    };
     fase("assentos", "05", "Os assentos", "Cada sorteado, de uma conta nova",
       okDe(["sorteio: reivindicacao", "sorteio: o painel", "sorteio: completo"]),
       el("p", {}, el("strong", {}, `${reiv.length} pessoas provaram, em conhecimento zero, que caíram abaixo do limiar.`), ` Cada prova veio de uma conta de assento nova, e o evento leva só o y. Os ${fechado?.k} menores formam o painel. No ledger, um assento é um número, nunca um nome.`),
+      figuraDoLimiar(),
       provas(C, ["sorteio: o painel", "sorteio: completo"]),
       fatos([["Painel", final ? `${final.painel.length} assentos, ${final.completo ? "completo" : "INCOMPLETO"}` : "ainda não saiu"], ["Abaixo do limiar, conferidas", `${C.filter(([n, ok]) => n.includes("abaixo do limiar") && ok).length} de ${reiv.length}`], ["Transação do painel", tx(final?.tx)]]));
 
@@ -404,8 +503,12 @@
       okDe(["presenca", "a sessao", "a parte nunca"]),
       el("p", {}, el("strong", {}, `${r.presentes.length} de ${fechado?.k} jurados compareceram; o quórum era ${aberto?.quorum}.`), " Cada presença foi confirmada pela conta de assento, e o contrato só perguntou ao rol se aquela conta sentou — sem saber de quem ela é. A sessão se instalou na presença que completou o quórum."),
       provas(C, ["a sessao", "a parte nunca"]),
-      el("div", { class: "rolagem" }, el("table", { class: "tabela" }, el("thead", {}, el("tr", {}, el("th", {}, "#"), el("th", {}, "Conta de assento"), el("th", {}, "Transação"))),
-        el("tbody", {}, p("Compareceu").map((e, i) => el("tr", {}, el("td", {}, i + 1), el("td", { class: "mono" }, conta(e.assento)), el("td", { class: "mono" }, tx(e.tx))))))));
+      el("div", { class: "rolagem" }, el("table", { class: "tabela" }, el("thead", {}, el("tr", {}, el("th", {}, "#"), el("th", {}, "Conta de assento"), el("th", {}, "Quórum"), el("th", {}, "Transação"))),
+        el("tbody", {}, p("Compareceu").map((e, i) => el("tr", {},
+          el("td", {}, i + 1),
+          el("td", { class: "mono" }, conta(e.assento)),
+          el("td", {}, sessao && e.presentes === sessao.presentes ? el("span", { class: "estado sentou" }, "sessão instalada") : sessao && e.presentes > sessao.presentes ? el("span", { class: "papel" }, "depois da sessão") : el("span", { class: "papel" }, `${e.presentes} de ${aberto?.quorum}`)),
+          el("td", { class: "mono" }, tx(e.tx))))))));
 
     fase("votacao", "07", "A votação", "Os presentes, em voto secreto, no Tessera",
       okDe(["a votacao", "o identificador", "a raiz dos aptos", "o Tessera guarda", "a lista de votantes", "a mesa", "a cedula"]),
@@ -417,8 +520,17 @@
       provas(C, ["a votacao", "o identificador", "a raiz dos aptos", "o Tessera guarda", "a lista de votantes", "a mesa", "a cedula"]),
       fatos([["Contrato do Tessera", ct.tessera ? conta(ct.tessera) : "—"], ["Votação", vinc ? curto(vinc.proposta, 10) : "—"], ["Raiz dos aptos", vinc ? curto(vinc.raiz_aptos, 10) : "—"], ["Abertura", tx(t.abertura_tx)], ["Apuração", tx(t.apuracao?.tx)]]));
 
-    const regua = el("div", { class: "regua", "aria-hidden": "true" });
-    if (decid && fechado) for (let i = 0; i < fechado.k; i++) regua.append(el("i", { class: [i < decid.sim ? "sim" : i < decid.sim + decid.nao ? "nao" : "", i === decid.exigidos - 1 ? "exigido" : ""].join(" ") }));
+    const regua = el("div", { class: "regua" });
+    if (decid && fechado) {
+      const barra = el("div", { class: "regua-barra", "aria-hidden": "true" });
+      for (let i = 0; i < fechado.k; i++) barra.append(el("i", { class: [i < decid.sim ? "sim" : i < decid.sim + decid.nao ? "nao" : "ausente", i === decid.exigidos - 1 ? "exigido" : ""].join(" ").trim() }));
+      const ausentes = fechado.k - decid.sim - decid.nao;
+      regua.append(barra, el("p", { class: "legenda" },
+        el("span", {}, el("i", { class: "sim" }), `${decid.sim} sim`),
+        el("span", {}, el("i", { class: "nao" }), `${decid.nao} não`),
+        el("span", {}, el("i", { class: "ausente" }), `${ausentes} ${ausentes === 1 ? "ausente, não conta a favor" : "ausentes, não contam a favor"}`),
+        el("span", {}, el("i", { class: "corte" }), `${decid.exigidos} exigidos, de ${fechado.k}`)));
+    }
     fase("veredito", "08", "O veredito", "Qualquer um pode chamar",
       okDe(["o placar", "os votos exigidos sao", "procedente", "o veredito"]),
       el("div", { class: "placar" },
@@ -434,21 +546,22 @@
     fase("revelacao", "09", "A revelação", "Depois do veredito, cada jurado",
       revelados.length > 0 && okDe(["sorteio: Revelado de"]),
       el("p", {}, el("strong", {}, `${revelados.length} ${revelados.length === 1 ? "pessoa revelou" : "pessoas revelaram"} o segredo depois do prazo; ${silencio} ${silencio === 1 ? "ficou" : "ficaram"} em silêncio.`), " Só agora o ledger liga um assento a um nome — de propósito, depois de decidido. Com as revelações, qualquer um recalcula o painel inteiro. Quem não revela fica registrado como tal."),
-      el("ul", { class: "provas" },
-        el("li", { class: okDe(["sorteio: Revelado de"]) ? "" : "bad" }, `${revelados.length} revelações: em cada uma, Poseidon(s) = c e y = Poseidon(semente, s), e o "sentou" confere com o painel`)),
+      conferido([[`${revelados.length} revelações: em cada uma, Poseidon(s) = c e y = Poseidon(semente, s), e o "sentou" confere com o painel`, okDe(["sorteio: Revelado de"])]]),
       el("p", {}, link("./bilhetes.html", "Os bilhetes, pessoa por pessoa"), " · ", link(`${EXPLORER}/contract/${ct.kleroterion}`, "o rol no stellar.expert")));
 
     const trilha = $("trilha");
     for (const f of fases) {
       $("fases").append(f.no);
-      trilha.append(el("li", {}, el("a", { href: `#${f.id}` }, el("span", { class: `marca ${f.ok ? "ok" : "bad"}` }, f.ok ? "✓" : "!"), `${f.num} ${f.titulo}`)));
+      trilha.append(el("li", {}, el("a", { href: `#${f.id}` }, el("span", { class: `marca ${f.ok ? "ok" : "bad"}` }, f.ok ? "✓" : "!"), el("span", { class: "num" }, f.num), el("span", { class: "titulo" }, f.titulo))));
     }
     const vigia = new IntersectionObserver((es) => {
       for (const e of es) {
         if (!e.isIntersecting) continue;
         for (const a of trilha.querySelectorAll("a")) {
-          if (a.getAttribute("href") === `#${e.target.id}`) a.setAttribute("aria-current", "step");
-          else a.removeAttribute("aria-current");
+          if (a.getAttribute("href") === `#${e.target.id}`) {
+            a.setAttribute("aria-current", "step");
+            if (trilha.scrollWidth > trilha.clientWidth) trilha.scrollTo({ left: a.parentElement.offsetLeft - 24, behavior: "smooth" });
+          } else a.removeAttribute("aria-current");
         }
       }
     }, { rootMargin: "-40% 0px -55% 0px" });
@@ -457,24 +570,28 @@
   }
 
   function palco(fases, ja) {
+    const telas = [
+      ...fases.map((f) => ({ no: f.no, rotulo: `${f.num} / 09 · ${f.titulo}` })),
+      { no: $("limites"), rotulo: "Depois das nove · O que este caso não mostra" },
+    ];
     let i = 0, timer = null;
     const mostrar = () => {
-      fases.forEach((f, j) => f.no.classList.toggle("atual", j === i));
-      $("palco-rotulo").textContent = `${fases[i].num} / 09 · ${fases[i].titulo}`;
-      $("palco-barra").style.width = `${((i + 1) / fases.length) * 100}%`;
+      telas.forEach((t, j) => t.no.classList.toggle("atual", j === i));
+      $("palco-rotulo").textContent = telas[i].rotulo;
+      $("palco-barra").style.width = `${((i + 1) / telas.length) * 100}%`;
       scrollTo(0, 0);
     };
-    const passo = (d) => { i = Math.max(0, Math.min(fases.length - 1, i + d)); mostrar(); };
-    const entrar = () => { document.body.classList.add("palco"); $("palco").setAttribute("aria-hidden", "false"); i = 0; mostrar(); };
-    const sair = () => { document.body.classList.remove("palco"); $("palco").setAttribute("aria-hidden", "true"); clearInterval(timer); timer = null; $("auto").setAttribute("aria-pressed", "false"); };
-    $("apresentar").addEventListener("click", entrar);
+    const passo = (d) => { i = Math.max(0, Math.min(telas.length - 1, i + d)); mostrar(); };
+    const entrar = () => { document.body.classList.add("palco"); $("palco").setAttribute("aria-hidden", "false"); i = 0; mostrar(); $("avancar").focus(); };
+    const sair = () => { document.body.classList.remove("palco"); $("palco").setAttribute("aria-hidden", "true"); clearInterval(timer); timer = null; $("auto").setAttribute("aria-pressed", "false"); telas.forEach((t) => t.no.classList.remove("atual")); };
+    for (const b of document.querySelectorAll(".apresentar")) b.addEventListener("click", entrar);
     $("sair").addEventListener("click", sair);
     $("avancar").addEventListener("click", () => passo(1));
     $("voltar").addEventListener("click", () => passo(-1));
     $("auto").addEventListener("click", () => {
       if (timer) { clearInterval(timer); timer = null; $("auto").setAttribute("aria-pressed", "false"); return; }
       $("auto").setAttribute("aria-pressed", "true");
-      timer = setInterval(() => (i < fases.length - 1 ? passo(1) : clearInterval(timer)), 9000);
+      timer = setInterval(() => (i < telas.length - 1 ? passo(1) : clearInterval(timer)), 9000);
     });
     addEventListener("keydown", (e) => {
       if (!document.body.classList.contains("palco") || $("documento").open) return;

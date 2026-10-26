@@ -36,7 +36,7 @@ Then the page reads the case back from the ledger and checks it.
 - the vote was secret, on Tessera, and came out 5 to 1, upheld with 4 required;
 - the jurors revealed afterwards.
 
-The page checks every phase in your browser from the ledger's events. **Present** shows one phase per screen, for a projector or a recording.
+The page checks every phase in your browser from the ledger's events. **Present** shows one phase per screen, then the limits, for a projector or a recording.
 
 > **The vote runs on Tessera.** [Tessera](https://github.com/ThaisFReis/tessera) is the author's earlier secret-ballot module, from the Find Your Way hackathon. It is used as it is: its contract at commit `356c22f`, deployed unchanged on testnet, and its CLI at the same commit with a one-line client fix ([`scripts/tessera-cli.patch`](scripts/tessera-cli.patch)). What this project adds is the binding: the `processo` contract accepts a Tessera vote only if its voter list is exactly the jurors who attended. It recomputes Tessera's Merkle root on-chain to check that. On top of Tessera's score it applies the level's verdict rule.
 

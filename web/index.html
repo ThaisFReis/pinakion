@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Pinakion: sorteio verificável de painéis para governanças. Conheça o princípio e recompute um exemplo documentado na testnet.">
-  <title>Pinakion — Quem decide também precisa de regras</title>
+  <meta name="description" content="Pinakion: sorteio selado de painéis para governanças na Stellar. Ninguém escolhe quem te julga, ninguém sabe quem até julgar, e todos conferem depois.">
+  <title>Pinakion — Ninguém escolhe quem te julga</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -19,9 +19,9 @@
         Pinakion
       </a>
       <nav class="nav" aria-label="Navegação principal">
-        <a href="#principio">O princípio</a>
-        <a href="./bilhetes.html">O sorteio selado</a>
-        <a href="#conferir">Conferir um sorteio <span aria-hidden="true">↗</span></a>
+        <a href="#principio">A garantia</a>
+        <a href="#testnet">Na testnet</a>
+        <a href="./bilhetes.html">O sorteio selado <span aria-hidden="true">↗</span></a>
         <button class="theme" id="tema" aria-label="Alternar tema" title="Alternar tema">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg>
         </button>
@@ -30,56 +30,75 @@
     <main id="conteudo">
       <section class="hero" aria-labelledby="titulo">
         <div class="hero-copy">
-          <p class="eyebrow">Para decisões que afetam pessoas</p>
-          <h1 id="titulo">Quem decide<br>também precisa<br><span>de regras.</span></h1>
-          <p class="intro">Pinakion propõe um sorteio de painéis para governanças. Uma lista de participantes definida antes do caso, com um resultado que qualquer pessoa possa conferir.</p>
+          <p class="eyebrow">Para quando uma comunidade julga um dos seus</p>
+          <h1 id="titulo">Ninguém escolhe<br>quem te julga.<br><span>Ninguém sabe quem.</span></h1>
+          <p class="intro">Pinakion sorteia um painel a partir de um rol fechado antes do caso. Cada jurado prova o próprio assento sem dizer quem é. Depois do veredito, qualquer pessoa recalcula o painel a partir do ledger, entre quem revelou.</p>
           <div class="hero-actions">
-            <a class="button" href="#conferir">Conferir o exemplo <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg></a>
-            <a class="quiet-link" href="#principio">Conheça o princípio</a>
+            <a class="button" href="./bilhetes.html">Conferir o painel selado <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg></a>
+            <a class="quiet-link" href="#principio">Ler a garantia</a>
           </div>
         </div>
         <figure class="folio">
           <div class="folio-head"><span class="eyebrow">O princípio</span><span class="eyebrow" aria-hidden="true">P / 01</span></div>
           <svg class="folio-figure" viewBox="0 0 320 260" role="img" aria-labelledby="fig-title fig-desc">
             <title id="fig-title">Uma lista, uma ordem comum</title>
-            <desc id="fig-desc">Composição conceitual de entradas de um rol, com algumas posições destacadas. Ilustração, sem dados de um sorteio.</desc>
+            <desc id="fig-desc">Composição conceitual de entradas de um rol, com algumas posições destacadas e sem nome. Ilustração, sem dados de um sorteio.</desc>
             <defs><pattern id="slots" width="64" height="38" patternUnits="userSpaceOnUse"><rect x="7" y="9" width="48" height="18" rx="1" fill="none" stroke="currentColor" stroke-opacity=".38"/><path d="M18 18h26" stroke="currentColor" stroke-opacity=".38"/></pattern></defs>
             <rect x="0" y="0" width="320" height="228" fill="url(#slots)"/>
             <g fill="currentColor"><rect x="135" y="9" width="48" height="18" rx="1"/><rect x="7" y="85" width="48" height="18" rx="1"/><rect x="199" y="123" width="48" height="18" rx="1"/><rect x="71" y="161" width="48" height="18" rx="1"/><rect x="263" y="199" width="48" height="18" rx="1"/></g>
             <path d="M7 247h304M7 242v10m304-10v10" stroke="currentColor" stroke-opacity=".55"/>
           </svg>
           <figcaption>
-            <p class="folio-title">A lista vem antes.<br>O sorteio vem depois.</p>
-            <p class="folio-note">A proposta é simples: ninguém deve escolher quem vai julgar o seu caso.</p>
+            <p class="folio-title">O rol vem antes.<br>O sorteio vem depois.<br>O nome, só depois do veredito.</p>
+            <p class="folio-note">Em Atenas, um segundo sorteio mandava cada jurado a um tribunal, para que ninguém escolhesse o seu (<i>Ath. Pol.</i> 63–65). O selo é nosso.</p>
           </figcaption>
         </figure>
       </section>
       <div class="audience">
-        <p>Um procedimento comum. Diferentes governanças.</p>
-        <p>Comunidades · DAOs · Grants · Fundos e instituições</p>
+        <p>Para um projeto open source com código de conduta que precisa julgar um dos seus.</p>
+        <p>Também serve a grants · protocolos com slashing · marketplaces</p>
       </div>
       <section class="section" id="principio" aria-labelledby="principio-titulo">
         <div class="section-heading">
-          <p class="eyebrow">01 / A proposta</p>
-          <h2 id="principio-titulo">A confiança precisa<br>de algo que se possa conferir.</h2>
+          <p class="eyebrow">01 / A garantia</p>
+          <h2 id="principio-titulo">Três frases.<br>Cada uma com o seu mecanismo.</h2>
         </div>
         <ol class="principles">
-          <li><span class="ordinal">01</span><h3>Critérios antes do caso</h3><p>O desenho prevê um rol definido previamente, com uma janela pública para contestar quem participa.</p></li>
-          <li><span class="ordinal">02</span><h3>Uma escolha por sorteio</h3><p>A proposta usa uma rodada pública de aleatoriedade para determinar a ordem dos participantes.</p></li>
-          <li><span class="ordinal">03</span><h3>Um resultado conferível</h3><p>A recomputação permite comparar o painel com o resultado informado. Você pode experimentar abaixo.</p></li>
+          <li><span class="ordinal">01</span><h3>Ninguém escolhe quem te julga</h3><p>O rol é um ativo clássico da Stellar, com emissor travado. O fechamento congela o rol e fixa a rodada do drand pelo relógio do ledger. O selo verifica essa rodada na cadeia, uma única vez.</p></li>
+          <li><span class="ordinal">02</span><h3>Ninguém sabe quem até julgar</h3><p>Cada jurado guarda um segredo. Quem cai abaixo do limiar prova o assento em conhecimento zero, de uma conta nova. O ledger vê um número, nunca um nome.</p></li>
+          <li><span class="ordinal">03</span><h3>Todos conferem depois</h3><p>Depois do veredito, cada jurado revela o segredo. Qualquer pessoa recalcula o painel a partir dos eventos e do drand, entre quem revelou. Quem não revelou aparece como em silêncio.</p></li>
         </ol>
-        <p class="status-note"><strong>O bilhete é um ativo.</strong> Cada jurado guarda uma unidade de um ativo clássico da Stellar; o emissor, com autorização obrigatória, trava a si mesmo depois de entregar o controle ao contrato. O rol fica legível em qualquer Horizon, e um impedido perde o assento sem perder o bilhete. A sequência inteira foi executada na testnet em 25 de outubro de 2026 — <a href="https://github.com/ThaisFReis/pinakion/blob/main/docs/evidencia-testnet-bilhete.md">cada hash está registrado</a>.</p>
-        <p class="status-note"><strong>Em desenvolvimento</strong> O ciclo de casos e a renovação do rol ainda não estão implementados.</p>
+        <div class="limit"><h3>Antes de confiar</h3><p>O setup do circuito foi feito por uma só parte: quem o rodou poderia forjar assentos. Para o nome não aparecer, a conta de assento precisa ser financiada sem rastro até o jurado, e falta um relayer para isso. Quem perde o segredo perde o assento. Uma deliberação fora da cadeia quebra o selo quando os jurados se encontram. É só testnet, e nada foi auditado.</p></div>
+        <p class="status-note"><strong>Em desenvolvimento.</strong> O ciclo de casos, a renovação do rol e as janelas de contestação estão desenhados e não implementados.</p>
+      </section>
+
+      <section class="section" id="testnet" aria-labelledby="testnet-titulo">
+        <div class="section-heading">
+          <p class="eyebrow">02 / Na testnet, 26 out 2026</p>
+          <div class="section-intro">
+            <h2 id="testnet-titulo">Um sorteio selado,<br>do rol à revelação.</h2>
+            <p>Uma única máquina fez o papel de todos os jurados. Cada hash está registrado.</p>
+          </div>
+        </div>
+        <ol class="principles">
+          <li><span class="ordinal">20</span><h3>Inscritos</h3><p>Cada um com um bilhete e um compromisso. Um foi impedido antes do fechamento, e o rol fechou com 19.</p></li>
+          <li><span class="ordinal">6</span><h3>Assentos provados</h3><p>Seis provas, de seis contas novas. Uma reivindicação repetida foi recusada, e um jurado se recusou às claras.</p></li>
+          <li><span class="ordinal">3</span><h3>No painel</h3><p>O painel saiu completo e 18 jurados revelaram. A recomputação a partir do ledger confere: 77 conferências, nenhuma falha.</p></li>
+        </ol>
+        <div class="hero-actions">
+          <a class="button" href="./bilhetes.html">Ver pessoa por pessoa <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg></a>
+          <a class="quiet-link" href="https://github.com/ThaisFReis/pinakion/blob/main/docs/evidencia-testnet-bilhete.md">Cada hash e cada custo</a>
+        </div>
       </section>
     </main>
   </div>
   <section class="verification" id="conferir" aria-labelledby="conferir-titulo">
     <div class="shell section">
       <div class="section-heading">
-        <p class="eyebrow">02 / Conferência pública</p>
+        <p class="eyebrow">03 / Onde o projeto começou</p>
         <div class="section-intro">
-          <h2 id="conferir-titulo">O mesmo sorteio.<br>Nas suas mãos.</h2>
-          <p>Recompute um exemplo documentado na testnet. Os dados já estão preenchidos; o cálculo acontece no seu navegador.</p>
+          <h2 id="conferir-titulo">O sorteio aberto.<br>Nas suas mãos.</h2>
+          <p>Antes do selo, o painel era uma ordem embaralhada e pública, desde o primeiro momento. É o sorteio do <code>beacon-verifier</code>, que continua na cadeia. Recompute um exemplo documentado na testnet: os dados já estão preenchidos, e o cálculo acontece no seu navegador.</p>
         </div>
       </div>
       <div class="record">
@@ -119,7 +138,7 @@
         </div>
       </div>
       <noscript><p class="status-note">Ative o JavaScript para recomputar o painel no navegador.</p></noscript>
-      <div class="limit"><h3>O que esta conferência demonstra</h3><p>A igualdade entre o painel calculado e os dados informados. A página não consulta o registro na cadeia nem verifica a anterioridade do rol. O protótipo não foi auditado e está restrito à testnet.</p></div>
+      <div class="limit"><h3>O que esta conferência demonstra</h3><p>A igualdade entre o painel calculado e os dados informados, no sorteio aberto. A página não consulta o registro na cadeia nem verifica a anterioridade do rol. O sorteio selado é conferido na <a href="./bilhetes.html">página dos bilhetes</a>. O protótipo não foi auditado e está restrito à testnet.</p></div>
       <details class="method">
         <summary>Consultar o método de recomputação</summary>
         <div class="details-content">
@@ -132,7 +151,7 @@
   </section>
   <div class="shell">
     <section class="closing" aria-labelledby="closing-titulo"><h2 id="closing-titulo">Um procedimento aberto<br>ao exame de todos.</h2><p>O desenho, o código e as limitações estão disponíveis para leitura.<br><a href="https://github.com/ThaisFReis/pinakion">Explorar o projeto <span aria-hidden="true">↗</span></a></p></section>
-    <footer class="footer"><p>Pinakion · Verifiable jury selection for governance on Stellar.</p><a href="https://github.com/ThaisFReis/pinakion/blob/main/LICENSE">Código aberto · MIT</a></footer>
+    <footer class="footer"><p>Pinakion · Sealed jury selection for governance on Stellar.</p><a href="https://github.com/ThaisFReis/pinakion/blob/main/LICENSE">Código aberto · MIT, circuito GPL-3.0</a></footer>
   </div>
 
 <script type="module">

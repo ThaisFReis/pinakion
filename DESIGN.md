@@ -1,25 +1,23 @@
 # DESIGN
 
-One look, used by the contract's page, the landing page and the video. Derived from `THESIS.md`; when the thesis changes, this changes next.
+One look, used by the landing page, the ticket page and the video. It is derived from `THESIS.md`, so when the thesis changes, this changes next. It was last aligned on 2026-10-26 (T-043), after the thesis became the sealed draw (DEC-015, DEC-029).
 
 ---
 
 ## The institution we want to express
 
-A contemporary public record: legible, open to examination, and calm enough to read when a decision matters. The audience includes communities, DAOs, grant programs, funds and regulated institutions. This shared direction follows the human's request on 2026-10-25 to avoid crypto clichés and design around what a governance needs to communicate.
+The page should read as a contemporary public record: legible, open to examination, and calm enough to read when a decision about a person matters. It speaks first to **an open-source project with a code of conduct that has to judge one of its own** (`THESIS.md`). Grant programs, protocols and marketplaces come second, in one *also serves* line. The regulated-institution audience is gone with the thesis row that carried it. Avoiding crypto clichés follows the human's request of 2026-10-25.
 
-The interface should express:
+The interface should express four things.
 
-- **Legitimacy through procedure.** Explain how the deciding panel is formed before presenting technical machinery.
-- **Equal standing.** Give roster entries the same visual weight; distinguish a selected position without ranking people by importance.
-- **Accountability.** Keep the result, the evidence link and the exact limits of the check together.
-- **Continuity.** Use a consistent visual language across the introduction, the form and the record.
+- **The guarantee, in its own order.** First, nobody chooses who judges you. Second, nobody knows who until they have sat and judged. Third, anyone recomputes the panel afterwards. Each screen follows that order and introduces the machinery only after it.
+- **Equal standing.** Roster entries carry the same visual weight. A seat is shown as a number (`y`), not as a person, and nobody is ranked by importance.
+- **Sealed until the verdict.** No screen puts a roster name beside a seat before that juror revealed. A seat with no reveal reads *em silêncio* and shows only its `y` and seat account. The ticket page follows this because the ledger does.
+- **Accountability.** The verdict of the check (*Confere* / *Não confere*), the evidence links and the exact limits of the check stay together, on the same screen.
 
-The material reference remains cool limestone and oxidised bronze. The historical slot motif becomes a quiet editorial illustration. It does not imply state authority, judicial certification or institutional endorsement.
+The material reference stays cool limestone and oxidised bronze. The historical slot motif is a quiet editorial illustration. The second Athenian lot, the acorn that sends a juror to one court, is a fitting image, but it is used for *no choosing*, never as a claim of Athenian secrecy (*Ath. Pol.* 63–65). None of this implies state authority, judicial certification or institutional endorsement.
 
-Avoid token imagery, neon, gradients, speculative price charts, wallet-first navigation, decorative security seals, gavels and courthouse columns. All illustrations are original geometric SVG; none represents a live roster.
-
-The user asked for all audiences rather than a single sector. Use one shared identity. Do not invent endorsements, adoption figures or institutions as social proof.
+Avoid token imagery, neon, gradients, padlocks and shields, decorative "zero-knowledge" visuals, speculative price charts, wallet-first navigation, gavels and courthouse columns. All illustrations are original geometric SVG, and none represents a live roster. Do not invent endorsements, adoption figures or institutions as social proof.
 
 ---
 
@@ -69,7 +67,19 @@ Every value is a token. Nothing uses a literal colour.
 **Rules**
 
 - `--patina` is the accent. `--bronze` is a highlight, never a second accent — one bold place, everything else quiet.
-- `--kept` and `--cast` carry meaning, so they **never** carry it alone: pair with a label and a shape (filled disc versus hollow ring). A reader who cannot distinguish them still reads the word.
+- `--kept` and `--cast` carry meaning, so they **never** carry it alone. Pair each with a label and a shape, such as a filled disc against a hollow ring, so a reader who cannot tell them apart still reads the word.
+- **The juror states** are always a word in a bordered tag, and the colour only reinforces the word:
+
+  | State | Word on screen | Border and text |
+  |---|---|---|
+  | seated and revealed | *sentou · revelou* | `--patina` |
+  | revealed, not seated | *revelou* | `--line`, `--ink` |
+  | below `T`, never claimed | *sorteado e ausente* | `--bronze` |
+  | no reveal | *em silêncio* | `--bronze` |
+  | recused | *recusou* | `--line`, `--muted` |
+  | impeded before lock | *impedido* | `--line`, `--muted` |
+
+  `--bronze` marks the two states a reader should question, *absent* and *silent*. It is still a highlight, not a second accent.
 - `--kept` on light needs a `--line` outline or it disappears into `--slab`.
 - No gradients. The materials are stone and metal; neither graduates.
 
@@ -130,17 +140,25 @@ The kleroterion's slot column, with one slot drawn. It is the machine and the ac
 
 ## Layout
 
-The page has a deliberate reading order: purpose → proposed procedure → working example → evidence and limitations. The testnet status appears inside the example. Proposed functionality is explicitly marked as under development.
+The landing page has a deliberate reading order:
 
-- An editorial shell with a maximum width of 1280px and 28px side gutters; 20px gutters on small screens. These are design choices, not product measurements.
-- A two-column introduction pairs the purpose with a restrained roster illustration. At 680px and below the content stacks; the figure becomes a compact horizontal composition.
-- Three procedural statements sit on rules rather than enclosed marketing cards. On small screens each becomes a numbered row.
-- The verification record places inputs beside the recomputed panel, then stacks them on small screens. The selected positions use equally sized cells and tabular numerals.
-- Signature, seed, comparison input and technical recipe are accessible through native disclosure controls. Evidence links and the limits of the check remain visible.
-- Shape and text accompany status colours. The success state says that panels match the supplied data; it does not certify an honest or fair process.
-- Native semantic elements, a skip link, visible focus, labelled inputs and a live status region support keyboard and assistive technology use.
-- Light and dark themes share the same hierarchy. Follow the system preference initially; a labelled theme button can override it for this page session.
-- Use `web/style.css` as the implemented token source. Literal colours belong only in theme token declarations.
+1. **Purpose.** The hero states the first sentence of the guarantee: *Ninguém escolhe quem te julga.*
+2. **The three sentences.** The guarantee, one principle per sentence, each paired with the mechanism behind it.
+3. **The limits, on the same screen.** The single-party setup, the seat-account funding and the missing relayer, the loss of `s`, off-chain deliberation, testnet only.
+4. **The sealed run on testnet.** What happened on 2026-10-26, in counts, and a way into the ticket page.
+5. **The open draw it began with.** The Fisher-Yates recomputation, labelled as `beacon-verifier`'s.
+6. **Closing.**
+
+The ticket page (`web/bilhetes.html`) is the record itself. It opens with the verdict of the check, then the facts (root, N and k, round, seed, `T`, panel), then the table of people, then the table of claims, then its limits.
+
+- An editorial shell with a maximum width of 1280px and 28px side gutters, 20px on small screens. These are design choices, not product measurements.
+- A two-column introduction pairs the purpose with a restrained roster illustration. At 680px and below the content stacks.
+- Principles sit on rules, not inside marketing cards. On small screens each one becomes a numbered row.
+- Tables of people and claims scroll inside their own box on small screens, never the page. Addresses and hashes are shortened in the middle (`GAI2OV…F3SM`) and always link to the explorer.
+- Status colours always come with shape and text. A *Confere* says the recomputation matches the ledger's events. It does not certify a fair process or an honest setup.
+- Native semantic elements, a skip link, visible focus, labelled inputs and a live status region support keyboard and assistive-technology use.
+- Light and dark share the same hierarchy. The page follows the system preference first, and a labelled theme button can override it for the session.
+- `web/style.css` is the implemented token source. A page adds only the rules it needs, inline, and literal colours belong only in theme token declarations.
 
 ---
 
@@ -150,6 +168,7 @@ The same rules as `CLAUDE.md`, applied to what the reader sees.
 
 - Say what it does. "Recompute the panel", not "leverage verifiable randomness".
 - Never claim secure, audited, trustless or production-ready. §2 of the spec lists what may be claimed.
+- **Indistinguishable within the panel**, never *anonymous*. Say **recomputable among those who revealed**, never *fully recomputable*. In Portuguese: *indistinguível dentro do painel*; *recalculável entre quem revelou*.
 - Limits are part of the page, not a footnote: what was not tested, what is still assumed.
 - Short sentences. No em-dash asides, no "not X but Y", no scare quotes.
 - Portuguese for the Brazilian-facing documents, English for the repository and the submission. Legal citations keep their original wording.
@@ -158,8 +177,8 @@ The same rules as `CLAUDE.md`, applied to what the reader sees.
 
 ## Implementation and limits
 
-T-017 applies this direction to `web/index.html` and `web/style.css`. The existing independent recomputation remains in `web/sorteio.mjs`.
+`web/index.html` and `web/style.css` implement this direction (T-017, revised in T-043). `web/bilhetes.html` is the sealed record (T-042). `web/sorteio.mjs`, `web/poseidon.mjs` and `web/arvore.mjs` hold the recomputations.
 
-This is a local design revision for review. It is not a production deployment, and the page does not add roster management, case handling, cryptographic signature verification in the browser or a live read from Stellar. The example retains its documented original contract and transaction links; the method disclosure distinguishes that example from the later pinned-key contract.
+None of this is a production deployment. The pages manage no roster and handle no case. Nothing on them signs or sends a transaction. Neither page verifies the drand BLS signature in the browser: the contract does that at `seal`. The ticket page reads a committed record of the testnet run, not a live RPC. The open-draw example keeps its original contract and transaction links.
 
-Typography loads from Google Fonts as it did before this revision, with local fallback fonts. The page remains readable if the font service is unavailable.
+Typography loads from Google Fonts, with local fallback fonts, and the pages stay readable if the font service is unavailable.

@@ -58,9 +58,11 @@ The independent check, reading only the events and drand, returns **`CONFERE`, 7
 
 ## Why Stellar, and why now
 
-- **Seats proven without being named.** Poseidon and BN254 became host functions in Protocol 25, January 2026 (CAP-74, CAP-75). A seat proof is one ordinary transaction: about 32 M instructions declared, 8 % of the 400 M per-transaction ceiling. A year ago this was not possible on Stellar, and it is what makes the second sentence true.
-- **Public entropy, verified on-chain.** drand's BLS12-381 signature is verified with CAP-59 host functions, at 26,719,483 instructions on the test host.
-- **A roster the ledger itself freezes.** The jurors hold a classic asset with `AUTH_REQUIRED` and `AUTH_IMMUTABLE`, and its issuer sits at master weight 0. The contract creates each trustline (Protocol 26), and any Horizon client lists the roster without trusting us.
+- **A roster the ledger itself freezes, by an issuer that locks itself out.** Flags from 2015, used for something they were not made for: the ecosystem reads `AUTH_REQUIRED` and `AUTH_IMMUTABLE` as an issuer's power over its holders, and here the issuer uses them to give that power away. The jurors hold a classic asset with `AUTH_REQUIRED` and `AUTH_IMMUTABLE`, and its issuer sits at master weight 0. The contract creates each trustline (Protocol 26), and any Horizon client lists the roster without trusting us.
+- **Public entropy, verified on-chain.** drand's BLS12-381 signature is verified with CAP-59 host functions, at 26,719,483 instructions on the test host. Verifying drand on Soroban was done before (see below); the use is what is new.
+- **Seats proven without being named: what Protocol 25 unlocked.** Poseidon and BN254 became host functions in Protocol 25, January 2026 (CAP-74, CAP-75). A seat proof is one ordinary transaction: about 32 M instructions declared, 8 % of the 400 M per-transaction ceiling. A year ago this was not possible on Stellar, and it is what makes the second sentence true.
+
+**A year ago,** this project would have been the open draw, whole: the drand pairing, the asset flags and the locked issuer were all on mainnet in October 2025, and only CAP-73 (the contract creating the trustline) would be missing, at the cost of one transaction per juror. **The seal could not have existed:** proving a seat without a name needs Poseidon and BN254 as host functions.
 
 ## What is not done
 

@@ -1,6 +1,6 @@
 # Como os conselhos reais se reúnem e geram documentos
 
-**Estudo · 26 de outubro de 2026 · T-053**
+**Estudo · 26 de outubro de 2026 · T-054** (registrado primeiro como T-053, número que a dapp ao vivo também recebeu; renumerado no mesmo dia)
 
 > Nada aqui está construído e nada aqui é uma medição. Todos os números e todas as regras deste documento são **citados**: foram lidos nas fontes primárias em 26/10/2026, e cada um tem uma linha em `docs/SOURCES.md` com a data e o endereço. Onde a fonte é secundária — alguém contando o que outra instituição faz — está escrito ao lado.
 >

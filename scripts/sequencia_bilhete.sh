@@ -14,12 +14,14 @@
 #   1. issuer: AUTH_REQUIRED + AUTH_REVOCABLE, then AUTH_IMMUTABLE
 #   2. SAC for PINAKION:issuer
 #   3. deploy the Groth16 verifier (key embedded), then kleroterion
-#      (clerk, SAC, minimum = #jurors, verifier, claim window)
+#      (clerk, SAC, verifier, claim window, the severity table of
+#      docs/desenho-gravidade-afastamento-revelacao.md, suspension window)
 #   4. SAC admin -> kleroterion
 #   5. issuer master weight 0: nobody but the contract issues or authorizes
 #   6. enroll 20 jurors with c = Poseidon(s)
 #   7. impede one (before lock; refused after)
-#   8. lock(k = 3, reveal_after): round, k, root, N
+#   8. lock(level 1 -> k = 3, reveal_after, the party judged): round, k,
+#      root, N; the party is a fresh identity, not on the roll (T-045)
 #   9. wait for that drand round; seal: seed and threshold T
 #  10. every juror with y < T proves its seat (circuits/pinakion.mjs) and
 #      claims it from a fresh friendbot seat account; one claim is resent
@@ -32,6 +34,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 P=${1:-t040}; N="--network testnet"; JURADOS=${JURADOS:-20}; K=3; JANELA=${JANELA:-60}; MARGEM=${MARGEM:-60}
+# T-045: the approved default table (k 3/5/7/9, roster floor 16/40/40/100);
+# with 20 jurors only level 1 can lock. The suspension window here is a short
+# demo value, not a recommendation.
+NIVEIS='[{"k":3,"rol_minimo":16},{"k":5,"rol_minimo":40},{"k":7,"rol_minimo":40},{"k":9,"rol_minimo":100}]'
+GRAVIDADE=${GRAVIDADE:-1}; AFASTAMENTO=${AFASTAMENTO:-120}
 D=build/$P; mkdir -p "$D"; HASHES=$D/hashes.tsv; : > "$HASHES"; SEGREDOS=$D/segredos.json; echo '{}' > "$SEGREDOS"
 export STELLAR_NO_CACHE=true
 log() { printf '\n== %s\n' "$*"; }
@@ -74,10 +81,11 @@ classic immutable "$P-emissor" set-options --set-immutable
 log "2. SAC for PINAKION:$EMISSOR"
 SAC=$(stellar contract asset deploy --asset "PINAKION:$EMISSOR" --source "$P-emissor" $N 2>/dev/null | tail -1); echo "sac $SAC"
 
-log "3. deploy the verifier, then kleroterion (minimum $JURADOS, window $JANELA ledgers)"
+log "3. deploy the verifier, then kleroterion (window $JANELA ledgers, suspension $AFASTAMENTO)"
 VERIF=$(stellar contract deploy --wasm target/wasm32v1-none/release/groth16_verifier.wasm --source "$P-escrivao" $N 2>/dev/null | tail -1); echo "verifier $VERIF"
 KLERO=$(stellar contract deploy --wasm target/wasm32v1-none/release/kleroterion.wasm --source "$P-escrivao" $N -- \
-  --escrivao "$ESCRIVAO" --bilhete "$SAC" --minimo "$JURADOS" --verificador "$VERIF" --janela "$JANELA" 2>/dev/null | tail -1)
+  --escrivao "$ESCRIVAO" --bilhete "$SAC" --verificador "$VERIF" --janela "$JANELA" \
+  --niveis "$NIVEIS" --afastamento "$AFASTAMENTO" 2>/dev/null | tail -1)
 echo "kleroterion $KLERO"; INICIO=$(( $(ledger) - 2 ))
 printf 'EMISSOR=%s\nSAC=%s\nVERIF=%s\nKLERO=%s\nINICIO=%s\n' "$EMISSOR" "$SAC" "$VERIF" "$KLERO" "$INICIO" > "$D/ids.env"
 
@@ -108,9 +116,10 @@ done
 log "7. impede j0 (before lock)"
 invocar impede "$KLERO" "$P-escrivao" -- impede --jurado "$(stellar keys address "$P-j0")" >/dev/null; echo ok
 
-log "8. lock, k = $K"
+log "8. lock, level $GRAVIDADE (k = $K)"
+stellar keys generate "$P-parte" --overwrite >/dev/null 2>&1; PARTE=$(stellar keys address "$P-parte")
 L=$(ledger); REVELA=$(( L + JANELA + MARGEM ))
-invocar lock "$KLERO" "$P-escrivao" -- lock --k "$K" --revela_em "$REVELA"
+invocar lock "$KLERO" "$P-escrivao" -- lock --gravidade "$GRAVIDADE" --revela_em "$REVELA" --acusado "$PARTE"
 RODADA=$(stellar contract invoke --id "$KLERO" --source "$P-escrivao" $N --send=no -- closing 2>/dev/null | tail -1 | python3 -c "import sys,json;print(json.load(sys.stdin)['rodada'])")
 
 log "9. wait for drand round $RODADA, then seal"

@@ -50,10 +50,38 @@ const MINIMO: u32 = 7;
 /// Janela de reivindicação, em ledgers, nos testes.
 const JANELA: u32 = 100;
 
+/// Afastamento da pessoa julgada, em ledgers, nos testes.
+const AFASTAMENTO: u32 = 500;
+
+/// A pessoa julgada dos testes: um C-strkey fixo, para que o `Fechado` do
+/// vetor de ouro seja o mesmo em toda execução (scripts/gerar_vetor_selado.py
+/// o deriva de `sha256("pinakion:fluxo:acusado")`). Não está inscrita, a não
+/// ser onde o teste diz.
+const ACUSADO: &str = "CD6FRVLLOLONSG6SFSJ72VGYKF7PWI5BEJC7FD6OF4VEF7EX5GSL277U";
+
+/// A tabela de gravidade dos testes: o nível `g` senta `k = g`, de 1 a 10,
+/// todos com o mesmo rol mínimo. Assim `lock(&K, …)` ainda fecha com `K`
+/// assentos, e os testes de antes de T-045 continuam dizendo o que diziam.
+fn niveis_de_teste(env: &Env, minimo: u32) -> soroban_sdk::Vec<Nivel> {
+    let mut v = soroban_sdk::Vec::new(env);
+    for k in 1..=10 {
+        v.push_back(Nivel {
+            k,
+            rol_minimo: minimo,
+        });
+    }
+    v
+}
+
 struct Mesa {
     env: Env,
     bilhete: Address,
     id: Address,
+    escrivao: Address,
+    acusado: Address,
+    /// Os eventos do construtor (`Constituido`), guardados antes da próxima
+    /// chamada apagá-los.
+    constituido: std::vec::Vec<soroban_sdk::xdr::ContractEvent>,
     c: KleroterionClient<'static>,
     /// Próximo compromisso de teste: cada jurado recebe um `c` diferente.
     proximo_c: Cell<u32>,
@@ -78,14 +106,26 @@ fn mesa_com_minimo(minimo: u32) -> Mesa {
     let verificador = env.register(groth16_verifier::Groth16Verifier, ());
     let id = env.register(
         Kleroterion,
-        (&escrivao, &bilhete, &minimo, &verificador, &JANELA),
+        (
+            &escrivao,
+            &bilhete,
+            &verificador,
+            &JANELA,
+            niveis_de_teste(&env, minimo),
+            &AFASTAMENTO,
+        ),
     );
+    let constituido = env.events().all().filter_by_contract(&id).events().to_vec();
     token::StellarAssetClient::new(&env, &bilhete).set_admin(&id);
     let c = KleroterionClient::new(&env, &id);
+    let acusado = Address::from_str(&env, ACUSADO);
     Mesa {
         env,
         bilhete,
         id,
+        escrivao,
+        acusado,
+        constituido,
         c,
         proximo_c: Cell::new(1000),
     }
@@ -197,7 +237,14 @@ fn inscrever_sem_escrivao_e_recusado() {
     let verificador = env.register(groth16_verifier::Groth16Verifier, ());
     let id = env.register(
         Kleroterion,
-        (&escrivao, &sac.address(), &MINIMO, &verificador, &JANELA),
+        (
+            &escrivao,
+            &sac.address(),
+            &verificador,
+            &JANELA,
+            niveis_de_teste(&env, MINIMO),
+            &AFASTAMENTO,
+        ),
     );
     env.mock_all_auths();
     token::StellarAssetClient::new(&env, &sac.address()).set_admin(&id);
@@ -234,7 +281,7 @@ fn fechar_para(m: &Mesa, rodada: u64, k: u32) -> Fechamento {
     m.env.ledger().with_mut(|l| {
         l.timestamp = GENESIS_QUICKNET + (rodada - 2 - MARGEM_DE_RODADAS) * PERIODO_QUICKNET
     });
-    m.c.lock(&k, &REVELA_EM)
+    m.c.lock(&k, &REVELA_EM, &m.acusado)
 }
 
 #[test]
@@ -242,7 +289,7 @@ fn fechar_abaixo_do_minimo_e_recusado() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, (MINIMO - 1) as usize));
     assert_eq!(
-        m.c.try_lock(&K, &REVELA_EM),
+        m.c.try_lock(&K, &REVELA_EM, &m.acusado),
         Err(Ok(Erro::RolAbaixoDoMinimo.into()))
     );
     assert_eq!(m.c.closing(), None);
@@ -256,7 +303,7 @@ fn fechar_fixa_ledger_tempo_rodada_k_e_revelacao() {
         l.sequence_number = 4321;
         l.timestamp = GENESIS_QUICKNET + 6;
     });
-    let f = m.c.lock(&K, &REVELA_EM);
+    let f = m.c.lock(&K, &REVELA_EM, &m.acusado);
     assert_eq!(f.ledger, 4321);
     assert_eq!(f.tempo, GENESIS_QUICKNET + 6);
     assert_eq!(
@@ -283,7 +330,7 @@ fn a_rodada_vem_do_fechamento_com_margem() {
             .ledger()
             .with_mut(|l| l.timestamp = GENESIS_QUICKNET + dt);
         assert_eq!(
-            m.c.lock(&K, &REVELA_EM).rodada,
+            m.c.lock(&K, &REVELA_EM, &m.acusado).rodada,
             primeira + MARGEM_DE_RODADAS,
             "dt = {}",
             dt
@@ -296,25 +343,25 @@ fn fechar_com_mais_assentos_que_o_rol_e_recusado() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
     assert_eq!(
-        m.c.try_lock(&(MINIMO + 1), &REVELA_EM),
+        m.c.try_lock(&(MINIMO + 1), &REVELA_EM, &m.acusado),
         Err(Ok(Erro::AssentosInvalidos.into()))
     );
     assert_eq!(
-        m.c.try_lock(&0u32, &REVELA_EM),
-        Err(Ok(Erro::AssentosInvalidos.into()))
+        m.c.try_lock(&0u32, &REVELA_EM, &m.acusado),
+        Err(Ok(Erro::GravidadeInvalida.into()))
     );
     assert_eq!(m.c.closing(), None);
     // k = N é permitido.
-    assert_eq!(m.c.lock(&MINIMO, &REVELA_EM).k, MINIMO);
+    assert_eq!(m.c.lock(&MINIMO, &REVELA_EM, &m.acusado).k, MINIMO);
 }
 
 #[test]
 fn fechar_duas_vezes_e_recusado() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
-    m.c.lock(&K, &REVELA_EM);
+    m.c.lock(&K, &REVELA_EM, &m.acusado);
     assert_eq!(
-        m.c.try_lock(&K, &REVELA_EM),
+        m.c.try_lock(&K, &REVELA_EM, &m.acusado),
         Err(Ok(Erro::RolFechado.into()))
     );
 }
@@ -324,7 +371,7 @@ fn fechar_duas_vezes_e_recusado() {
 fn inscrever_depois_de_fechar_e_recusado() {
     let m = mesa();
     inscrever_todos(&m, &jurados(&m, MINIMO as usize));
-    m.c.lock(&K, &REVELA_EM);
+    m.c.lock(&K, &REVELA_EM, &m.acusado);
     let tarde = Address::generate(&m.env);
     assert_eq!(
         m.c.try_enroll(&tarde, &novo_c(&m)),
@@ -340,7 +387,7 @@ fn impedir_depois_de_fechar_e_recusado() {
     let m = mesa();
     let js = jurados(&m, MINIMO as usize);
     inscrever_todos(&m, &js);
-    m.c.lock(&K, &REVELA_EM);
+    m.c.lock(&K, &REVELA_EM, &m.acusado);
     assert_eq!(m.c.try_impede(&js[0]), Err(Ok(Erro::RolFechado.into())));
     assert!(sac(&m).authorized(&js[0]), "continua autorizado");
 }
@@ -401,7 +448,7 @@ fn fechar_com_mais_assentos_que_autorizados_e_recusado() {
         l.timestamp = GENESIS_QUICKNET + (ROUND_A - 2 - MARGEM_DE_RODADAS) * PERIODO_QUICKNET
     });
     assert_eq!(
-        m.c.try_lock(&K, &REVELA_EM),
+        m.c.try_lock(&K, &REVELA_EM, &m.acusado),
         Err(Ok(Erro::AssentosInvalidos.into()))
     );
 }
@@ -1027,7 +1074,7 @@ fn a_raiz_bate_com_os_vetores_da_circomlib() {
         }
         let raiz = u256(&m.env, caso["raiz"].as_str().unwrap());
         assert_eq!(m.c.root(), raiz, "{}: raiz antes do fechamento", nome);
-        let f = m.c.lock(&1u32, &REVELA_EM);
+        let f = m.c.lock(&1u32, &REVELA_EM, &m.acusado);
         assert_eq!(f.raiz, raiz, "{}: raiz congelada", nome);
         assert_eq!(
             f.n as u64,
@@ -1049,16 +1096,290 @@ fn fechar_publica_raiz_n_rodada_k() {
     assert_eq!(f.raiz, raiz);
     assert_eq!(f.n, MINIMO);
     let esperado = Fechado {
+        acusado: m.acusado.clone(),
         raiz: f.raiz.clone(),
         n: f.n,
         rodada: f.rodada,
         k: f.k,
         revela_em: f.revela_em,
+        gravidade: K,
+        afastado_ate: f.ledger + AFASTAMENTO,
     };
     assert_eq!(
         m.env.events().all().filter_by_contract(&m.id),
         [esperado.to_xdr(&m.env, &m.id)]
     );
+}
+
+// ---- a gravidade, a parte e o afastamento (T-045) -----------------------
+
+/// A tabela padrão do estudo (docs/desenho-gravidade-afastamento-revelacao.md
+/// §1, aprovada em 2026-10-26): `k` 3/5/7/9, rol mínimo 16/40/40/100.
+fn niveis_padrao(env: &Env) -> soroban_sdk::Vec<Nivel> {
+    let mut v = soroban_sdk::Vec::new(env);
+    for (k, rol_minimo) in [(3, 16), (5, 40), (7, 40), (9, 100)] {
+        v.push_back(Nivel { k, rol_minimo });
+    }
+    v
+}
+
+/// Uma mesa com a tabela padrão em vez da de teste.
+fn mesa_padrao() -> Mesa {
+    let m = mesa();
+    let verificador = m.c.verifier();
+    let sac = m.env.register_stellar_asset_contract_v2(m.escrivao.clone());
+    sac.issuer().set_flag(IssuerFlags::RequiredFlag);
+    sac.issuer().set_flag(IssuerFlags::RevocableFlag);
+    let bilhete = sac.address();
+    let id = m.env.register(
+        Kleroterion,
+        (
+            &m.escrivao,
+            &bilhete,
+            &verificador,
+            &JANELA,
+            niveis_padrao(&m.env),
+            &AFASTAMENTO,
+        ),
+    );
+    token::StellarAssetClient::new(&m.env, &bilhete).set_admin(&id);
+    let c = KleroterionClient::new(&m.env, &id);
+    Mesa {
+        bilhete,
+        id,
+        c,
+        constituido: std::vec::Vec::new(),
+        ..m
+    }
+}
+
+/// INV-19: `k` vem do nível, não de quem fecha. Na tabela padrão, o nível 2
+/// senta 5 e o fechamento guarda o nível.
+#[test]
+fn k_vem_da_gravidade() {
+    let m = mesa_padrao();
+    assert_eq!(m.c.levels(), niveis_padrao(&m.env));
+    inscrever_todos(&m, &jurados(&m, 40));
+    let f = m.c.lock(&2u32, &REVELA_EM, &m.acusado);
+    assert_eq!((f.gravidade, f.k), (2, 5));
+}
+
+/// INV-09 por nível: 39 inscritos fecham no nível 1, não no 2 nem no 4.
+#[test]
+fn rol_abaixo_do_minimo_do_nivel_e_recusado() {
+    let m = mesa_padrao();
+    inscrever_todos(&m, &jurados(&m, 39));
+    for g in [2u32, 3, 4] {
+        assert_eq!(
+            m.c.try_lock(&g, &REVELA_EM, &m.acusado),
+            Err(Ok(Erro::RolAbaixoDoMinimo.into())),
+            "nivel {}",
+            g
+        );
+    }
+    assert_eq!(m.c.lock(&1u32, &REVELA_EM, &m.acusado).k, 3);
+}
+
+#[test]
+fn gravidade_fora_da_tabela_e_recusada() {
+    let m = mesa_padrao();
+    inscrever_todos(&m, &jurados(&m, 16));
+    for g in [0u32, 5, u32::MAX] {
+        assert_eq!(
+            m.c.try_lock(&g, &REVELA_EM, &m.acusado),
+            Err(Ok(Erro::GravidadeInvalida.into())),
+            "nivel {}",
+            g
+        );
+    }
+    assert_eq!(m.c.closing(), None);
+}
+
+/// Uma tabela vazia, ou com um nível de zero assentos, não constitui nada.
+#[test]
+fn tabela_vazia_ou_k_zero_e_recusada() {
+    let env = Env::default();
+    let escrivao = Address::generate(&env);
+    let bilhete = Address::generate(&env);
+    let verificador = Address::generate(&env);
+    let mut zero = niveis_padrao(&env);
+    zero.set(
+        1,
+        Nivel {
+            k: 0,
+            rol_minimo: 40,
+        },
+    );
+    for niveis in [soroban_sdk::Vec::<Nivel>::new(&env), zero] {
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            env.register(
+                Kleroterion,
+                (
+                    &escrivao,
+                    &bilhete,
+                    &verificador,
+                    &JANELA,
+                    niveis,
+                    &AFASTAMENTO,
+                ),
+            )
+        }));
+        assert!(r.is_err(), "a tabela invalida e recusada no construtor");
+    }
+}
+
+/// O construtor publica a regra antes de qualquer caso.
+#[test]
+fn constituir_publica_a_tabela_e_o_afastamento() {
+    let m = mesa();
+    let esperado = Constituido {
+        niveis: niveis_de_teste(&m.env, MINIMO),
+        afastamento: AFASTAMENTO,
+    };
+    assert_eq!(m.constituido, [esperado.to_xdr(&m.env, &m.id)]);
+}
+
+/// INV-18: a pessoa julgada, inscrita e autorizada, é impedida no próprio
+/// fechamento — antes de a raiz ser fixada. A folha dela vira zero, `N`
+/// desce, o bilhete fica desautorizado, e o `Impedido` vem antes do `Fechado`.
+#[test]
+fn o_acusado_inscrito_e_impedido_no_fechamento() {
+    let m = mesa();
+    let js = jurados(&m, MINIMO as usize);
+    inscrever_todos(&m, &js);
+    let acusado = js[2].clone();
+
+    // A raiz esperada: a do mesmo rol com a folha 2 zerada por `impede`.
+    let gemea = mesa();
+    let gjs = jurados(&gemea, MINIMO as usize);
+    inscrever_todos(&gemea, &gjs);
+    gemea.c.impede(&gjs[2]);
+    let raiz_sem_a_parte = gemea.c.root();
+
+    let f = m.c.lock(&K, &REVELA_EM, &acusado);
+    assert_eq!(f.raiz, raiz_sem_a_parte, "a folha da parte e zero");
+    assert_eq!(f.n, MINIMO - 1);
+    let esperados = [
+        Impedido {
+            jurado: acusado.clone(),
+            indice: 2,
+        }
+        .to_xdr(&m.env, &m.id),
+        Fechado {
+            acusado: acusado.clone(),
+            raiz: f.raiz.clone(),
+            n: f.n,
+            rodada: f.rodada,
+            k: K,
+            revela_em: REVELA_EM,
+            gravidade: K,
+            afastado_ate: f.ledger + AFASTAMENTO,
+        }
+        .to_xdr(&m.env, &m.id),
+    ];
+    let todos = m.env.events().all().filter_by_contract(&m.id);
+    let nossos: std::vec::Vec<_> = todos
+        .events()
+        .iter()
+        .filter(|e| esperados.contains(e))
+        .cloned()
+        .collect();
+    assert_eq!(nossos, esperados, "Impedido e depois Fechado");
+    // Depois de ler os eventos: outra chamada os apagaria.
+    assert!(
+        !sac(&m).authorized(&acusado),
+        "o bilhete dela foi recolhido"
+    );
+}
+
+/// Uma parte já impedida antes do fechamento não é impedida de novo, e uma
+/// parte que nunca se inscreveu não muda nada no rol.
+#[test]
+fn acusado_ja_impedido_ou_fora_do_rol_nao_muda_o_rol() {
+    let m = mesa();
+    let js = jurados(&m, MINIMO as usize + 1);
+    inscrever_todos(&m, &js);
+    m.c.impede(&js[0]);
+    let raiz = m.c.root();
+    let f = m.c.lock(&K, &REVELA_EM, &js[0]);
+    assert_eq!((f.raiz, f.n), (raiz, MINIMO));
+
+    let m = mesa();
+    inscrever_todos(&m, &jurados(&m, MINIMO as usize));
+    let raiz = m.c.root();
+    let f = fechar_para(&m, ROUND_A, K);
+    assert_eq!((f.raiz, f.n), (raiz, MINIMO), "ACUSADO nao esta no rol");
+}
+
+/// INV-18: quem fecha o rol não fecha o próprio caso.
+#[test]
+fn escrivao_acusado_e_recusado() {
+    let m = mesa();
+    inscrever_todos(&m, &jurados(&m, MINIMO as usize));
+    assert_eq!(
+        m.c.try_lock(&K, &REVELA_EM, &m.escrivao),
+        Err(Ok(Erro::EscrivaoEParte.into()))
+    );
+    assert_eq!(m.c.closing(), None);
+}
+
+/// INV-18, de ponta a ponta: no fluxo de N = 8 da fixture, a parte é um
+/// jurado que estaria abaixo do limiar. Ela é impedida no fechamento, e a
+/// prova que antes valia deixa de valer contra a nova raiz.
+#[test]
+fn a_parte_nao_prova_assento_no_proprio_caso() {
+    let j: serde_json::Value = serde_json::from_str(FLUXO).unwrap();
+    let m = mesa_com_minimo(1);
+    let txt = |v: &serde_json::Value| v.as_str().unwrap().to_owned();
+    let mut principais = std::vec::Vec::new();
+    for x in j["jurados"].as_array().unwrap() {
+        let principal = Address::generate(&m.env);
+        m.c.enroll(&principal, &u256(&m.env, &txt(&x["c"])));
+        principais.push(principal);
+    }
+    let x = &j["jurados"][1];
+    assert!(x["abaixo_do_limiar"].as_bool().unwrap());
+    m.env.ledger().with_mut(|l| {
+        l.timestamp = GENESIS_QUICKNET + (ROUND_A - 2 - MARGEM_DE_RODADAS) * PERIODO_QUICKNET
+    });
+    let f = m.c.lock(&3u32, &REVELA_EM, &principais[1]);
+    assert_ne!(f.raiz, u256(&m.env, &txt(&j["raiz"])), "a raiz mudou");
+    m.env.ledger().with_mut(|l| l.sequence_number = 1000);
+    m.c.seal(&sig_a(&m));
+    let bn = |h: &str| hex::decode(h).unwrap();
+    let prova = Prova {
+        a: BytesN::from_array(&m.env, &bn(&txt(&x["proof"]["a"])).try_into().unwrap()),
+        b: BytesN::from_array(&m.env, &bn(&txt(&x["proof"]["b"])).try_into().unwrap()),
+        c: BytesN::from_array(&m.env, &bn(&txt(&x["proof"]["c"])).try_into().unwrap()),
+    };
+    let assento = Address::from_str(&m.env, &txt(&x["assento"]));
+    assert_eq!(
+        m.c.try_claim(&assento, &prova, &u256(&m.env, &txt(&x["y"]))),
+        Err(Ok(Erro::ProvaInvalida.into()))
+    );
+}
+
+/// INV-20: afastada só a parte, só do fechamento até `afastado_ate`.
+#[test]
+fn afastado_so_para_o_acusado_e_so_no_prazo() {
+    let m = mesa();
+    let js = jurados(&m, MINIMO as usize);
+    inscrever_todos(&m, &js);
+    assert!(!m.c.suspended(&m.acusado), "antes do caso, ninguem");
+    m.env.ledger().with_mut(|l| l.sequence_number = 2000);
+    let f = m.c.lock(&K, &REVELA_EM, &m.acusado);
+    assert_eq!(f.afastado_ate, 2000 + AFASTAMENTO);
+    assert!(m.c.suspended(&m.acusado));
+    assert!(!m.c.suspended(&js[0]), "um jurado nao esta afastado");
+    assert!(!m.c.suspended(&m.escrivao));
+    m.env
+        .ledger()
+        .with_mut(|l| l.sequence_number = f.afastado_ate - 1);
+    assert!(m.c.suspended(&m.acusado), "ate o ultimo ledger do prazo");
+    m.env
+        .ledger()
+        .with_mut(|l| l.sequence_number = f.afastado_ate);
+    assert!(!m.c.suspended(&m.acusado), "o prazo vence sozinho");
 }
 
 // ---- a prova de assento (T-037) ----------------------------------------
@@ -1213,7 +1534,7 @@ fn o_verificador_e_o_do_construtor() {
 
 /// Custo, no host de teste, de conferir uma prova pelo kleroterion: montar
 /// as entradas, o SHA-256 do endereço e a chamada ao verificador.
-const CUSTO_PROVA: (u64, u64) = (29_200_539, 273_827);
+const CUSTO_PROVA: (u64, u64) = (29_285_140, 328_883);
 
 #[test]
 fn custo_medido_da_prova() {
@@ -1245,9 +1566,9 @@ fn rodada_real_verifica() {
 /// a inscrição do 64.º jurado (o caminho inteiro da árvore e as três chamadas
 /// ao SAC), um impedimento e o fechamento. Mudou, fica vermelho (G2); G7
 /// confere que docs/SPEC.md ainda diz estes números.
-const CUSTO_ENROLL: (u64, u64) = (10_481_144, 1_725_965);
-const CUSTO_IMPEDE: (u64, u64) = (8_684_358, 1_048_886);
-const CUSTO_LOCK: (u64, u64) = (606_903, 291_011);
+const CUSTO_ENROLL: (u64, u64) = (10_589_550, 1_786_609);
+const CUSTO_IMPEDE: (u64, u64) = (8_792_764, 1_109_530);
+const CUSTO_LOCK: (u64, u64) = (861_209, 402_181);
 
 #[test]
 fn custo_medido_de_enroll_impede_lock() {
@@ -1275,11 +1596,11 @@ fn custo_medido_de_enroll_impede_lock() {
 /// N = 8, k = 3: o selo (verificação BLS12-381 e o limiar), a sexta
 /// reivindicação (a prova e a inserção), uma recusa, o `finalize` e um
 /// `reveal`. Mudou, fica vermelho (G2); G7 confere docs/SPEC.md.
-const CUSTO_SEAL: (u64, u64) = (26_894_868, 229_645);
-const CUSTO_CLAIM: (u64, u64) = (29_514_466, 376_981);
-const CUSTO_RECUSE: (u64, u64) = (2_832_906, 303_526);
-const CUSTO_FINALIZE: (u64, u64) = (184_731, 100_873);
-const CUSTO_REVEAL: (u64, u64) = (2_942_915, 370_392);
+const CUSTO_SEAL: (u64, u64) = (27_015_477, 297_285);
+const CUSTO_CLAIM: (u64, u64) = (29_599_984, 432_445);
+const CUSTO_RECUSE: (u64, u64) = (2_912_530, 358_922);
+const CUSTO_FINALIZE: (u64, u64) = (264_892, 155_929);
+const CUSTO_REVEAL: (u64, u64) = (3_028_049, 426_060);
 
 #[test]
 fn custo_medido_do_fluxo_selado() {
@@ -1345,6 +1666,20 @@ fn bate_com_o_vetor_selado() {
     };
     let mut proximo = || e.next().unwrap().clone();
 
+    let v = proximo();
+    let mut niveis = soroban_sdk::Vec::new(env);
+    for x in v["niveis"].as_array().unwrap() {
+        niveis.push_back(Nivel {
+            k: x["k"].as_u64().unwrap() as u32,
+            rol_minimo: x["rol_minimo"].as_u64().unwrap() as u32,
+        });
+    }
+    let esperado = Constituido {
+        niveis,
+        afastamento: v["afastamento"].as_u64().unwrap() as u32,
+    };
+    assert_eq!(m.constituido, [esperado.to_xdr(env, &m.id)], "Constituido");
+
     for _ in 0..8 {
         let v = proximo();
         let jurado = addr(&v["jurado"]);
@@ -1359,11 +1694,14 @@ fn bate_com_o_vetor_selado() {
     let v = proximo();
     let f = fechar_para(&m, ROUND_A, v["k"].as_u64().unwrap() as u32);
     let esperado = Fechado {
+        acusado: addr(&v["acusado"]),
         raiz: n(&v["raiz"]),
         n: v["n"].as_u64().unwrap() as u32,
         rodada: v["rodada"].as_u64().unwrap(),
         k: f.k,
         revela_em: v["revela_em"].as_u64().unwrap() as u32,
+        gravidade: v["gravidade"].as_u64().unwrap() as u32,
+        afastado_ate: v["afastado_ate"].as_u64().unwrap() as u32,
     };
     confere(&m, esperado.to_xdr(env, &m.id), "Fechado");
 

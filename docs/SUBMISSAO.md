@@ -55,7 +55,7 @@ The independent check, reading only the events and drand, returns **`CONFERE`, 7
 - **No relayer.** A seat account must be funded with no trail to the juror. In this run every account came from friendbot, and one machine played every juror.
 - **A lost secret is a lost seat.** A juror who never reveals stays unaccounted for, and is listed as such on the ledger.
 - **The seal ends at the ledger.** Deliberating off-chain breaks it.
-- **The person judged must be impeded by hand.** Nothing yet makes the clerk do it before `lock`, so a drawn party could sit unseen. The fix is designed, not built.
+- **Keeping the person judged off their own panel is built but not yet on testnet.** The code now impedes them at `lock`; the testnet run predates that change.
 - **What is built is the roster cycle.** The case lifecycle (renewal, contestation windows, quorum) is designed and not built.
 - **Testnet only. Not audited.**
 

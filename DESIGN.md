@@ -2,6 +2,12 @@
 
 One look, used by the landing page, the ticket page and the video. It is derived from `THESIS.md`, so when the thesis changes, this changes next. It was last aligned on 2026-10-26 (T-043), after the thesis became the sealed draw (DEC-015, DEC-029).
 
+## Live demo application (T-057, 2026-10-26)
+
+The human requested a lighter, more minimal governance interface for `web/vivo/index.html`, informed by actual DAO voting and forum interfaces. For that page, this section supersedes the colour, type and layout examples below: white background only; Public Sans for interface headings and text; Source Serif 4 for the wordmark; IBM Plex Mono for technical data; petrol blue `#285963`, graphite `#253238`, subtle rules, 4 px corners and no decorative shadows. Before starting, documents are the primary column and session rules sit beside the start action. “Revisar e continuar” opens a reversible review inside the session frame without calling the engine. It keeps the documents editable and previews the rules. “Criar caso na testnet” then starts execution, keeping the same case heading and frame. During execution, a central live session brings together the journey, current operation, voting, result and an open execution journal. The session frame and document dialog have 8 px corners; controls retain 4 px. Short entrance transitions signal stage changes; a restrained breathing marker indicates waiting, and amber indicates a ballot requiring attention. Local Phosphor regular icons label stages. Motion obeys reduced-motion preferences. Documents, rules and limits remain available in a native dialog; the ballot and terminal states close that dialog and receive focus. The journal can stop following new entries without pausing the case. See `docs/ux-demo-governanca.md` for the observed references, rationale and validation limits.
+
+The dark theme and Cormorant examples below still describe the other pages. Their migration is outside T-057; the conflict is logged in SPEC §11. The statement below that the pages never sign applies to the recorded pages, not the live testnet engine introduced in T-053.
+
 ---
 
 ## The institution we want to express

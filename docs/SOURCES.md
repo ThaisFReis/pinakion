@@ -199,3 +199,23 @@ Every external fact this project relies on, and every piece of code copied in. A
 | 2026-10-25 | `circuits/LICENSE` | `https://www.gnu.org/licenses/gpl-3.0.txt`, sha256 `3972dc97…b36986` | the licence text itself | T-034 |
 
 Not copied: circomlib, circomlibjs and snarkjs are pinned npm devDependencies (`package.json`, `package-lock.json`) and stay in `node_modules/`. `circuits/` includes circomlib by path and is GPL-3.0; everything outside it remains MIT (DEC-021). The compiled circuit (`build/claim/`: r1cs, witness wasm, zkey) is git-ignored.
+
+## Live demo UX references (2026-10-26, T-057)
+
+- Agora / Optimism: https://vote.optimism.io/proposals/11016722315079092316541525436963784553487811157319342152041523932758691863591 — rendered page inspected: proposal body, vote breakdown, quorum, threshold and executed state. Visual reference only; no external code copied.
+- Snapshot / Aave DAO: https://snapshot.box/#/s:aavedao.eth — rendered page inspected: section navigation, proposal rows, authors, statuses, vote counts and deadlines. https://docs.snapshot.box/user-guides/voting/vote — official eligibility/validation explanation read. No voting performed.
+- Tally/Cactus: https://docs.tally.xyz/how-to-use-tally/voting-on-proposals/ — official vote flow read; https://docs.tally.xyz/tally-is-now-cactus/ explicitly dates the rebrand to June 17, 2026. Old shutdown search results and current rebrand documentation describe different moments; this review uses the current primary documentation. No authenticated app flow tested.
+- Discourse: https://gov.optimism.io/ — rendered forum inspected for topic/category/activity hierarchy; https://meta.discourse.org/t/creating-and-managing-polls/77548 — official poll controls read, including results visibility and automatic closing. No forum content or code copied.
+- Internal source for the live-demo rules: `web/vivo/motor.mjs::PLANO` and `contracts/processo/src/lib.rs::abrir`; UI rule test compares against `CasoAberto` in `docs/evidencia-processo-registro.json`. Existing 45-second choice window preserved; 15–20 minutes remains an unmeasured estimate inherited from the previous UI. No new Stellar network claim.
+- Raven `skills.stellar-dev.dapp`, transaction UX checklist, read through `mcp__stellar_raven.execute`: used as a workflow checklist (states, errors, duplicate-send protection), not as evidence of protocol behavior.
+
+Design conclusions and limits: `docs/ux-demo-governanca.md`.
+
+
+## Recording interface: assets and browser standards (2026-10-26, T-057)
+
+| Date | Our path / fact | Primary source | License / use |
+|---|---|---|---|
+| 2026-10-26 | `web/vivo/icons/`: unmodified regular SVGs for files, users-three, check-square, list-checks, check-circle, arrow-left, pause and play | https://github.com/phosphor-icons/core/tree/2b75f3ad12b420c9504ef05df8d2564a28f8500e/assets/regular | MIT, copyright (c) 2023 Phosphor Icons. License read and retained in `web/vivo/icons/LICENSE`; source commit in `SOURCE.md`. |
+| 2026-10-26 | Native dialog for consulting the running case; tested keyboard dismissal and automatic close in the browser | https://html.spec.whatwg.org/multipage/interactive-elements.html#the-dialog-element | Reference only; no code copied. |
+| 2026-10-26 | Reduced-motion preference governs decorative animation | https://www.w3.org/TR/mediaqueries-5/#prefers-reduced-motion | W3C draft dated 2026-02-19; reference only, no code copied. |

@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "test": "node web/test.mjs",
+    "test": "node web/test.mjs && node web/vivo/ui.test.mjs",
     "test:circuito": "node circuits/test.mjs"
   },
   "devDependencies": {

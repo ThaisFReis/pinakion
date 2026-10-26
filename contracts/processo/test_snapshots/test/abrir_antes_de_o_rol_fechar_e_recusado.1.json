@@ -90,7 +90,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Rol"
+                    "symbol": "Roster"
                   }
                 ]
               },
@@ -123,19 +123,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Afastamento"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "u32": 1
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Autorizados"
+                            "symbol": "Authorized"
                           }
                         ]
                       },
@@ -147,19 +135,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Bilhete"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Escrivao"
+                            "symbol": "Clerk"
                           }
                         ]
                       },
@@ -171,31 +147,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "EsperaMinima"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "u32": 1
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Janela"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "u32": 100
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Niveis"
+                            "symbol": "Levels"
                           }
                         ]
                       },
@@ -213,7 +165,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -228,12 +180,60 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Verificador"
+                            "symbol": "MinimumWait"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 1
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Suspension"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 1
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Ticket"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Verifier"
                           }
                         ]
                       },
                       "val": {
                         "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Window"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 100
                       }
                     }
                   ]
@@ -264,19 +264,19 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "DoisTercosDesde"
+                            "symbol": "Attendees"
                           }
                         ]
                       },
                       "val": {
-                        "u32": 4
+                        "vec": []
                       }
                     },
                     {
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Escrivao"
+                            "symbol": "Clerk"
                           }
                         ]
                       },
@@ -300,7 +300,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "PrazoQuorum"
+                            "symbol": "MinimumVotes"
                           }
                         ]
                       },
@@ -312,19 +312,19 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Presentes"
+                            "symbol": "QuorumDeadline"
                           }
                         ]
                       },
                       "val": {
-                        "vec": []
+                        "u32": 1
                       }
                     },
                     {
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Registros"
+                            "symbol": "Records"
                           }
                         ]
                       },
@@ -348,12 +348,12 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "VotosMinimos"
+                            "symbol": "TwoThirdsFrom"
                           }
                         ]
                       },
                       "val": {
-                        "u32": 1
+                        "u32": 4
                       }
                     }
                   ]

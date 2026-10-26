@@ -767,7 +767,35 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Compromisso"
+                    "symbol": "Claims"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "vec": [
+                  {
+                    "u256": "1626201726522907126292687427820694008225114677165435696094600414931996917765"
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "Commitment"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
@@ -794,7 +822,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Compromisso"
+                    "symbol": "Commitment"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
@@ -821,7 +849,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Compromisso"
+                    "symbol": "Commitment"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOLZM"
@@ -848,7 +876,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Compromisso"
+                    "symbol": "Commitment"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5"
@@ -875,7 +903,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Compromisso"
+                    "symbol": "Commitment"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON"
@@ -902,7 +930,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Compromisso"
+                    "symbol": "Commitment"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVAX5"
@@ -929,7 +957,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Compromisso"
+                    "symbol": "Commitment"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXI7N"
@@ -956,7 +984,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Compromisso"
+                    "symbol": "Commitment"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYRE5"
@@ -983,7 +1011,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Indice"
+                    "symbol": "Index"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
@@ -1010,7 +1038,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Indice"
+                    "symbol": "Index"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
@@ -1037,7 +1065,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Indice"
+                    "symbol": "Index"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOLZM"
@@ -1064,7 +1092,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Indice"
+                    "symbol": "Index"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5"
@@ -1091,7 +1119,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Indice"
+                    "symbol": "Index"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON"
@@ -1118,7 +1146,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Indice"
+                    "symbol": "Index"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVAX5"
@@ -1145,7 +1173,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Indice"
+                    "symbol": "Index"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXI7N"
@@ -1172,7 +1200,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Indice"
+                    "symbol": "Index"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYRE5"
@@ -1199,7 +1227,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 0
@@ -1229,7 +1257,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 0
@@ -1259,7 +1287,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 0
@@ -1289,7 +1317,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 0
@@ -1319,7 +1347,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 0
@@ -1349,7 +1377,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 0
@@ -1379,7 +1407,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 0
@@ -1409,7 +1437,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 0
@@ -1439,7 +1467,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 1
@@ -1469,7 +1497,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 1
@@ -1499,7 +1527,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 1
@@ -1529,7 +1557,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 1
@@ -1559,7 +1587,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 2
@@ -1589,7 +1617,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 2
@@ -1619,7 +1647,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 3
@@ -1649,7 +1677,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 4
@@ -1679,7 +1707,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 5
@@ -1709,7 +1737,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "No"
+                    "symbol": "Node"
                   },
                   {
                     "u32": 6
@@ -1739,7 +1767,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Painel"
+                    "symbol": "Panel"
                   }
                 ]
               },
@@ -1748,7 +1776,7 @@
                 "map": [
                   {
                     "key": {
-                      "symbol": "completo"
+                      "symbol": "complete"
                     },
                     "val": {
                       "bool": false
@@ -1764,7 +1792,7 @@
                   },
                   {
                     "key": {
-                      "symbol": "painel"
+                      "symbol": "seats"
                     },
                     "val": {
                       "vec": [
@@ -1792,35 +1820,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Reivindicados"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "vec": [
-                  {
-                    "u256": "1626201726522907126292687427820694008225114677165435696094600414931996917765"
-                  }
-                ]
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 5095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "Rol"
+                    "symbol": "Roster"
                   }
                 ]
               },
@@ -1869,7 +1869,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Usado"
+                    "symbol": "Used"
                   },
                   {
                     "u256": "2795653261384161210624352287172364595996086720921181346723615113009178411424"
@@ -1896,7 +1896,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Usado"
+                    "symbol": "Used"
                   },
                   {
                     "u256": "3193671157329990604799485163236812860077864335184707081547907659819666273678"
@@ -1923,7 +1923,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Usado"
+                    "symbol": "Used"
                   },
                   {
                     "u256": "7009651174219916813367701922665411688822193915972444924143505093947973938783"
@@ -1950,7 +1950,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Usado"
+                    "symbol": "Used"
                   },
                   {
                     "u256": "13735000863718794814751647144950186360418033456870159677301482617210213565977"
@@ -1977,7 +1977,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Usado"
+                    "symbol": "Used"
                   },
                   {
                     "u256": "14287937976288343395740345997533921731835456357341703222672592458747370494730"
@@ -2004,7 +2004,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Usado"
+                    "symbol": "Used"
                   },
                   {
                     "u256": "16779340708844735277229387660531109130999168317691160111502606021593713209211"
@@ -2031,7 +2031,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Usado"
+                    "symbol": "Used"
                   },
                   {
                     "u256": "18329969449473493291214052491529338235142282402925054145117703651276273269357"
@@ -2058,7 +2058,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Usado"
+                    "symbol": "Used"
                   },
                   {
                     "u256": "18516200649899615181175079679845248665302207806992658359000561940818721831393"
@@ -2085,7 +2085,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "YDe"
+                    "symbol": "YOf"
                   },
                   {
                     "address": "GCV7S5RYZ4YIGJYOQ3N3MGUXSNSG44ERWVNXFEY5P67LM3R32RYVDDHP"
@@ -2112,7 +2112,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "YUsado"
+                    "symbol": "YUsed"
                   },
                   {
                     "u256": "1626201726522907126292687427820694008225114677165435696094600414931996917765"
@@ -2148,19 +2148,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Afastamento"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "u32": 500
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Autorizados"
+                            "symbol": "Authorized"
                           }
                         ]
                       },
@@ -2172,19 +2160,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Bilhete"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Escrivao"
+                            "symbol": "Clerk"
                           }
                         ]
                       },
@@ -2196,19 +2172,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "EsperaMinima"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "u32": 1000
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Fechamento"
+                            "symbol": "Closing"
                           }
                         ]
                       },
@@ -2216,26 +2180,10 @@
                         "map": [
                           {
                             "key": {
-                              "symbol": "acusado"
+                              "symbol": "accused"
                             },
                             "val": {
                               "address": "CD6FRVLLOLONSG6SFSJ72VGYKF7PWI5BEJC7FD6OF4VEF7EX5GSL277U"
-                            }
-                          },
-                          {
-                            "key": {
-                              "symbol": "afastado_ate"
-                            },
-                            "val": {
-                              "u32": 500
-                            }
-                          },
-                          {
-                            "key": {
-                              "symbol": "gravidade"
-                            },
-                            "val": {
-                              "u32": 3
                             }
                           },
                           {
@@ -2264,15 +2212,7 @@
                           },
                           {
                             "key": {
-                              "symbol": "raiz"
-                            },
-                            "val": {
-                              "u256": "21598188271134681136783806150232432804335289379519528152638302457394893878186"
-                            }
-                          },
-                          {
-                            "key": {
-                              "symbol": "revela_em"
+                              "symbol": "reveal_at"
                             },
                             "val": {
                               "u32": 17280
@@ -2280,7 +2220,15 @@
                           },
                           {
                             "key": {
-                              "symbol": "rodada"
+                              "symbol": "root"
+                            },
+                            "val": {
+                              "u256": "21598188271134681136783806150232432804335289379519528152638302457394893878186"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "round"
                             },
                             "val": {
                               "u64": "1000000"
@@ -2288,7 +2236,23 @@
                           },
                           {
                             "key": {
-                              "symbol": "tempo"
+                              "symbol": "severity"
+                            },
+                            "val": {
+                              "u32": 3
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "suspended_until"
+                            },
+                            "val": {
+                              "u32": 500
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "time"
                             },
                             "val": {
                               "u64": "1695803331"
@@ -2301,19 +2265,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Janela"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "u32": 100
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Niveis"
+                            "symbol": "Levels"
                           }
                         ]
                       },
@@ -2331,7 +2283,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -2351,7 +2303,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -2371,7 +2323,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -2391,7 +2343,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -2411,7 +2363,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -2431,7 +2383,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -2451,7 +2403,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -2471,7 +2423,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -2491,7 +2443,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -2511,7 +2463,7 @@
                               },
                               {
                                 "key": {
-                                  "symbol": "rol_minimo"
+                                  "symbol": "roster_minimum"
                                 },
                                 "val": {
                                   "u32": 1
@@ -2526,7 +2478,19 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Selo"
+                            "symbol": "MinimumWait"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 1000
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Seal"
                           }
                         ]
                       },
@@ -2534,23 +2498,7 @@
                         "map": [
                           {
                             "key": {
-                              "symbol": "ampliado"
-                            },
-                            "val": {
-                              "bool": true
-                            }
-                          },
-                          {
-                            "key": {
-                              "symbol": "limiar"
-                            },
-                            "val": {
-                              "u256": "21888242871839275222246405745257275088548364400416034343698204186575808495617"
-                            }
-                          },
-                          {
-                            "key": {
-                              "symbol": "prazo"
+                              "symbol": "deadline"
                             },
                             "val": {
                               "u32": 1201
@@ -2563,6 +2511,22 @@
                             "val": {
                               "u256": "314793322486344755913918369596341389371161618730781977496334783186337874954"
                             }
+                          },
+                          {
+                            "key": {
+                              "symbol": "threshold"
+                            },
+                            "val": {
+                              "u256": "21888242871839275222246405745257275088548364400416034343698204186575808495617"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "widened"
+                            },
+                            "val": {
+                              "bool": true
+                            }
                           }
                         ]
                       }
@@ -2571,12 +2535,48 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Verificador"
+                            "symbol": "Suspension"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 500
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Ticket"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Verifier"
                           }
                         ]
                       },
                       "val": {
                         "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Window"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 100
                       }
                     }
                   ]
@@ -3307,14 +3307,14 @@
           "v0": {
             "topics": [
               {
-                "symbol": "finalizado"
+                "symbol": "finalized"
               }
             ],
             "data": {
               "map": [
                 {
                   "key": {
-                    "symbol": "completo"
+                    "symbol": "complete"
                   },
                   "val": {
                     "bool": false
@@ -3322,7 +3322,7 @@
                 },
                 {
                   "key": {
-                    "symbol": "painel"
+                    "symbol": "seats"
                   },
                   "val": {
                     "vec": [

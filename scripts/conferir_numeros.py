@@ -30,8 +30,8 @@ TUPLAS = {
     "kleroterion": (
         RAIZ / "contracts" / "kleroterion" / "src" / "test.rs",
         [
-            "CUSTO_ENROLL", "CUSTO_IMPEDE", "CUSTO_LOCK", "CUSTO_PROVA",
-            "CUSTO_SEAL", "CUSTO_CLAIM", "CUSTO_RECUSE", "CUSTO_FINALIZE", "CUSTO_REVEAL",
+            "ENROLL_COST", "IMPEDE_COST", "LOCK_COST", "PROOF_COST",
+            "SEAL_COST", "CLAIM_COST", "RECUSE_COST", "FINALIZE_COST", "REVEAL_COST",
         ],
     ),
 }
@@ -48,10 +48,10 @@ ONDE = {
     "THESIS.md": ["verify_cpu", "draw_1000_cpu"],
     "docs/SPEC.md": [
         "verify_cpu", "verify_mem",
-        "kleroterion_custo_enroll_cpu", "kleroterion_custo_impede_cpu", "kleroterion_custo_lock_cpu",
-        "kleroterion_custo_prova_cpu", "groth16_verify_cost_cpu",
-        "kleroterion_custo_seal_cpu", "kleroterion_custo_claim_cpu", "kleroterion_custo_recuse_cpu",
-        "kleroterion_custo_finalize_cpu", "kleroterion_custo_reveal_cpu",
+        "kleroterion_enroll_cost_cpu", "kleroterion_impede_cost_cpu", "kleroterion_lock_cost_cpu",
+        "kleroterion_proof_cost_cpu", "groth16_verify_cost_cpu",
+        "kleroterion_seal_cost_cpu", "kleroterion_claim_cost_cpu", "kleroterion_recuse_cost_cpu",
+        "kleroterion_finalize_cost_cpu", "kleroterion_reveal_cost_cpu",
     ],
     "docs/SOURCES.md": ["verify_cpu", "verify_mem"],
     "docs/DEMO.md": ["verify_cpu"],

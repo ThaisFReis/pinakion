@@ -37,19 +37,19 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "DoisTercosDesde"
+                            "symbol": "Attendees"
                           }
                         ]
                       },
                       "val": {
-                        "u32": 4
+                        "vec": []
                       }
                     },
                     {
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Escrivao"
+                            "symbol": "Clerk"
                           }
                         ]
                       },
@@ -73,7 +73,7 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "PrazoQuorum"
+                            "symbol": "MinimumVotes"
                           }
                         ]
                       },
@@ -85,19 +85,19 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Presentes"
+                            "symbol": "QuorumDeadline"
                           }
                         ]
                       },
                       "val": {
-                        "vec": []
+                        "u32": 1
                       }
                     },
                     {
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Registros"
+                            "symbol": "Records"
                           }
                         ]
                       },
@@ -121,12 +121,12 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "VotosMinimos"
+                            "symbol": "TwoThirdsFrom"
                           }
                         ]
                       },
                       "val": {
-                        "u32": 1
+                        "u32": 4
                       }
                     }
                   ]

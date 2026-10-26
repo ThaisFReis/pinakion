@@ -1,93 +1,102 @@
 #![no_std]
-//! Processo: o caso em volta do sorteio, da denúncia ao veredito (T-048).
+//! Proceeding: the case around the draw, from complaint to verdict (T-048).
 //!
-//! O `kleroterion` decide **quem senta**. Este contrato conduz o resto, e não
-//! decide nada que uma regra fixada antes do caso não decida:
+//! `kleroterion` decides **who sits**. This contract runs the rest, and
+//! decides nothing that a rule fixed before the case does not decide:
 //!
-//! 1. `abrir` — com o rol já fechado para julgar alguém, o escrivão registra a
-//!    denúncia. A pessoa julgada, o nível de gravidade e `k` vêm do
-//!    `kleroterion`, não de quem chama.
-//! 2. `comparecer` — cada jurado sentado confirma presença **pela conta de
-//!    assento**, sem dizer quem é. O contrato só pergunta ao `kleroterion` se
-//!    aquela conta sentou. Com o quórum, a sessão se instala; sem ele, no
-//!    prazo, o caso é `adiar`.
-//! 3. `registrar` — os autos: provas e atas do escrivão, a defesa da pessoa
-//!    julgada (afastada, mas nunca calada), atas dos jurados presentes. Cada
-//!    registro é o SHA-256 de um documento que fica fora da cadeia; quem tem
-//!    o documento confere.
-//! 4. `vincular_votacao` — a votação é do **Tessera**, o módulo de voto
-//!    secreto anterior da mesma autora, usado sem modificação. O contrato só
-//!    aceita uma votação do Tessera cuja lista de aptos é exatamente a dos
-//!    jurados presentes: recalcula a raiz de Merkle com a regra do Tessera e
-//!    compara com a que o Tessera guardou.
-//! 5. `decidir` — lê o placar que o Tessera publicou e aplica a regra do nível:
-//!    maioria do painel, ou dois terços a partir do nível fixado no construtor.
+//! 1. `open` — with the roster already closed to judge someone, the clerk
+//!    files the complaint. The person judged, the severity level and `k` come
+//!    from `kleroterion`, not from the caller.
+//! 2. `attend` — each seated juror confirms attendance **from the seat
+//!    account**, without saying who they are. The contract only asks
+//!    `kleroterion` whether that account sat. With the quorum the session
+//!    opens; without it, once the deadline passes, the case is `adjourn`ed.
+//! 3. `file` — the record: the clerk's evidence and minutes, the defence of
+//!    the person judged (suspended, but never silenced), minutes from
+//!    attending jurors. Each record is the SHA-256 of a document that stays
+//!    off the ledger; whoever holds the document checks it.
+//! 4. `bind_vote` — the vote is **Tessera's**, the same author's earlier
+//!    secret-ballot module, used unchanged. The contract accepts a Tessera
+//!    vote only if its voter list is exactly the attending jurors: it
+//!    recomputes the Merkle root under Tessera's rule and compares it with
+//!    the one Tessera stored.
+//! 5. `decide` — reads the score Tessera published and applies the level's
+//!    rule: a majority of the panel, or two thirds from the level fixed in
+//!    the constructor.
 //!
-//! O afastamento cautelar termina no veredito: `suspended` é o do
-//! `kleroterion` enquanto o caso corre, e falso depois de decidido.
+//! Interim suspension ends at the verdict: `suspended` is `kleroterion`'s
+//! while the case runs, and false once it is decided.
 
 use soroban_sdk::{
     contract, contractclient, contracterror, contractevent, contractimpl, contracttype,
     panic_with_error, xdr::ToXdr, Address, Bytes, BytesN, Env, Vec, U256,
 };
 
-/// Separação de domínio da árvore de aptos do Tessera
-/// (`tessera/core/src/merkle.rs` no commit 356c22f): folha, nó, vazio.
-const DOM_FOLHA: u8 = 0x00;
-const DOM_NO: u8 = 0x01;
-const DOM_VAZIO: u8 = 0x02;
-const VAZIO: &[u8] = b"TESSERA-V1-MERKLE-VAZIO";
+/// Domain separation for Tessera's voter tree (`tessera/core/src/merkle.rs` at
+/// commit 356c22f): leaf, node, empty. The tag bytes and the empty-leaf string
+/// are Tessera's, so they keep its spelling.
+const DOM_LEAF: u8 = 0x00;
+const DOM_NODE: u8 = 0x01;
+const DOM_EMPTY: u8 = 0x02;
+// check-english: foreign-interface begin (Tessera 356c22f)
+const EMPTY: &[u8] = b"TESSERA-V1-MERKLE-VAZIO";
+// check-english: foreign-interface end
 
-// ---- o que se lê do kleroterion --------------------------------------------
+// ---- what is read from kleroterion -----------------------------------------
 
-/// Espelho de `kleroterion::Fechamento`: mesmos campos, mesmo XDR.
+/// Mirror of `kleroterion::Closing`: same fields, same XDR.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Fechamento {
+pub struct Closing {
     pub ledger: u32,
-    pub tempo: u64,
-    pub rodada: u64,
+    pub time: u64,
+    pub round: u64,
     pub k: u32,
-    pub revela_em: u32,
-    pub raiz: U256,
+    pub reveal_at: u32,
+    pub root: U256,
     pub n: u32,
-    pub gravidade: u32,
-    pub acusado: Address,
-    pub afastado_ate: u32,
+    pub severity: u32,
+    pub accused: Address,
+    pub suspended_until: u32,
 }
 
-/// Espelho de `kleroterion::Final`.
+/// Mirror of `kleroterion::Panel`.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Final {
-    pub painel: Vec<U256>,
-    pub completo: bool,
+pub struct Panel {
+    pub seats: Vec<U256>,
+    pub complete: bool,
     pub ledger: u32,
 }
 
 #[contractclient(name = "KleroterionClient")]
 pub trait Kleroterion {
-    fn closing(env: Env) -> Option<Fechamento>;
-    fn panel(env: Env) -> Option<Final>;
-    fn seated(env: Env, assento: Address) -> bool;
-    fn suspended(env: Env, endereco: Address) -> bool;
+    fn closing(env: Env) -> Option<Closing>;
+    fn panel(env: Env) -> Option<Panel>;
+    fn seated(env: Env, seat: Address) -> bool;
+    fn suspended(env: Env, address: Address) -> bool;
 }
 
-// ---- o que se lê do Tessera ------------------------------------------------
+// ---- what is read from Tessera ---------------------------------------------
 
-/// Espelho de `tessera::tipos::Pergunta` (commit 356c22f).
+/// Mirror of `tessera::tipos::Pergunta` (commit 356c22f). Soroban matches
+/// struct field names on the wire, so these keep Tessera's spelling: the
+/// contract is deployed unchanged and renaming them would break the call.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Pergunta {
+pub struct TesseraQuestion {
+    // check-english: foreign-interface begin (Tessera 356c22f)
     pub opcoes: u32,
     pub confidencial: bool,
+    // check-english: foreign-interface end
 }
 
-/// Espelho de `tessera::tipos::Proposta` (commit 356c22f).
+/// Mirror of `tessera::tipos::Proposta` (commit 356c22f).
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Proposta {
-    pub perguntas: Vec<Pergunta>,
+pub struct TesseraProposal {
+    // check-english: foreign-interface begin (Tessera 356c22f)
+    pub perguntas: Vec<TesseraQuestion>,
     pub raiz_aptos: BytesN<32>,
     pub mesa: Vec<Address>,
     pub limiar: u32,
@@ -98,619 +107,621 @@ pub struct Proposta {
     pub anel: bool,
     pub secoes: u32,
     pub limite_secao: u32,
+    // check-english: foreign-interface end
 }
 
 #[contractclient(name = "TesseraClient")]
 pub trait Tessera {
-    fn proposta(env: Env, proposta: BytesN<32>) -> Option<Proposta>;
-    fn resultado(env: Env, proposta: BytesN<32>) -> Option<Vec<u32>>;
+    // check-english: foreign-interface begin (Tessera 356c22f)
+    fn proposta(env: Env, id: BytesN<32>) -> Option<TesseraProposal>;
+    fn resultado(env: Env, id: BytesN<32>) -> Option<Vec<u32>>;
+    // check-english: foreign-interface end
 }
 
-// ---- tipos do processo -----------------------------------------------------
+// ---- the proceeding's own types --------------------------------------------
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum Erro {
-    /// O caso já foi aberto.
-    JaAberto = 1,
-    /// O rol do `kleroterion` ainda não fechou: não há quem julgar.
-    RolAberto = 2,
-    /// `k` abaixo do mínimo de votos que a votação secreta exige.
-    PainelPequenoParaOSigilo = 3,
-    /// O caso não está na fase que esta chamada pede.
-    ForaDeFase = 4,
-    /// O painel ainda não saiu.
-    SemPainel = 5,
-    /// Esta conta não sentou no painel.
-    NaoSentou = 6,
-    /// Esta conta já compareceu.
-    JaCompareceu = 7,
-    /// O prazo do quórum venceu.
-    PrazoDoQuorumVencido = 8,
-    /// O prazo do quórum ainda não venceu.
-    PrazoDoQuorumAberto = 9,
-    /// Quem chama não tem papel para este registro.
-    SemPapel = 10,
-    /// O Tessera não conhece esta votação.
-    SemVotacao = 11,
-    /// A cédula não é uma pergunta sigilosa de duas opções.
-    CedulaErrada = 12,
-    /// A lista de aptos da votação não é a dos jurados presentes.
-    AptosNaoSaoOsPresentes = 13,
-    /// Um membro da mesa da votação não é jurado presente.
-    MesaDeFora = 14,
-    /// A votação abriu antes de a sessão se instalar.
-    VotacaoAnteriorASessao = 15,
-    /// O Tessera ainda não publicou o resultado.
-    SemResultado = 16,
+pub enum Error {
+    /// The case has already been opened.
+    AlreadyOpen = 1,
+    /// `kleroterion`'s roster has not closed yet: there is nobody to judge.
+    RosterOpen = 2,
+    /// `k` below the minimum number of votes the secret ballot requires.
+    PanelTooSmallForSecrecy = 3,
+    /// The case is not in the phase this call asks for.
+    OutOfPhase = 4,
+    /// The panel is not out yet.
+    NoPanel = 5,
+    /// This account did not sit on the panel.
+    DidNotSit = 6,
+    /// This account has already attended.
+    AlreadyAttended = 7,
+    /// The quorum deadline has passed.
+    QuorumDeadlinePassed = 8,
+    /// The quorum deadline has not passed yet.
+    QuorumDeadlineOpen = 9,
+    /// The caller has no role for this record.
+    NoRole = 10,
+    /// Tessera does not know this vote.
+    NoVote = 11,
+    /// The ballot is not one confidential two-option question.
+    WrongBallot = 12,
+    /// The vote's voter list is not the attending jurors.
+    VotersAreNotAttendees = 13,
+    /// A member of the vote's bench is not an attending juror.
+    BenchOutsider = 14,
+    /// The vote opened before the session was installed.
+    VoteBeforeSession = 15,
+    /// Tessera has not published the result yet.
+    NoResult = 16,
 }
 
-/// Em que ponto o caso está.
+/// Where the case stands.
 #[contracttype]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u32)]
-pub enum Fase {
-    /// Denúncia registrada; o painel se forma e os jurados comparecem.
-    Aberto = 0,
-    /// Quórum atingido: a sessão está instalada.
-    Sessao = 1,
-    /// A votação do Tessera está vinculada ao caso.
-    Votacao = 2,
-    /// O veredito saiu.
-    Decidido = 3,
-    /// O prazo do quórum venceu sem quórum.
-    Adiado = 4,
-}
-
-#[contracttype]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[repr(u32)]
-pub enum Tipo {
-    Denuncia = 0,
-    Prova = 1,
-    Defesa = 2,
-    Ata = 3,
+pub enum Phase {
+    /// Complaint filed; the panel forms and the jurors attend.
+    Open = 0,
+    /// Quorum reached: the session is installed.
+    Session = 1,
+    /// Tessera's vote is bound to the case.
+    Voting = 2,
+    /// The verdict is out.
+    Decided = 3,
+    /// The quorum deadline passed without a quorum.
+    Adjourned = 4,
 }
 
 #[contracttype]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u32)]
-pub enum Papel {
-    Escrivao = 0,
-    Acusado = 1,
-    Jurado = 2,
+pub enum Kind {
+    Complaint = 0,
+    Evidence = 1,
+    Defence = 2,
+    Minutes = 3,
 }
 
-/// O caso: quem é julgado, em que nível, quantos assentos e o quórum.
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum Role {
+    Clerk = 0,
+    Accused = 1,
+    Juror = 2,
+}
+
+/// The case: who is judged, at which level, how many seats and the quorum.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Caso {
-    pub acusado: Address,
-    pub gravidade: u32,
+pub struct Case {
+    pub accused: Address,
+    pub severity: u32,
     pub k: u32,
     pub quorum: u32,
-    pub exigidos: u32,
-    pub aberto_em: u32,
+    pub required: u32,
+    pub opened_at: u32,
 }
 
-/// Um registro dos autos: o hash de um documento, quem o pôs e quando.
+/// One entry in the record: a document's hash, who filed it and when.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Registro {
+pub struct Record {
     pub seq: u32,
-    pub tipo: Tipo,
-    pub papel: Papel,
-    pub autor: Address,
+    pub kind: Kind,
+    pub role: Role,
+    pub author: Address,
     pub hash: BytesN<32>,
     pub ledger: u32,
 }
 
-/// O veredito: o placar do Tessera e a regra do nível.
+/// The verdict: Tessera's score and the level's rule.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Decisao {
-    pub sim: u32,
-    pub nao: u32,
-    pub exigidos: u32,
-    pub procedente: bool,
+pub struct Decision {
+    pub yes: u32,
+    pub no: u32,
+    pub required: u32,
+    pub upheld: bool,
     pub ledger: u32,
 }
 
 #[contracttype]
-enum Chave {
-    Escrivao,
+enum Key {
+    Clerk,
     Kleroterion,
     Tessera,
-    PrazoQuorum,
-    VotosMinimos,
-    DoisTercosDesde,
-    Caso,
-    Fase,
-    Presentes,
-    Registros,
-    SessaoEm,
-    Votacao,
-    Decisao,
+    QuorumDeadline,
+    MinimumVotes,
+    TwoThirdsFrom,
+    Case,
+    Phase,
+    Attendees,
+    Records,
+    SessionAt,
+    Vote,
+    Decision,
 }
 
-// ---- eventos ---------------------------------------------------------------
+// ---- events ----------------------------------------------------------------
 
-/// A regra, publicada antes de qualquer caso.
+/// The rule, published before any case.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Instituido {
+pub struct Instituted {
     pub kleroterion: Address,
     pub tessera: Address,
-    pub prazo_quorum: u32,
-    pub votos_minimos: u32,
-    pub dois_tercos_desde: u32,
+    pub quorum_deadline: u32,
+    pub minimum_votes: u32,
+    pub two_thirds_from: u32,
 }
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CasoAberto {
+pub struct CaseOpened {
     #[topic]
-    pub acusado: Address,
-    pub gravidade: u32,
+    pub accused: Address,
+    pub severity: u32,
     pub k: u32,
     pub quorum: u32,
-    pub exigidos: u32,
+    pub required: u32,
 }
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Registrado {
+pub struct Filed {
     pub seq: u32,
-    pub tipo: Tipo,
-    pub papel: Papel,
-    pub autor: Address,
+    pub kind: Kind,
+    pub role: Role,
+    pub author: Address,
     pub hash: BytesN<32>,
 }
 
-/// Uma conta de assento compareceu. Leva a conta, não o nome: o nome só
-/// aparece quando o jurado revelar no `kleroterion`.
+/// A seat account attended. It carries the account, not the name: the name
+/// appears only when the juror reveals in `kleroterion`.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Compareceu {
-    pub assento: Address,
-    pub presentes: u32,
+pub struct Attended {
+    pub seat: Address,
+    pub attendees: u32,
 }
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SessaoInstalada {
-    pub presentes: u32,
+pub struct SessionOpened {
+    pub attendees: u32,
     pub quorum: u32,
 }
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Adiado {
-    pub presentes: u32,
+pub struct Adjourned {
+    pub attendees: u32,
     pub quorum: u32,
 }
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct VotacaoVinculada {
-    pub proposta: BytesN<32>,
-    pub raiz_aptos: BytesN<32>,
-    pub votantes: u32,
-    pub fecha_em: u32,
+pub struct VoteBound {
+    pub proposal: BytesN<32>,
+    pub voter_root: BytesN<32>,
+    pub voters: u32,
+    pub closes_at: u32,
 }
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Decidido {
-    pub sim: u32,
-    pub nao: u32,
-    pub exigidos: u32,
-    pub procedente: bool,
-    pub gravidade: u32,
+pub struct Decided {
+    pub yes: u32,
+    pub no: u32,
+    pub required: u32,
+    pub upheld: bool,
+    pub severity: u32,
 }
 
 #[contract]
-pub struct Processo;
+pub struct Proceeding;
 
 #[contractimpl]
-impl Processo {
-    /// `escrivao` abre o caso, registra provas e atas e vincula a votação;
-    /// `kleroterion` é o rol deste caso; `tessera` é o contrato de voto;
-    /// `prazo_quorum` é quantos ledgers, depois do painel, os jurados têm
-    /// para comparecer; `votos_minimos` é o piso de sigilo da votação (o do
-    /// Tessera é 5: abaixo disso ele não publica placar); a partir do nível
-    /// `dois_tercos_desde` a decisão exige dois terços do painel.
+impl Proceeding {
+    /// `clerk` opens the case, files evidence and minutes and binds the vote;
+    /// `kleroterion` is this case's roster; `tessera` is the voting contract;
+    /// `quorum_deadline` is how many ledgers after the panel the jurors have
+    /// to attend; `minimum_votes` is the vote's secrecy floor (Tessera's is 5:
+    /// below that it publishes no score); from level `two_thirds_from` the
+    /// decision requires two thirds of the panel.
     pub fn __constructor(
         env: Env,
-        escrivao: Address,
+        clerk: Address,
         kleroterion: Address,
         tessera: Address,
-        prazo_quorum: u32,
-        votos_minimos: u32,
-        dois_tercos_desde: u32,
+        quorum_deadline: u32,
+        minimum_votes: u32,
+        two_thirds_from: u32,
     ) {
         let s = env.storage().instance();
-        s.set(&Chave::Escrivao, &escrivao);
-        s.set(&Chave::Kleroterion, &kleroterion);
-        s.set(&Chave::Tessera, &tessera);
-        s.set(&Chave::PrazoQuorum, &prazo_quorum);
-        s.set(&Chave::VotosMinimos, &votos_minimos);
-        s.set(&Chave::DoisTercosDesde, &dois_tercos_desde);
-        s.set(&Chave::Presentes, &Vec::<Address>::new(&env));
-        s.set(&Chave::Registros, &Vec::<Registro>::new(&env));
-        Instituido {
+        s.set(&Key::Clerk, &clerk);
+        s.set(&Key::Kleroterion, &kleroterion);
+        s.set(&Key::Tessera, &tessera);
+        s.set(&Key::QuorumDeadline, &quorum_deadline);
+        s.set(&Key::MinimumVotes, &minimum_votes);
+        s.set(&Key::TwoThirdsFrom, &two_thirds_from);
+        s.set(&Key::Attendees, &Vec::<Address>::new(&env));
+        s.set(&Key::Records, &Vec::<Record>::new(&env));
+        Instituted {
             kleroterion,
             tessera,
-            prazo_quorum,
-            votos_minimos,
-            dois_tercos_desde,
+            quorum_deadline,
+            minimum_votes,
+            two_thirds_from,
         }
         .publish(&env);
     }
 
-    /// Abre o caso com a denúncia, depois de o rol fechar. A pessoa julgada,
-    /// o nível e `k` são os do `kleroterion`. O quórum é a maioria do painel,
-    /// e nunca menos que `votos_minimos`; a decisão exige a maioria, ou dois
-    /// terços a partir de `dois_tercos_desde`.
-    pub fn abrir(env: Env, denuncia: BytesN<32>) -> Caso {
-        let escrivao = Self::escrivao(&env);
-        escrivao.require_auth();
-        if Self::fase(env.clone()).is_some() {
-            panic_with_error!(&env, Erro::JaAberto);
+    /// Opens the case with the complaint, once the roster has closed. The
+    /// person judged, the level and `k` are `kleroterion`'s. The quorum is a
+    /// majority of the panel, and never less than `minimum_votes`; the
+    /// decision requires a majority, or two thirds from `two_thirds_from`.
+    pub fn open(env: Env, complaint: BytesN<32>) -> Case {
+        let clerk = Self::clerk(&env);
+        clerk.require_auth();
+        if Self::phase(env.clone()).is_some() {
+            panic_with_error!(&env, Error::AlreadyOpen);
         }
         let f = match Self::klero(&env).closing() {
             Some(f) => f,
-            None => panic_with_error!(&env, Erro::RolAberto),
+            None => panic_with_error!(&env, Error::RosterOpen),
         };
         let i = env.storage().instance();
-        let minimos: u32 = i.get(&Chave::VotosMinimos).unwrap();
-        if f.k < minimos {
-            panic_with_error!(&env, Erro::PainelPequenoParaOSigilo);
+        let minimum: u32 = i.get(&Key::MinimumVotes).unwrap();
+        if f.k < minimum {
+            panic_with_error!(&env, Error::PanelTooSmallForSecrecy);
         }
-        let desde: u32 = i.get(&Chave::DoisTercosDesde).unwrap();
-        let caso = Caso {
-            acusado: f.acusado.clone(),
-            gravidade: f.gravidade,
+        let from: u32 = i.get(&Key::TwoThirdsFrom).unwrap();
+        let case = Case {
+            accused: f.accused.clone(),
+            severity: f.severity,
             k: f.k,
-            quorum: (f.k / 2 + 1).max(minimos),
-            exigidos: if f.gravidade >= desde {
+            quorum: (f.k / 2 + 1).max(minimum),
+            required: if f.severity >= from {
                 (2 * f.k).div_ceil(3)
             } else {
                 f.k / 2 + 1
             },
-            aberto_em: env.ledger().sequence(),
+            opened_at: env.ledger().sequence(),
         };
-        i.set(&Chave::Caso, &caso);
-        i.set(&Chave::Fase, &Fase::Aberto);
-        CasoAberto {
-            acusado: caso.acusado.clone(),
-            gravidade: caso.gravidade,
-            k: caso.k,
-            quorum: caso.quorum,
-            exigidos: caso.exigidos,
+        i.set(&Key::Case, &case);
+        i.set(&Key::Phase, &Phase::Open);
+        CaseOpened {
+            accused: case.accused.clone(),
+            severity: case.severity,
+            k: case.k,
+            quorum: case.quorum,
+            required: case.required,
         }
         .publish(&env);
-        Self::anotar(&env, Tipo::Denuncia, Papel::Escrivao, escrivao, denuncia);
-        Self::manter_vivo(&env);
-        caso
+        Self::note(&env, Kind::Complaint, Role::Clerk, clerk, complaint);
+        Self::keep_alive(&env);
+        case
     }
 
-    /// Um jurado confirma presença pela conta de assento. Só quem sentou,
-    /// uma vez, e antes de o prazo do quórum vencer enquanto a sessão não se
-    /// instalou. Com o quórum, a sessão se instala; depois dela, quem chega
-    /// ainda conta, até a votação ser vinculada.
-    pub fn comparecer(env: Env, assento: Address) -> u32 {
-        assento.require_auth();
-        let fase = Self::fase_ou_falha(&env);
-        if fase != Fase::Aberto && fase != Fase::Sessao {
-            panic_with_error!(&env, Erro::ForaDeFase);
+    /// A juror confirms attendance from the seat account. Only an account that
+    /// sat, only once, and before the quorum deadline passes while the session
+    /// is not installed. With the quorum the session opens; after that,
+    /// latecomers still count, until the vote is bound.
+    pub fn attend(env: Env, seat: Address) -> u32 {
+        seat.require_auth();
+        let phase = Self::phase_or_fail(&env);
+        if phase != Phase::Open && phase != Phase::Session {
+            panic_with_error!(&env, Error::OutOfPhase);
         }
         let k = Self::klero(&env);
-        let painel = match k.panel() {
+        let panel = match k.panel() {
             Some(p) => p,
-            None => panic_with_error!(&env, Erro::SemPainel),
+            None => panic_with_error!(&env, Error::NoPanel),
         };
-        if fase == Fase::Aberto && env.ledger().sequence() > Self::prazo_do_quorum(&env, &painel) {
-            panic_with_error!(&env, Erro::PrazoDoQuorumVencido);
+        if phase == Phase::Open && env.ledger().sequence() > Self::quorum_deadline(&env, &panel) {
+            panic_with_error!(&env, Error::QuorumDeadlinePassed);
         }
-        if !k.seated(&assento) {
-            panic_with_error!(&env, Erro::NaoSentou);
+        if !k.seated(&seat) {
+            panic_with_error!(&env, Error::DidNotSit);
         }
         let i = env.storage().instance();
-        let mut presentes = Self::presentes(env.clone());
-        if presentes.contains(&assento) {
-            panic_with_error!(&env, Erro::JaCompareceu);
+        let mut attendees = Self::attendees(env.clone());
+        if attendees.contains(&seat) {
+            panic_with_error!(&env, Error::AlreadyAttended);
         }
-        presentes.push_back(assento.clone());
-        i.set(&Chave::Presentes, &presentes);
-        let n = presentes.len();
-        Compareceu {
-            assento,
-            presentes: n,
-        }
-        .publish(&env);
-        let caso = Self::caso(env.clone()).unwrap();
-        if fase == Fase::Aberto && n >= caso.quorum {
-            i.set(&Chave::Fase, &Fase::Sessao);
-            i.set(&Chave::SessaoEm, &env.ledger().sequence());
-            SessaoInstalada {
-                presentes: n,
-                quorum: caso.quorum,
+        attendees.push_back(seat.clone());
+        i.set(&Key::Attendees, &attendees);
+        let n = attendees.len();
+        Attended { seat, attendees: n }.publish(&env);
+        let case = Self::case(env.clone()).unwrap();
+        if phase == Phase::Open && n >= case.quorum {
+            i.set(&Key::Phase, &Phase::Session);
+            i.set(&Key::SessionAt, &env.ledger().sequence());
+            SessionOpened {
+                attendees: n,
+                quorum: case.quorum,
             }
             .publish(&env);
         }
-        Self::manter_vivo(&env);
+        Self::keep_alive(&env);
         n
     }
 
-    /// Vencido o prazo sem quórum, o caso é adiado. Qualquer um pode chamar.
-    /// Um novo sorteio é um novo rol, e fica fora deste contrato.
-    pub fn adiar(env: Env) {
-        if Self::fase_ou_falha(&env) != Fase::Aberto {
-            panic_with_error!(&env, Erro::ForaDeFase);
+    /// Once the deadline passes without a quorum, the case is adjourned.
+    /// Anyone may call it. A new draw is a new roster, and stays outside this
+    /// contract.
+    pub fn adjourn(env: Env) {
+        if Self::phase_or_fail(&env) != Phase::Open {
+            panic_with_error!(&env, Error::OutOfPhase);
         }
-        let painel = match Self::klero(&env).panel() {
+        let panel = match Self::klero(&env).panel() {
             Some(p) => p,
-            None => panic_with_error!(&env, Erro::SemPainel),
+            None => panic_with_error!(&env, Error::NoPanel),
         };
-        if env.ledger().sequence() <= Self::prazo_do_quorum(&env, &painel) {
-            panic_with_error!(&env, Erro::PrazoDoQuorumAberto);
+        if env.ledger().sequence() <= Self::quorum_deadline(&env, &panel) {
+            panic_with_error!(&env, Error::QuorumDeadlineOpen);
         }
-        env.storage().instance().set(&Chave::Fase, &Fase::Adiado);
-        Adiado {
-            presentes: Self::presentes(env.clone()).len(),
-            quorum: Self::caso(env.clone()).unwrap().quorum,
+        env.storage().instance().set(&Key::Phase, &Phase::Adjourned);
+        Adjourned {
+            attendees: Self::attendees(env.clone()).len(),
+            quorum: Self::case(env.clone()).unwrap().quorum,
         }
         .publish(&env);
     }
 
-    /// Põe um documento nos autos, pelo hash. Quem pode o quê:
-    /// - o escrivão: provas, até a votação; atas, a qualquer momento;
-    /// - a pessoa julgada: a defesa, até o veredito — afastada, nunca calada;
-    /// - um jurado presente, pela conta de assento: atas, até o veredito.
-    pub fn registrar(env: Env, autor: Address, tipo: Tipo, hash: BytesN<32>) -> u32 {
-        autor.require_auth();
-        let fase = Self::fase_ou_falha(&env);
-        let antes_do_veredito = fase != Fase::Decidido && fase != Fase::Adiado;
-        let antes_da_votacao = fase == Fase::Aberto || fase == Fase::Sessao;
-        let caso = Self::caso(env.clone()).unwrap();
-        let papel = if autor == Self::escrivao(&env) {
-            Papel::Escrivao
-        } else if autor == caso.acusado {
-            Papel::Acusado
-        } else if Self::presentes(env.clone()).contains(&autor) {
-            Papel::Jurado
+    /// Puts a document in the record, by its hash. Who may do what:
+    /// - the clerk: evidence, until the vote; minutes, at any time;
+    /// - the person judged: the defence, until the verdict — suspended, never
+    ///   silenced;
+    /// - an attending juror, from the seat account: minutes, until the verdict.
+    pub fn file(env: Env, author: Address, kind: Kind, hash: BytesN<32>) -> u32 {
+        author.require_auth();
+        let phase = Self::phase_or_fail(&env);
+        let before_the_verdict = phase != Phase::Decided && phase != Phase::Adjourned;
+        let before_the_vote = phase == Phase::Open || phase == Phase::Session;
+        let case = Self::case(env.clone()).unwrap();
+        let role = if author == Self::clerk(&env) {
+            Role::Clerk
+        } else if author == case.accused {
+            Role::Accused
+        } else if Self::attendees(env.clone()).contains(&author) {
+            Role::Juror
         } else {
-            panic_with_error!(&env, Erro::SemPapel)
+            panic_with_error!(&env, Error::NoRole)
         };
-        let pode = match (papel, tipo) {
-            (Papel::Escrivao, Tipo::Prova) => antes_da_votacao,
-            (Papel::Escrivao, Tipo::Ata) => true,
-            (Papel::Acusado, Tipo::Defesa) => antes_do_veredito,
-            (Papel::Jurado, Tipo::Ata) => antes_do_veredito,
+        let allowed = match (role, kind) {
+            (Role::Clerk, Kind::Evidence) => before_the_vote,
+            (Role::Clerk, Kind::Minutes) => true,
+            (Role::Accused, Kind::Defence) => before_the_verdict,
+            (Role::Juror, Kind::Minutes) => before_the_verdict,
             _ => false,
         };
-        if !pode {
-            panic_with_error!(&env, Erro::SemPapel);
+        if !allowed {
+            panic_with_error!(&env, Error::NoRole);
         }
-        let seq = Self::anotar(&env, tipo, papel, autor, hash);
-        Self::manter_vivo(&env);
+        let seq = Self::note(&env, kind, role, author, hash);
+        Self::keep_alive(&env);
         seq
     }
 
-    /// Vincula a votação do Tessera ao caso. Só aceita uma votação de uma
-    /// pergunta sigilosa com duas opções (sim, não), aberta depois de a sessão
-    /// se instalar, cuja lista de aptos é **exatamente** a dos jurados
-    /// presentes, na ordem em que compareceram, e cuja mesa é de presentes.
-    pub fn vincular_votacao(env: Env, proposta: BytesN<32>) {
-        Self::escrivao(&env).require_auth();
-        if Self::fase_ou_falha(&env) != Fase::Sessao {
-            panic_with_error!(&env, Erro::ForaDeFase);
+    /// Binds Tessera's vote to the case. It accepts only a vote of one
+    /// confidential question with two options (yes, no), opened after the
+    /// session was installed, whose voter list is **exactly** the attending
+    /// jurors in the order they attended, and whose bench is made of
+    /// attendees.
+    pub fn bind_vote(env: Env, proposal: BytesN<32>) {
+        Self::clerk(&env).require_auth();
+        if Self::phase_or_fail(&env) != Phase::Session {
+            panic_with_error!(&env, Error::OutOfPhase);
         }
-        let p = match Self::tessera(&env).proposta(&proposta) {
+        let p = match Self::tessera(&env).proposta(&proposal) {
             Some(p) => p,
-            None => panic_with_error!(&env, Erro::SemVotacao),
+            None => panic_with_error!(&env, Error::NoVote),
         };
-        let uma_sigilosa_de_duas = p.perguntas.len() == 1
+        let one_confidential_of_two = p.perguntas.len() == 1
             && p.perguntas.get(0).unwrap()
-                == Pergunta {
+                == TesseraQuestion {
                     opcoes: 2,
                     confidencial: true,
                 };
-        if !uma_sigilosa_de_duas {
-            panic_with_error!(&env, Erro::CedulaErrada);
+        if !one_confidential_of_two {
+            panic_with_error!(&env, Error::WrongBallot);
         }
-        let presentes = Self::presentes(env.clone());
-        if p.raiz_aptos != Self::raiz_dos_aptos(env.clone(), presentes.clone()) {
-            panic_with_error!(&env, Erro::AptosNaoSaoOsPresentes);
+        let attendees = Self::attendees(env.clone());
+        if p.raiz_aptos != Self::voter_root(env.clone(), attendees.clone()) {
+            panic_with_error!(&env, Error::VotersAreNotAttendees);
         }
-        if p.mesa.iter().any(|m| !presentes.contains(&m)) {
-            panic_with_error!(&env, Erro::MesaDeFora);
+        if p.mesa.iter().any(|m| !attendees.contains(&m)) {
+            panic_with_error!(&env, Error::BenchOutsider);
         }
-        let sessao: u32 = env.storage().instance().get(&Chave::SessaoEm).unwrap();
-        if p.abre_em < sessao {
-            panic_with_error!(&env, Erro::VotacaoAnteriorASessao);
+        let session: u32 = env.storage().instance().get(&Key::SessionAt).unwrap();
+        if p.abre_em < session {
+            panic_with_error!(&env, Error::VoteBeforeSession);
         }
         let i = env.storage().instance();
-        i.set(&Chave::Votacao, &proposta);
-        i.set(&Chave::Fase, &Fase::Votacao);
-        VotacaoVinculada {
-            proposta,
-            raiz_aptos: p.raiz_aptos,
-            votantes: presentes.len(),
-            fecha_em: p.fecha_em,
+        i.set(&Key::Vote, &proposal);
+        i.set(&Key::Phase, &Phase::Voting);
+        VoteBound {
+            proposal,
+            voter_root: p.raiz_aptos,
+            voters: attendees.len(),
+            closes_at: p.fecha_em,
         }
         .publish(&env);
-        Self::manter_vivo(&env);
+        Self::keep_alive(&env);
     }
 
-    /// Lê o placar do Tessera e aplica a regra do nível: procedente se `sim`
-    /// alcança os votos exigidos, contados sobre o painel inteiro — ausência
-    /// não é voto a favor. Qualquer um pode chamar.
-    pub fn decidir(env: Env) -> Decisao {
-        if Self::fase_ou_falha(&env) != Fase::Votacao {
-            panic_with_error!(&env, Erro::ForaDeFase);
+    /// Reads Tessera's score and applies the level's rule: upheld if `yes`
+    /// reaches the required votes, counted over the whole panel — absence is
+    /// not a vote in favour. Anyone may call it.
+    pub fn decide(env: Env) -> Decision {
+        if Self::phase_or_fail(&env) != Phase::Voting {
+            panic_with_error!(&env, Error::OutOfPhase);
         }
-        let proposta: BytesN<32> = env.storage().instance().get(&Chave::Votacao).unwrap();
-        let placar = match Self::tessera(&env).resultado(&proposta) {
+        let proposal: BytesN<32> = env.storage().instance().get(&Key::Vote).unwrap();
+        let score = match Self::tessera(&env).resultado(&proposal) {
             Some(r) if r.len() == 2 => r,
-            _ => panic_with_error!(&env, Erro::SemResultado),
+            _ => panic_with_error!(&env, Error::NoResult),
         };
-        let caso = Self::caso(env.clone()).unwrap();
-        let sim = placar.get(0).unwrap();
-        let d = Decisao {
-            sim,
-            nao: placar.get(1).unwrap(),
-            exigidos: caso.exigidos,
-            procedente: sim >= caso.exigidos,
+        let case = Self::case(env.clone()).unwrap();
+        let yes = score.get(0).unwrap();
+        let d = Decision {
+            yes,
+            no: score.get(1).unwrap(),
+            required: case.required,
+            upheld: yes >= case.required,
             ledger: env.ledger().sequence(),
         };
         let i = env.storage().instance();
-        i.set(&Chave::Decisao, &d);
-        i.set(&Chave::Fase, &Fase::Decidido);
-        Decidido {
-            sim: d.sim,
-            nao: d.nao,
-            exigidos: d.exigidos,
-            procedente: d.procedente,
-            gravidade: caso.gravidade,
+        i.set(&Key::Decision, &d);
+        i.set(&Key::Phase, &Phase::Decided);
+        Decided {
+            yes: d.yes,
+            no: d.no,
+            required: d.required,
+            upheld: d.upheld,
+            severity: case.severity,
         }
         .publish(&env);
-        Self::manter_vivo(&env);
+        Self::keep_alive(&env);
         d
     }
 
-    /// A pessoa está afastada? É o afastamento do `kleroterion` enquanto o
-    /// caso corre; termina no veredito ou no adiamento, e o que vem depois
-    /// — a sanção — é de quem chama o módulo.
-    pub fn suspended(env: Env, endereco: Address) -> bool {
-        match Self::fase(env.clone()) {
-            Some(Fase::Decidido) | Some(Fase::Adiado) => false,
-            _ => Self::klero(&env).suspended(&endereco),
+    /// Is the person suspended? It is `kleroterion`'s suspension while the
+    /// case runs; it ends at the verdict or at the adjournment, and what
+    /// follows — the sanction — belongs to whoever calls the module.
+    pub fn suspended(env: Env, address: Address) -> bool {
+        match Self::phase(env.clone()) {
+            Some(Phase::Decided) | Some(Phase::Adjourned) => false,
+            _ => Self::klero(&env).suspended(&address),
         }
     }
 
-    /// A raiz de Merkle que o Tessera calcula para esta lista de aptos, todos
-    /// com peso 1: folha `SHA-256(0x00 ‖ xdr(endereço) ‖ peso_be)`, nó
-    /// `SHA-256(0x01 ‖ esq ‖ dir)`, completada até a potência de 2 com a folha
-    /// vazia `SHA-256(0x02 ‖ "TESSERA-V1-MERKLE-VAZIO")`.
-    pub fn raiz_dos_aptos(env: Env, aptos: Vec<Address>) -> BytesN<32> {
-        let mut nivel: Vec<BytesN<32>> = Vec::new(&env);
-        for a in aptos.iter() {
-            let mut b = Bytes::from_array(&env, &[DOM_FOLHA]);
+    /// The Merkle root Tessera computes for this voter list, all of weight 1:
+    /// leaf `SHA-256(0x00 ‖ xdr(address) ‖ weight_be)`, node
+    /// `SHA-256(0x01 ‖ left ‖ right)`, padded to a power of two with the empty
+    /// leaf `SHA-256(0x02 ‖ "TESSERA-V1-MERKLE-VAZIO")`.
+    pub fn voter_root(env: Env, voters: Vec<Address>) -> BytesN<32> {
+        let mut level: Vec<BytesN<32>> = Vec::new(&env);
+        for a in voters.iter() {
+            let mut b = Bytes::from_array(&env, &[DOM_LEAF]);
             b.append(&a.to_xdr(&env));
             b.extend_from_array(&1u32.to_be_bytes());
-            nivel.push_back(env.crypto().sha256(&b).to_bytes());
+            level.push_back(env.crypto().sha256(&b).to_bytes());
         }
-        if nivel.is_empty() {
-            return Self::vazio(&env);
+        if level.is_empty() {
+            return Self::empty(&env);
         }
-        let alvo = nivel.len().next_power_of_two();
-        while nivel.len() < alvo {
-            nivel.push_back(Self::vazio(&env));
+        let target = level.len().next_power_of_two();
+        while level.len() < target {
+            level.push_back(Self::empty(&env));
         }
-        while nivel.len() > 1 {
-            let mut acima = Vec::new(&env);
-            for i in (0..nivel.len()).step_by(2) {
-                let mut b = Bytes::from_array(&env, &[DOM_NO]);
-                b.extend_from_array(&nivel.get(i).unwrap().to_array());
-                b.extend_from_array(&nivel.get(i + 1).unwrap().to_array());
-                acima.push_back(env.crypto().sha256(&b).to_bytes());
+        while level.len() > 1 {
+            let mut above = Vec::new(&env);
+            for i in (0..level.len()).step_by(2) {
+                let mut b = Bytes::from_array(&env, &[DOM_NODE]);
+                b.extend_from_array(&level.get(i).unwrap().to_array());
+                b.extend_from_array(&level.get(i + 1).unwrap().to_array());
+                above.push_back(env.crypto().sha256(&b).to_bytes());
             }
-            nivel = acima;
+            level = above;
         }
-        nivel.get(0).unwrap()
+        level.get(0).unwrap()
     }
 
-    pub fn caso(env: Env) -> Option<Caso> {
-        env.storage().instance().get(&Chave::Caso)
+    pub fn case(env: Env) -> Option<Case> {
+        env.storage().instance().get(&Key::Case)
     }
 
-    pub fn fase(env: Env) -> Option<Fase> {
-        env.storage().instance().get(&Chave::Fase)
+    pub fn phase(env: Env) -> Option<Phase> {
+        env.storage().instance().get(&Key::Phase)
     }
 
-    /// As contas de assento presentes, na ordem em que compareceram.
-    pub fn presentes(env: Env) -> Vec<Address> {
-        env.storage().instance().get(&Chave::Presentes).unwrap()
+    /// The seat accounts that attended, in the order they attended.
+    pub fn attendees(env: Env) -> Vec<Address> {
+        env.storage().instance().get(&Key::Attendees).unwrap()
     }
 
-    pub fn registros(env: Env) -> Vec<Registro> {
-        env.storage().instance().get(&Chave::Registros).unwrap()
+    pub fn records(env: Env) -> Vec<Record> {
+        env.storage().instance().get(&Key::Records).unwrap()
     }
 
-    pub fn votacao(env: Env) -> Option<BytesN<32>> {
-        env.storage().instance().get(&Chave::Votacao)
+    pub fn vote(env: Env) -> Option<BytesN<32>> {
+        env.storage().instance().get(&Key::Vote)
     }
 
-    pub fn decisao(env: Env) -> Option<Decisao> {
-        env.storage().instance().get(&Chave::Decisao)
+    pub fn decision(env: Env) -> Option<Decision> {
+        env.storage().instance().get(&Key::Decision)
     }
 
-    // ---- internos ------------------------------------------------------
+    // ---- internal ------------------------------------------------------
 
-    fn anotar(env: &Env, tipo: Tipo, papel: Papel, autor: Address, hash: BytesN<32>) -> u32 {
+    fn note(env: &Env, kind: Kind, role: Role, author: Address, hash: BytesN<32>) -> u32 {
         let i = env.storage().instance();
-        let mut rs = Self::registros(env.clone());
+        let mut rs = Self::records(env.clone());
         let seq = rs.len();
-        rs.push_back(Registro {
+        rs.push_back(Record {
             seq,
-            tipo,
-            papel,
-            autor: autor.clone(),
+            kind,
+            role,
+            author: author.clone(),
             hash: hash.clone(),
             ledger: env.ledger().sequence(),
         });
-        i.set(&Chave::Registros, &rs);
-        Registrado {
+        i.set(&Key::Records, &rs);
+        Filed {
             seq,
-            tipo,
-            papel,
-            autor,
+            kind,
+            role,
+            author,
             hash,
         }
         .publish(env);
         seq
     }
 
-    /// Os autos vivem na instância: um caso tem dezenas de registros, não
-    /// milhares, e a instância cabe 64 KiB. Cada escrita leva o TTL ao teto
-    /// da rede, para os autos não arquivarem no meio do caso.
-    fn manter_vivo(env: &Env) {
-        let teto = env.storage().max_ttl();
-        env.storage().instance().extend_ttl(teto, teto);
+    /// The record lives in the instance: a case has dozens of entries, not
+    /// thousands, and the instance holds 64 KiB. Every write takes the TTL to
+    /// the network's ceiling, so the record does not archive mid-case.
+    fn keep_alive(env: &Env) {
+        let ceiling = env.storage().max_ttl();
+        env.storage().instance().extend_ttl(ceiling, ceiling);
     }
 
-    fn prazo_do_quorum(env: &Env, painel: &Final) -> u32 {
-        let prazo: u32 = env.storage().instance().get(&Chave::PrazoQuorum).unwrap();
-        painel.ledger.saturating_add(prazo)
+    fn quorum_deadline(env: &Env, panel: &Panel) -> u32 {
+        let deadline: u32 = env.storage().instance().get(&Key::QuorumDeadline).unwrap();
+        panel.ledger.saturating_add(deadline)
     }
 
-    fn fase_ou_falha(env: &Env) -> Fase {
-        match Self::fase(env.clone()) {
+    fn phase_or_fail(env: &Env) -> Phase {
+        match Self::phase(env.clone()) {
             Some(f) => f,
-            None => panic_with_error!(env, Erro::ForaDeFase),
+            None => panic_with_error!(env, Error::OutOfPhase),
         }
     }
 
-    fn vazio(env: &Env) -> BytesN<32> {
-        let mut b = Bytes::from_array(env, &[DOM_VAZIO]);
-        b.extend_from_slice(VAZIO);
+    fn empty(env: &Env) -> BytesN<32> {
+        let mut b = Bytes::from_array(env, &[DOM_EMPTY]);
+        b.extend_from_slice(EMPTY);
         env.crypto().sha256(&b).to_bytes()
     }
 
-    fn escrivao(env: &Env) -> Address {
-        env.storage().instance().get(&Chave::Escrivao).unwrap()
+    fn clerk(env: &Env) -> Address {
+        env.storage().instance().get(&Key::Clerk).unwrap()
     }
 
     fn klero(env: &Env) -> KleroterionClient<'_> {
-        let a: Address = env.storage().instance().get(&Chave::Kleroterion).unwrap();
+        let a: Address = env.storage().instance().get(&Key::Kleroterion).unwrap();
         KleroterionClient::new(env, &a)
     }
 
     fn tessera(env: &Env) -> TesseraClient<'_> {
-        let a: Address = env.storage().instance().get(&Chave::Tessera).unwrap();
+        let a: Address = env.storage().instance().get(&Key::Tessera).unwrap();
         TesseraClient::new(env, &a)
     }
 }

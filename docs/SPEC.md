@@ -802,6 +802,13 @@ Decision: the whole tree is English — file names, identifiers, comments, UI co
 
 Alternatives: **UI and comments only**, leaving the identifiers and the interface — rejected by the human, and it would have left the gate G10 permanently red by design. **Translating the recorded evidence JSON in place** — rejected here, not by the human: the event names in a record are what the contract emitted, and editing them would make the record say something that never happened. **Keeping `processo`'s interface and renaming only around it** — rejected: it is the interface a third party calls, so it is the part that most needs to be readable.
 
+**The rename moved the measured costs, and that was not expected.** Soroban puts struct field names and enum variant names on the wire as symbols, so their byte length is part of what a call costs to serialize and store. Renaming the interface therefore changed nine figures in the test host, by between 0.03 % and 2.2 %. The constants in `contracts/kleroterion/src/test.rs` were re-pinned to what the host now measures, and DEC-033 and DEC-037 keep their own numbers: a decision records what was measured when it was written, and is not edited afterwards.
+
+Measured on the test host after the rename (`env.cost_estimate().budget()`, not testnet transactions):
+- `enroll` 10,593,604 instructions; `impede` 8,797,260; `lock` with 64 enrolled 10,775,151;
+- the proof check 29,284,586;
+- `seal` 27,019,754; the sixth `claim` 29,669,385; `recuse` 2,916,231; `finalize` 343,745; `reveal` 2,972,874.
+
 Consequences: every transaction hash published for the case run is replaced, and the cost figures are re-pinned from the new run (§2, §8 G7 and G9). The contract IDs in the documents, the pages and the demo change. The golden vectors and the SDK test snapshots are regenerated. `tests/vetores-de-ouro.json` becomes `tests/golden-vectors.json` and the other vector files with it, so §5's paths change. The Tessera boundary stays Portuguese: Tessera's contract is deployed unchanged at commit 356c22f and its CLI speaks its own names, so `scripts/check_english.py` carries an `ALLOWED_TESSERA` list that only shrinks. §8 gains G10 as the test. Spec sections updated: §0, §2, §5, §8, §9, §11.
 
 ## §11 Open questions

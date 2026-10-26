@@ -1,7 +1,7 @@
 #![cfg(test)]
 extern crate std;
 use super::*;
-use kleroterion::{Kleroterion as Klero, KleroterionClient as KleroClient, Nivel, Prova};
+use kleroterion::{Kleroterion as Klero, KleroterionClient as KleroClient, Level, Proof};
 use soroban_sdk::testutils::{Address as _, IssuerFlags, Ledger as _};
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, U256};
 use std::borrow::ToOwned;
@@ -18,91 +18,94 @@ const SIG_A: [u8; 96] = [
     0xed, 0xd0, 0x29, 0xd0, 0xdf, 0x34, 0x51, 0x99, 0x96, 0x3d, 0x75, 0xba, 0x93, 0xb5, 0xa0, 0x2a,
 ];
 const FLUXO: &str = include_str!("../../../tests/fluxo-n8.json");
-const JANELA: u32 = 100;
-const PRAZO_QUORUM: u32 = 200;
+const WINDOW: u32 = 100;
+const QUORUM_DEADLINE: u32 = 200;
 
 // ---- um Tessera de teste ---------------------------------------------------
 
-/// Faz o papel do Tessera nos testes: guarda a proposta e o resultado que o
+/// Faz o role do Tessera nos testes: guarda a proposta e o resultado que o
 /// teste mandar. O Tessera real roda na testnet (scripts/sequencia_processo.sh).
 #[contract]
-pub struct TesseraDeTeste;
+pub struct TestTessera;
 
 #[contracttype]
-enum ChaveT {
+enum TestKey {
     P(BytesN<32>),
     R(BytesN<32>),
 }
 
 #[contractimpl]
-impl TesseraDeTeste {
-    pub fn por_proposta(env: Env, id: BytesN<32>, p: Proposta) {
-        env.storage().instance().set(&ChaveT::P(id), &p);
+impl TestTessera {
+    pub fn put_proposal(env: Env, id: BytesN<32>, p: TesseraProposal) {
+        env.storage().instance().set(&TestKey::P(id), &p);
     }
-    pub fn por_resultado(env: Env, id: BytesN<32>, r: Vec<u32>) {
-        env.storage().instance().set(&ChaveT::R(id), &r);
+    pub fn put_result(env: Env, id: BytesN<32>, r: Vec<u32>) {
+        env.storage().instance().set(&TestKey::R(id), &r);
     }
-    pub fn proposta(env: Env, proposta: BytesN<32>) -> Option<Proposta> {
-        env.storage().instance().get(&ChaveT::P(proposta))
+    pub fn proposta(env: Env, proposta: BytesN<32>) -> Option<TesseraProposal> {
+        env.storage().instance().get(&TestKey::P(proposta))
     }
     pub fn resultado(env: Env, proposta: BytesN<32>) -> Option<Vec<u32>> {
-        env.storage().instance().get(&ChaveT::R(proposta))
+        env.storage().instance().get(&TestKey::R(proposta))
     }
 }
 
-// ---- a mesa: um kleroterion de verdade com o painel da fixture -------------
+// ---- a bench: um kleroterion de verdade com o painel da fixture -------------
 
-struct Mesa {
+struct Bench {
     env: Env,
-    escrivao: Address,
-    acusado: Address,
+    clerk: Address,
+    accused: Address,
     klero: KleroClient<'static>,
-    tessera: TesseraDeTesteClient<'static>,
-    c: ProcessoClient<'static>,
-    /// As contas de assento que sentaram, e as que reivindicaram e não.
-    sentados: std::vec::Vec<Address>,
-    de_fora: std::vec::Vec<Address>,
+    tessera: TestTesseraClient<'static>,
+    c: ProceedingClient<'static>,
+    /// As contas de seat que sentaram, e as que reivindicaram e não.
+    seated: std::vec::Vec<Address>,
+    outsiders: std::vec::Vec<Address>,
 }
 
 fn u256(env: &Env, decimal: &str) -> U256 {
     let mut b = [0u8; 32];
     for d in decimal.bytes() {
-        let mut vai = (d - b'0') as u32;
+        let mut carry = (d - b'0') as u32;
         for x in b.iter_mut().rev() {
-            let v = (*x as u32) * 10 + vai;
+            let v = (*x as u32) * 10 + carry;
             *x = v as u8;
-            vai = v >> 8;
+            carry = v >> 8;
         }
     }
     U256::from_be_bytes(env, &Bytes::from_array(env, &b))
 }
 
-/// Inscreve os oito jurados da fixture, fecha no nível `gravidade` (na tabela
+/// Inscreve os oito jurors da fixture, fecha no nível `severity` (na tabela
 /// de teste o nível `g` senta `k = g`) contra uma parte fora do rol, sela com
-/// a rodada 1000000, reivindica `quem` e finaliza. Depois constitui o
-/// processo, sem abrir o caso.
-fn mesa(gravidade: u32, quem: &[usize], votos_minimos: u32, dois_tercos_desde: u32) -> Mesa {
+/// a rodada 1000000, reivindica `who` e finaliza. Depois constitui o
+/// processo, sem open o caso.
+fn bench(severity: u32, who: &[usize], minimum_votes: u32, two_thirds_from: u32) -> Bench {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger()
-        .with_mut(|l| l.timestamp = kleroterion::GENESIS_QUICKNET);
-    let escrivao = Address::generate(&env);
-    let sac = env.register_stellar_asset_contract_v2(escrivao.clone());
+        .with_mut(|l| l.timestamp = kleroterion::QUICKNET_GENESIS);
+    let clerk = Address::generate(&env);
+    let sac = env.register_stellar_asset_contract_v2(clerk.clone());
     sac.issuer().set_flag(IssuerFlags::RequiredFlag);
     sac.issuer().set_flag(IssuerFlags::RevocableFlag);
-    let verificador = env.register(groth16_verifier::Groth16Verifier, ());
-    let mut niveis = soroban_sdk::Vec::new(&env);
+    let verifier = env.register(groth16_verifier::Groth16Verifier, ());
+    let mut levels = soroban_sdk::Vec::new(&env);
     for k in 1..=8 {
-        niveis.push_back(Nivel { k, rol_minimo: 1 });
+        levels.push_back(Level {
+            k,
+            roster_minimum: 1,
+        });
     }
     let kid = env.register(
         Klero,
         (
-            &escrivao,
+            &clerk,
             &sac.address(),
-            &verificador,
-            &JANELA,
-            niveis,
+            &verifier,
+            &WINDOW,
+            levels,
             &10_000u32,
             &1_000u32,
         ),
@@ -116,62 +119,62 @@ fn mesa(gravidade: u32, quem: &[usize], votos_minimos: u32, dois_tercos_desde: u
     for x in js {
         klero.enroll(&Address::generate(&env), &u256(&env, &txt(&x["c"])));
     }
-    let acusado = Address::generate(&env);
+    let accused = Address::generate(&env);
     env.ledger().with_mut(|l| {
-        l.timestamp = kleroterion::GENESIS_QUICKNET
-            + (ROUND_A - 2 - kleroterion::MARGEM_DE_RODADAS) * kleroterion::PERIODO_QUICKNET
+        l.timestamp = kleroterion::QUICKNET_GENESIS
+            + (ROUND_A - 2 - kleroterion::ROUND_MARGIN) * kleroterion::QUICKNET_PERIOD
     });
-    klero.lock(&gravidade, &20_000, &acusado);
+    klero.lock(&severity, &20_000, &accused);
     env.ledger().with_mut(|l| l.sequence_number = 1000);
     klero.seal(&BytesN::from_array(&env, &SIG_A));
     let bn = |h: &str| hex::decode(h).unwrap();
-    let mut assentos = std::vec::Vec::new();
-    for &i in quem {
+    let mut seats = std::vec::Vec::new();
+    for &i in who {
         let x = &js[i];
-        let prova = Prova {
+        let proof = Proof {
             a: BytesN::from_array(&env, &bn(&txt(&x["proof"]["a"])).try_into().unwrap()),
             b: BytesN::from_array(&env, &bn(&txt(&x["proof"]["b"])).try_into().unwrap()),
             c: BytesN::from_array(&env, &bn(&txt(&x["proof"]["c"])).try_into().unwrap()),
         };
-        let assento = Address::from_str(&env, &txt(&x["assento"]));
-        klero.claim(&assento, &prova, &u256(&env, &txt(&x["y"])));
-        assentos.push(assento);
+        let seat = Address::from_str(&env, &txt(&x["assento"]));
+        klero.claim(&seat, &proof, &u256(&env, &txt(&x["y"])));
+        seats.push(seat);
     }
     env.ledger()
-        .with_mut(|l| l.sequence_number = 1000 + JANELA + 1);
+        .with_mut(|l| l.sequence_number = 1000 + WINDOW + 1);
     klero.finalize().expect("painel");
-    let (sentados, de_fora): (std::vec::Vec<_>, std::vec::Vec<_>) =
-        assentos.into_iter().partition(|a| klero.seated(a));
+    let (seated, outsiders): (std::vec::Vec<_>, std::vec::Vec<_>) =
+        seats.into_iter().partition(|a| klero.seated(a));
 
-    let tid = env.register(TesseraDeTeste, ());
-    let tessera = TesseraDeTesteClient::new(&env, &tid);
+    let tid = env.register(TestTessera, ());
+    let tessera = TestTesseraClient::new(&env, &tid);
     let id = env.register(
-        Processo,
+        Proceeding,
         (
-            &escrivao,
+            &clerk,
             &kid,
             &tid,
-            &PRAZO_QUORUM,
-            &votos_minimos,
-            &dois_tercos_desde,
+            &QUORUM_DEADLINE,
+            &minimum_votes,
+            &two_thirds_from,
         ),
     );
-    let c = ProcessoClient::new(&env, &id);
-    Mesa {
+    let c = ProceedingClient::new(&env, &id);
+    Bench {
         env,
-        escrivao,
-        acusado,
+        clerk,
+        accused,
         klero,
         tessera,
         c,
-        sentados,
-        de_fora,
+        seated,
+        outsiders,
     }
 }
 
 /// Nível 3, `k = 3`, cinco reivindicações: três sentam, duas ficam de fora.
-fn mesa_padrao() -> Mesa {
-    mesa(3, &[1, 2, 3, 5, 7], 2, 4)
+fn default_bench() -> Bench {
+    bench(3, &[1, 2, 3, 5, 7], 2, 4)
 }
 
 fn h(env: &Env, b: u8) -> BytesN<32> {
@@ -183,19 +186,19 @@ fn id(env: &Env) -> BytesN<32> {
 }
 
 /// A votação do Tessera que o processo aceita: uma pergunta sigilosa de duas
-/// opções, aptos = os presentes, mesa de presentes, aberta agora.
-fn proposta_boa(m: &Mesa) -> Proposta {
-    let presentes = m.c.presentes();
-    Proposta {
+/// opções, aptos = os attendees, bench de attendees, aberta agora.
+fn good_proposal(m: &Bench) -> TesseraProposal {
+    let attendees = m.c.attendees();
+    TesseraProposal {
         perguntas: soroban_sdk::vec![
             &m.env,
-            Pergunta {
+            TesseraQuestion {
                 opcoes: 2,
                 confidencial: true,
             }
         ],
-        raiz_aptos: m.c.raiz_dos_aptos(&presentes),
-        mesa: presentes.slice(0..2),
+        raiz_aptos: m.c.voter_root(&attendees),
+        mesa: attendees.slice(0..2),
         limiar: 2,
         abre_em: m.env.ledger().sequence(),
         fecha_em: m.env.ledger().sequence() + 30,
@@ -207,14 +210,14 @@ fn proposta_boa(m: &Mesa) -> Proposta {
     }
 }
 
-/// Abre o caso, faz os sentados comparecerem, vincula a votação boa.
-fn ate_a_votacao(m: &Mesa) {
-    m.c.abrir(&h(&m.env, 1));
-    for a in &m.sentados {
-        m.c.comparecer(a);
+/// Abre o caso, faz os seated comparecerem, vincula a votação boa.
+fn up_to_the_vote(m: &Bench) {
+    m.c.open(&h(&m.env, 1));
+    for a in &m.seated {
+        m.c.attend(a);
     }
-    m.tessera.por_proposta(&id(&m.env), &proposta_boa(m));
-    m.c.vincular_votacao(&id(&m.env));
+    m.tessera.put_proposal(&id(&m.env), &good_proposal(m));
+    m.c.bind_vote(&id(&m.env));
 }
 
 // ---- a raiz dos aptos é a do Tessera ---------------------------------------
@@ -227,7 +230,7 @@ fn ate_a_votacao(m: &Mesa) {
 fn raiz_dos_aptos_bate_com_a_do_tessera() {
     let env = Env::default();
     let id = env.register(
-        Processo,
+        Proceeding,
         (
             &Address::generate(&env),
             &Address::generate(&env),
@@ -237,7 +240,7 @@ fn raiz_dos_aptos_bate_com_a_do_tessera() {
             &4u32,
         ),
     );
-    let c = ProcessoClient::new(&env, &id);
+    let c = ProceedingClient::new(&env, &id);
     let mut aptos = soroban_sdk::Vec::new(&env);
     for a in [
         "GCD6PXQMFVLVDXIOGGPO66RUDXZZFBCVYMVDM52SGNSJBW7DLBJD5TOZ",
@@ -248,83 +251,76 @@ fn raiz_dos_aptos_bate_com_a_do_tessera() {
     ] {
         aptos.push_back(Address::from_str(&env, a));
     }
-    let esperado: [u8; 32] =
+    let expected: [u8; 32] =
         hex::decode("52c7847cf9b3b968457a378074c9dd768f7d5d105891119093645b75f3376048")
             .unwrap()
             .try_into()
             .unwrap();
-    assert_eq!(c.raiz_dos_aptos(&aptos).to_array(), esperado);
+    assert_eq!(c.voter_root(&aptos).to_array(), expected);
 }
 
-// ---- abrir -----------------------------------------------------------------
+// ---- open -----------------------------------------------------------------
 
 #[test]
 fn abrir_le_o_caso_do_kleroterion_e_registra_a_denuncia() {
-    let m = mesa_padrao();
-    let caso = m.c.abrir(&h(&m.env, 1));
-    assert_eq!(caso.acusado, m.acusado);
+    let m = default_bench();
+    let caso = m.c.open(&h(&m.env, 1));
+    assert_eq!(caso.accused, m.accused);
     assert_eq!(
-        (caso.gravidade, caso.k, caso.quorum, caso.exigidos),
+        (caso.severity, caso.k, caso.quorum, caso.required),
         (3, 3, 2, 2)
     );
-    assert_eq!(m.c.fase(), Some(Fase::Aberto));
-    let r = m.c.registros().get(0).unwrap();
-    assert_eq!(
-        (r.seq, r.tipo, r.papel),
-        (0, Tipo::Denuncia, Papel::Escrivao)
-    );
+    assert_eq!(m.c.phase(), Some(Phase::Open));
+    let r = m.c.records().get(0).unwrap();
+    assert_eq!((r.seq, r.kind, r.role), (0, Kind::Complaint, Role::Clerk));
     assert_eq!(r.hash, h(&m.env, 1));
-    assert_eq!(m.c.try_abrir(&h(&m.env, 2)), Err(Ok(Erro::JaAberto.into())));
+    assert_eq!(
+        m.c.try_open(&h(&m.env, 2)),
+        Err(Ok(Error::AlreadyOpen.into()))
+    );
 }
 
 #[test]
 fn abrir_antes_de_o_rol_fechar_e_recusado() {
     let env = Env::default();
     env.mock_all_auths();
-    let escrivao = Address::generate(&env);
-    let sac = env.register_stellar_asset_contract_v2(escrivao.clone());
-    let mut niveis = soroban_sdk::Vec::new(&env);
-    niveis.push_back(Nivel {
+    let clerk = Address::generate(&env);
+    let sac = env.register_stellar_asset_contract_v2(clerk.clone());
+    let mut levels = soroban_sdk::Vec::new(&env);
+    levels.push_back(Level {
         k: 1,
-        rol_minimo: 1,
+        roster_minimum: 1,
     });
     let kid = env.register(
         Klero,
         (
-            &escrivao,
+            &clerk,
             &sac.address(),
             &Address::generate(&env),
-            &JANELA,
-            niveis,
+            &WINDOW,
+            levels,
             &1u32,
             &1u32,
         ),
     );
     let id = env.register(
-        Processo,
-        (
-            &escrivao,
-            &kid,
-            &Address::generate(&env),
-            &1u32,
-            &1u32,
-            &4u32,
-        ),
+        Proceeding,
+        (&clerk, &kid, &Address::generate(&env), &1u32, &1u32, &4u32),
     );
-    let c = ProcessoClient::new(&env, &id);
+    let c = ProceedingClient::new(&env, &id);
     assert_eq!(
-        c.try_abrir(&BytesN::from_array(&env, &[1; 32])),
-        Err(Ok(Erro::RolAberto.into()))
+        c.try_open(&BytesN::from_array(&env, &[1; 32])),
+        Err(Ok(Error::RosterOpen.into()))
     );
 }
 
 /// Com o piso de sigilo do Tessera (5) e `k = 3`, a votação nunca teria placar.
 #[test]
 fn painel_menor_que_o_sigilo_e_recusado() {
-    let m = mesa(3, &[1, 2, 3, 5, 7], 5, 4);
+    let m = bench(3, &[1, 2, 3, 5, 7], 5, 4);
     assert_eq!(
-        m.c.try_abrir(&h(&m.env, 1)),
-        Err(Ok(Erro::PainelPequenoParaOSigilo.into()))
+        m.c.try_open(&h(&m.env, 1)),
+        Err(Ok(Error::PanelTooSmallForSecrecy.into()))
     );
 }
 
@@ -333,69 +329,66 @@ fn painel_menor_que_o_sigilo_e_recusado() {
 /// dois terços 4.
 #[test]
 fn quorum_e_votos_exigidos_seguem_a_regra() {
-    let m = mesa(5, &[0, 1, 2, 3, 5, 6, 7], 2, 5);
-    let caso = m.c.abrir(&h(&m.env, 1));
-    assert_eq!((caso.k, caso.quorum, caso.exigidos), (5, 3, 4));
-    let m = mesa(5, &[0, 1, 2, 3, 5, 6, 7], 4, 6);
-    let caso = m.c.abrir(&h(&m.env, 1));
-    assert_eq!((caso.quorum, caso.exigidos), (4, 3));
+    let m = bench(5, &[0, 1, 2, 3, 5, 6, 7], 2, 5);
+    let caso = m.c.open(&h(&m.env, 1));
+    assert_eq!((caso.k, caso.quorum, caso.required), (5, 3, 4));
+    let m = bench(5, &[0, 1, 2, 3, 5, 6, 7], 4, 6);
+    let caso = m.c.open(&h(&m.env, 1));
+    assert_eq!((caso.quorum, caso.required), (4, 3));
 }
 
-// ---- comparecer ------------------------------------------------------------
+// ---- attend ------------------------------------------------------------
 
 #[test]
 fn so_quem_sentou_comparece_e_uma_vez() {
-    let m = mesa_padrao();
-    m.c.abrir(&h(&m.env, 1));
-    assert_eq!(m.sentados.len(), 3);
-    assert_eq!(m.de_fora.len(), 2);
+    let m = default_bench();
+    m.c.open(&h(&m.env, 1));
+    assert_eq!(m.seated.len(), 3);
+    assert_eq!(m.outsiders.len(), 2);
     assert_eq!(
-        m.c.try_comparecer(&m.de_fora[0]),
-        Err(Ok(Erro::NaoSentou.into()))
+        m.c.try_attend(&m.outsiders[0]),
+        Err(Ok(Error::DidNotSit.into()))
     );
+    assert_eq!(m.c.try_attend(&m.accused), Err(Ok(Error::DidNotSit.into())));
+    m.c.attend(&m.seated[0]);
     assert_eq!(
-        m.c.try_comparecer(&m.acusado),
-        Err(Ok(Erro::NaoSentou.into()))
-    );
-    m.c.comparecer(&m.sentados[0]);
-    assert_eq!(
-        m.c.try_comparecer(&m.sentados[0]),
-        Err(Ok(Erro::JaCompareceu.into()))
+        m.c.try_attend(&m.seated[0]),
+        Err(Ok(Error::AlreadyAttended.into()))
     );
 }
 
 #[test]
 fn o_quorum_instala_a_sessao_e_quem_chega_depois_conta() {
-    let m = mesa_padrao();
-    m.c.abrir(&h(&m.env, 1));
-    m.c.comparecer(&m.sentados[0]);
-    assert_eq!(m.c.fase(), Some(Fase::Aberto));
-    m.c.comparecer(&m.sentados[1]);
-    assert_eq!(m.c.fase(), Some(Fase::Sessao), "quorum 2");
-    // Depois do prazo, a sessão já instalada ainda recebe quem chega.
+    let m = default_bench();
+    m.c.open(&h(&m.env, 1));
+    m.c.attend(&m.seated[0]);
+    assert_eq!(m.c.phase(), Some(Phase::Open));
+    m.c.attend(&m.seated[1]);
+    assert_eq!(m.c.phase(), Some(Phase::Session), "quorum 2");
+    // Depois do prazo, a sessão já instalada ainda recebe who chega.
     m.env
         .ledger()
-        .with_mut(|l| l.sequence_number = 1000 + JANELA + 1 + PRAZO_QUORUM + 1);
-    assert_eq!(m.c.comparecer(&m.sentados[2]), 3);
+        .with_mut(|l| l.sequence_number = 1000 + WINDOW + 1 + QUORUM_DEADLINE + 1);
+    assert_eq!(m.c.attend(&m.seated[2]), 3);
 }
 
 #[test]
 fn sem_quorum_no_prazo_o_caso_e_adiado() {
-    let m = mesa_padrao();
-    m.c.abrir(&h(&m.env, 1));
-    m.c.comparecer(&m.sentados[0]);
-    assert_eq!(m.c.try_adiar(), Err(Ok(Erro::PrazoDoQuorumAberto.into())));
+    let m = default_bench();
+    m.c.open(&h(&m.env, 1));
+    m.c.attend(&m.seated[0]);
+    assert_eq!(m.c.try_adjourn(), Err(Ok(Error::QuorumDeadlineOpen.into())));
     m.env
         .ledger()
-        .with_mut(|l| l.sequence_number = 1000 + JANELA + 1 + PRAZO_QUORUM + 1);
+        .with_mut(|l| l.sequence_number = 1000 + WINDOW + 1 + QUORUM_DEADLINE + 1);
     assert_eq!(
-        m.c.try_comparecer(&m.sentados[1]),
-        Err(Ok(Erro::PrazoDoQuorumVencido.into()))
+        m.c.try_attend(&m.seated[1]),
+        Err(Ok(Error::QuorumDeadlinePassed.into()))
     );
-    m.c.adiar();
-    assert_eq!(m.c.fase(), Some(Fase::Adiado));
+    m.c.adjourn();
+    assert_eq!(m.c.phase(), Some(Phase::Adjourned));
     assert!(
-        !m.c.suspended(&m.acusado),
+        !m.c.suspended(&m.accused),
         "o adiamento encerra o afastamento"
     );
 }
@@ -404,134 +397,134 @@ fn sem_quorum_no_prazo_o_caso_e_adiado() {
 
 #[test]
 fn cada_papel_registra_so_o_que_lhe_cabe() {
-    let m = mesa_padrao();
-    m.c.abrir(&h(&m.env, 1));
-    m.c.comparecer(&m.sentados[0]);
-    let sem_papel = Err(Ok(Erro::SemPapel.into()));
+    let m = default_bench();
+    m.c.open(&h(&m.env, 1));
+    m.c.attend(&m.seated[0]);
+    let sem_papel = Err(Ok(Error::NoRole.into()));
     // A pessoa julgada: só a defesa.
-    assert_eq!(m.c.registrar(&m.acusado, &Tipo::Defesa, &h(&m.env, 2)), 1);
+    assert_eq!(m.c.file(&m.accused, &Kind::Defence, &h(&m.env, 2)), 1);
     assert_eq!(
-        m.c.try_registrar(&m.acusado, &Tipo::Ata, &h(&m.env, 3)),
+        m.c.try_file(&m.accused, &Kind::Minutes, &h(&m.env, 3)),
         sem_papel
     );
     // Um jurado presente: só atas. Um sentado ausente, nada.
-    assert_eq!(m.c.registrar(&m.sentados[0], &Tipo::Ata, &h(&m.env, 4)), 2);
+    assert_eq!(m.c.file(&m.seated[0], &Kind::Minutes, &h(&m.env, 4)), 2);
     assert_eq!(
-        m.c.try_registrar(&m.sentados[0], &Tipo::Prova, &h(&m.env, 5)),
+        m.c.try_file(&m.seated[0], &Kind::Evidence, &h(&m.env, 5)),
         sem_papel
     );
     assert_eq!(
-        m.c.try_registrar(&m.sentados[1], &Tipo::Ata, &h(&m.env, 5)),
+        m.c.try_file(&m.seated[1], &Kind::Minutes, &h(&m.env, 5)),
         sem_papel
     );
     // O escrivão: provas e atas, nunca a defesa nem outra denúncia.
-    assert_eq!(m.c.registrar(&m.escrivao, &Tipo::Prova, &h(&m.env, 6)), 3);
+    assert_eq!(m.c.file(&m.clerk, &Kind::Evidence, &h(&m.env, 6)), 3);
     assert_eq!(
-        m.c.try_registrar(&m.escrivao, &Tipo::Defesa, &h(&m.env, 7)),
+        m.c.try_file(&m.clerk, &Kind::Defence, &h(&m.env, 7)),
         sem_papel
     );
     assert_eq!(
-        m.c.try_registrar(&m.escrivao, &Tipo::Denuncia, &h(&m.env, 7)),
+        m.c.try_file(&m.clerk, &Kind::Complaint, &h(&m.env, 7)),
         sem_papel
     );
     // Um estranho, nada.
     assert_eq!(
-        m.c.try_registrar(&Address::generate(&m.env), &Tipo::Ata, &h(&m.env, 8)),
+        m.c.try_file(&Address::generate(&m.env), &Kind::Minutes, &h(&m.env, 8)),
         sem_papel
     );
-    let rs = m.c.registros();
+    let rs = m.c.records();
     assert_eq!(rs.len(), 4);
-    assert_eq!(rs.get(1).unwrap().papel, Papel::Acusado);
-    assert_eq!(rs.get(2).unwrap().papel, Papel::Jurado);
+    assert_eq!(rs.get(1).unwrap().role, Role::Accused);
+    assert_eq!(rs.get(2).unwrap().role, Role::Juror);
 }
 
 #[test]
 fn depois_da_votacao_nao_entram_provas_e_depois_do_veredito_so_a_ata_do_escrivao() {
-    let m = mesa_padrao();
-    ate_a_votacao(&m);
+    let m = default_bench();
+    up_to_the_vote(&m);
     assert_eq!(
-        m.c.try_registrar(&m.escrivao, &Tipo::Prova, &h(&m.env, 9)),
-        Err(Ok(Erro::SemPapel.into()))
+        m.c.try_file(&m.clerk, &Kind::Evidence, &h(&m.env, 9)),
+        Err(Ok(Error::NoRole.into()))
     );
-    m.c.registrar(&m.acusado, &Tipo::Defesa, &h(&m.env, 9));
+    m.c.file(&m.accused, &Kind::Defence, &h(&m.env, 9));
     m.tessera
-        .por_resultado(&id(&m.env), &soroban_sdk::vec![&m.env, 2, 1]);
-    m.c.decidir();
+        .put_result(&id(&m.env), &soroban_sdk::vec![&m.env, 2, 1]);
+    m.c.decide();
     assert_eq!(
-        m.c.try_registrar(&m.acusado, &Tipo::Defesa, &h(&m.env, 10)),
-        Err(Ok(Erro::SemPapel.into()))
+        m.c.try_file(&m.accused, &Kind::Defence, &h(&m.env, 10)),
+        Err(Ok(Error::NoRole.into()))
     );
-    m.c.registrar(&m.escrivao, &Tipo::Ata, &h(&m.env, 11));
+    m.c.file(&m.clerk, &Kind::Minutes, &h(&m.env, 11));
 }
 
-// ---- a votação é a dos presentes -------------------------------------------
+// ---- a votação é a dos attendees -------------------------------------------
 
 #[test]
 fn a_votacao_vinculada_tem_de_ser_dos_presentes() {
-    let m = mesa_padrao();
-    m.c.abrir(&h(&m.env, 1));
-    m.c.comparecer(&m.sentados[0]);
+    let m = default_bench();
+    m.c.open(&h(&m.env, 1));
+    m.c.attend(&m.seated[0]);
     assert_eq!(
-        m.c.try_vincular_votacao(&id(&m.env)),
-        Err(Ok(Erro::ForaDeFase.into())),
+        m.c.try_bind_vote(&id(&m.env)),
+        Err(Ok(Error::OutOfPhase.into())),
         "antes da sessao"
     );
-    m.c.comparecer(&m.sentados[1]);
+    m.c.attend(&m.seated[1]);
     assert_eq!(
-        m.c.try_vincular_votacao(&id(&m.env)),
-        Err(Ok(Erro::SemVotacao.into()))
+        m.c.try_bind_vote(&id(&m.env)),
+        Err(Ok(Error::NoVote.into()))
     );
-    let boa = proposta_boa(&m);
+    let boa = good_proposal(&m);
 
     let mut p = boa.clone();
-    let mut outros = m.c.presentes();
-    outros.push_back(m.de_fora[0].clone());
-    p.raiz_aptos = m.c.raiz_dos_aptos(&outros);
-    m.tessera.por_proposta(&id(&m.env), &p);
+    let mut outros = m.c.attendees();
+    outros.push_back(m.outsiders[0].clone());
+    p.raiz_aptos = m.c.voter_root(&outros);
+    m.tessera.put_proposal(&id(&m.env), &p);
     assert_eq!(
-        m.c.try_vincular_votacao(&id(&m.env)),
-        Err(Ok(Erro::AptosNaoSaoOsPresentes.into())),
+        m.c.try_bind_vote(&id(&m.env)),
+        Err(Ok(Error::VotersAreNotAttendees.into())),
         "um aptos a mais"
     );
 
     let mut p = boa.clone();
-    p.mesa = soroban_sdk::vec![&m.env, m.de_fora[0].clone()];
-    m.tessera.por_proposta(&id(&m.env), &p);
+    p.mesa = soroban_sdk::vec![&m.env, m.outsiders[0].clone()];
+    m.tessera.put_proposal(&id(&m.env), &p);
     assert_eq!(
-        m.c.try_vincular_votacao(&id(&m.env)),
-        Err(Ok(Erro::MesaDeFora.into()))
+        m.c.try_bind_vote(&id(&m.env)),
+        Err(Ok(Error::BenchOutsider.into()))
     );
 
     let mut p = boa.clone();
     p.perguntas = soroban_sdk::vec![
         &m.env,
-        Pergunta {
+        TesseraQuestion {
             opcoes: 2,
             confidencial: false,
         }
     ];
-    m.tessera.por_proposta(&id(&m.env), &p);
+    m.tessera.put_proposal(&id(&m.env), &p);
     assert_eq!(
-        m.c.try_vincular_votacao(&id(&m.env)),
-        Err(Ok(Erro::CedulaErrada.into())),
+        m.c.try_bind_vote(&id(&m.env)),
+        Err(Ok(Error::WrongBallot.into())),
         "voto aberto"
     );
 
     let mut p = boa.clone();
     p.abre_em = 1;
-    m.tessera.por_proposta(&id(&m.env), &p);
+    m.tessera.put_proposal(&id(&m.env), &p);
     assert_eq!(
-        m.c.try_vincular_votacao(&id(&m.env)),
-        Err(Ok(Erro::VotacaoAnteriorASessao.into()))
+        m.c.try_bind_vote(&id(&m.env)),
+        Err(Ok(Error::VoteBeforeSession.into()))
     );
 
-    m.tessera.por_proposta(&id(&m.env), &boa);
-    m.c.vincular_votacao(&id(&m.env));
-    assert_eq!(m.c.fase(), Some(Fase::Votacao));
-    assert_eq!(m.c.votacao(), Some(id(&m.env)));
+    m.tessera.put_proposal(&id(&m.env), &boa);
+    m.c.bind_vote(&id(&m.env));
+    assert_eq!(m.c.phase(), Some(Phase::Voting));
+    assert_eq!(m.c.vote(), Some(id(&m.env)));
     assert_eq!(
-        m.c.try_comparecer(&m.sentados[2]),
-        Err(Ok(Erro::ForaDeFase.into())),
+        m.c.try_attend(&m.seated[2]),
+        Err(Ok(Error::OutOfPhase.into())),
         "depois da votacao ninguem mais comparece"
     );
 }
@@ -540,43 +533,43 @@ fn a_votacao_vinculada_tem_de_ser_dos_presentes() {
 
 #[test]
 fn sem_placar_nao_ha_veredito() {
-    let m = mesa_padrao();
-    ate_a_votacao(&m);
-    assert_eq!(m.c.try_decidir(), Err(Ok(Erro::SemResultado.into())));
+    let m = default_bench();
+    up_to_the_vote(&m);
+    assert_eq!(m.c.try_decide(), Err(Ok(Error::NoResult.into())));
     m.tessera
-        .por_resultado(&id(&m.env), &soroban_sdk::vec![&m.env, 1, 1, 1]);
+        .put_result(&id(&m.env), &soroban_sdk::vec![&m.env, 1, 1, 1]);
     assert_eq!(
-        m.c.try_decidir(),
-        Err(Ok(Erro::SemResultado.into())),
+        m.c.try_decide(),
+        Err(Ok(Error::NoResult.into())),
         "tres opcoes"
     );
 }
 
-/// `k = 5`: com a maioria, 3 votos sim bastam; com dois terços, são 4.
-/// A ausência não conta a favor: o que se exige é do painel, não dos presentes.
+/// `k = 5`: com a maioria, 3 votos yes bastam; com dois terços, são 4.
+/// A ausência não conta a favor: o que se exige é do painel, não dos attendees.
 #[test]
 fn a_maioria_e_os_dois_tercos_contam_sobre_o_painel() {
-    for (desde, procedente) in [(6u32, true), (5, false)] {
-        let m = mesa(5, &[0, 1, 2, 3, 5, 6, 7], 2, desde);
-        ate_a_votacao(&m);
+    for (desde, upheld) in [(6u32, true), (5, false)] {
+        let m = bench(5, &[0, 1, 2, 3, 5, 6, 7], 2, desde);
+        up_to_the_vote(&m);
         m.tessera
-            .por_resultado(&id(&m.env), &soroban_sdk::vec![&m.env, 3, 0]);
-        let d = m.c.decidir();
-        assert_eq!((d.sim, d.nao, d.procedente), (3, 0, procedente));
-        assert_eq!(m.c.fase(), Some(Fase::Decidido));
-        assert_eq!(m.c.decisao(), Some(d));
+            .put_result(&id(&m.env), &soroban_sdk::vec![&m.env, 3, 0]);
+        let d = m.c.decide();
+        assert_eq!((d.yes, d.no, d.upheld), (3, 0, upheld));
+        assert_eq!(m.c.phase(), Some(Phase::Decided));
+        assert_eq!(m.c.decision(), Some(d));
     }
 }
 
 #[test]
 fn o_afastamento_termina_no_veredito() {
-    let m = mesa_padrao();
-    ate_a_votacao(&m);
-    assert!(m.klero.suspended(&m.acusado));
-    assert!(m.c.suspended(&m.acusado));
+    let m = default_bench();
+    up_to_the_vote(&m);
+    assert!(m.klero.suspended(&m.accused));
+    assert!(m.c.suspended(&m.accused));
     m.tessera
-        .por_resultado(&id(&m.env), &soroban_sdk::vec![&m.env, 0, 3]);
-    assert!(!m.c.decidir().procedente);
-    assert!(m.klero.suspended(&m.acusado), "o kleroterion so ve o prazo");
-    assert!(!m.c.suspended(&m.acusado), "o processo ve o veredito");
+        .put_result(&id(&m.env), &soroban_sdk::vec![&m.env, 0, 3]);
+    assert!(!m.c.decide().upheld);
+    assert!(m.klero.suspended(&m.accused), "o kleroterion so ve o prazo");
+    assert!(!m.c.suspended(&m.accused), "o processo ve o veredito");
 }

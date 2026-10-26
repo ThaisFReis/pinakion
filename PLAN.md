@@ -203,3 +203,4 @@ One branch, `t-047-case-cycle`, and one PR (DEC-034).
 | T-050 | `scripts/verificar_processo.py` and `web/processo.mjs`: the whole case checked from the record |
 | T-051 | `web/processo.html`: the case page, with a presentation mode for the video |
 | T-052 | landing, README, thesis, submission and `docs/DEMO.md` follow |
+| T-056 | the case page's UX pass: progress under the verdict, the ways in, the check counts, the threshold figure, the limits as the last presentation screen; branch `t-056-demo-ux` |

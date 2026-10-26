@@ -174,7 +174,9 @@ The case page (`web/processo.html`, T-051) is the demo link. Its reading order:
 4. **The vote phase names Tessera** in a bronze-ruled box, before anything else in that phase. Tessera is the author's earlier module, used unchanged. Bronze is the colour this page uses for what a reader should weigh.
 5. **The limits, then the record's path and the command that checks it.**
 
-A sticky step rail mirrors the nine phases with a tick each, and marks the one in view. The documents open in a dialog with the hash they were matched against. **Present** shows one phase per screen, with arrow and space keys and an auto-advance, so a video can be recorded from the page itself.
+Under the verdict, a mono line says what the browser did as it did it (the record read, the documents hashed, the checks and how long they took on this machine), then three ways in: the nine phases, **Present**, and the live case. Each phase's checks sit under one count, *Conferido no navegador · n de n*, so the tick lines are read after the count. The seats phase draws the only figure of the page: the field `[0, r)` as one rule, the threshold as a bronze cut, and every claimed `y` as a disc on it, filled where it sat and hollow where it did not, with the legend in words. The quorum table names the attendance that installed the session. The verdict's ruler has a legend: *sim*, *não*, *ausente*, and the required count as a bronze cut (T-056).
+
+A sticky step rail mirrors the nine phases with a tick each, and marks the one in view; below 1100px it shows the numbers and only the current title. The documents open in a dialog with the hash they were matched against. **Present** shows one phase per screen, with arrow and space keys and an auto-advance, so a video can be recorded from the page itself; after the ninth phase it shows the limits as a tenth screen, which is where the script ends.
 
 The live page (`web/vivo/`, T-053) is the dapp. It is a desk with two sides. On the left are the four documents of the record, editable, and one button. On the right is the progress:
 - an elapsed clock;

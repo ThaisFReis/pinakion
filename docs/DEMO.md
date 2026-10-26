@@ -3,7 +3,7 @@
 The demo is one link and one recording of it:
 
 - **Link:** https://thaisfreis.github.io/pinakion/web/processo.html
-- **Recording:** the same page, in **Apresentar** mode (`?apresentar=1`): one phase per screen, with arrow and space keys, or the auto-advance at 9 s per phase.
+- **Recording:** the same page, in **Apresentar** mode (`?apresentar=1`): one phase per screen, then the limits as the tenth screen, with arrow and space keys, or the auto-advance at 9 s per screen. The 2:40 beat below is that tenth screen; no need to leave the mode.
 
 Everything on the page is a fictional code-of-conduct case with **real testnet transactions**, run by `scripts/sequencia_processo.sh` on 2026-10-26 and checked from the record in your browser. The vote is **Tessera's**, the author's earlier secret-ballot module, and the video says so before it shows the vote (DEC-036).
 

@@ -47,6 +47,17 @@ python3 scripts/verificar_processo.py docs/evidencia-processo-registro.json
 
 ---
 
+## The live case, for the link and for a second take
+
+https://thaisfreis.github.io/pinakion/web/vivo/ runs a whole case from the visitor's tab, in about 12 minutes on testnet. Each step is a real transaction, linked as it lands. The visitor types the record and chooses the ballots, and at the end the page checks the case from the ledger.
+
+For the video, start it before recording and cut to it at three moments:
+- the step rail filling in, as the seat proofs are made in the browser;
+- the ballot box, where you choose the votes;
+- the final *Procedente.* with its check count.
+
+Say plainly that every key in the run was born in the tab and one account funded them all. That is the relayer gap the limits name.
+
 ## If something goes wrong while recording
 
 - **The page says *Não confere*.** It names the failing check. Record nothing until `python3 scripts/verificar_processo.py docs/evidencia-processo-registro.json` says `CONFERE` too, then reload with the cache bypassed.

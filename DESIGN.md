@@ -170,6 +170,15 @@ The case page (`web/processo.html`, T-051) is the demo link. Its reading order:
 
 A sticky step rail mirrors the nine phases with a tick each, and marks the one in view. The documents open in a dialog with the hash they were matched against. **Present** shows one phase per screen, with arrow and space keys and an auto-advance, so a video can be recorded from the page itself.
 
+The live page (`web/vivo/`, T-053) is the dapp. It is a desk with two sides. On the left are the four documents of the record, editable, and one button. On the right is the progress:
+- an elapsed clock;
+- fifteen phases, each one ticking as its transactions land;
+- the ballot box, which opens for the visitor to choose the votes;
+- the verdict with its check count;
+- a log in which every transaction is linked.
+
+Tessera is named in a bronze box before anything is sent. The limits block says that every key is born in the tab and one account funds them all.
+
 The ticket page (`web/bilhetes.html`) is the record itself. It opens with the verdict of the check, then the facts (root, N and k, round, seed, `T`, panel), then the table of people, then the table of claims, then its limits.
 
 - An editorial shell with a maximum width of 1280px and 28px side gutters, 20px on small screens. These are design choices, not product measurements.

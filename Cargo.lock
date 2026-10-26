@@ -1290,6 +1290,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "processo"
+version = "0.1.0"
+dependencies = [
+ "groth16-verifier",
+ "hex",
+ "kleroterion",
+ "serde_json",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -2028,6 +2028,33 @@
               "key": {
                 "vec": [
                   {
+                    "symbol": "YDe"
+                  },
+                  {
+                    "address": "GDVGS2C5M25R5CBTKDDSLVMZCT7SJJEO6VWKQMEPG6FBFP2PMJWGQYTA"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u256": "1144207446566526776770826545975467157688411476832538228767523135865875356778"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
                     "symbol": "YUsado"
                   },
                   {

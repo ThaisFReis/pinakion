@@ -2238,6 +2238,87 @@
               "key": {
                 "vec": [
                   {
+                    "symbol": "YDe"
+                  },
+                  {
+                    "address": "GCV7S5RYZ4YIGJYOQ3N3MGUXSNSG44ERWVNXFEY5P67LM3R32RYVDDHP"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u256": "1626201726522907126292687427820694008225114677165435696094600414931996917765"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "YDe"
+                  },
+                  {
+                    "address": "GDCP2UJWOULNDGTTEKZZBJCFP6QC55EEXBZPTVKMEPK6RPXLU2OTXK4V"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u256": "5461697157099906755839815424609557793074928368328660863635543894531834527493"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "YDe"
+                  },
+                  {
+                    "address": "GDYIL4GSCF7ETKCXWR3DON3EUXBBTSKDAOZNONZUUX3RKFQUQWQLHOXX"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u256": "18784944138223559885992705717064052423619868276638917784953794181618706493772"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5196
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
                     "symbol": "YUsado"
                   },
                   {

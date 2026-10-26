@@ -188,6 +188,8 @@ pub enum Erro {
     TabelaInvalida = 29,
     /// `revela_em` vem antes de `lock + espera_minima` (INV-21).
     RevelacaoCedoDemais = 30,
+    /// Esta conta de assento já reivindicou um assento (T-047).
+    AssentoRepetido = 31,
 }
 
 /// Um nível da tabela de gravidade: quantos assentos e o menor rol que pode
@@ -400,6 +402,10 @@ pub enum DataKey {
     Usado(U256),
     /// Nó da árvore: (nível, posição). Ausente é a subárvore vazia.
     No(u32, u32),
+    /// O `y` que uma conta de assento reivindicou (T-047). A conta já é a
+    /// fonte pública da transação do `claim`; guardar o elo não revela nada
+    /// novo, e deixa o processo conferir quem sentou sem saber quem é.
+    YDe(Address),
 }
 
 #[contract]
@@ -589,6 +595,24 @@ impl Kleroterion {
         }
     }
 
+    /// Esta conta de assento sentou? Verdadeiro só depois do painel, e só se
+    /// o `y` que ela reivindicou está nele (T-047). É o que o processo usa
+    /// para o quórum: confere o assento sem saber de quem ele é.
+    pub fn seated(env: Env, assento: Address) -> bool {
+        let fim = match Self::panel(env.clone()) {
+            Some(f) => f,
+            None => return false,
+        };
+        match env
+            .storage()
+            .persistent()
+            .get::<_, U256>(&DataKey::YDe(assento))
+        {
+            Some(y) => fim.painel.contains(&y),
+            None => false,
+        }
+    }
+
     /// A tabela de gravidade fixada no construtor.
     pub fn levels(env: Env) -> Vec<Nivel> {
         env.storage().instance().get(&DataKey::Niveis).unwrap()
@@ -745,10 +769,14 @@ impl Kleroterion {
         if p.has(&DataKey::YUsado(y.clone())) {
             panic_with_error!(&env, Erro::YRepetido);
         }
+        if p.has(&DataKey::YDe(assento.clone())) {
+            panic_with_error!(&env, Erro::AssentoRepetido);
+        }
         if !Self::prova_de_assento_vale(&env, &prova, &selo.seed, &y, &assento) {
             panic_with_error!(&env, Erro::ProvaInvalida);
         }
         p.set(&DataKey::YUsado(y.clone()), &true);
+        p.set(&DataKey::YDe(assento.clone()), &y);
         let ys = Self::claims(env.clone());
         let mut pos = ys.len();
         for (i, v) in ys.iter().enumerate() {

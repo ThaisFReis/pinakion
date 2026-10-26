@@ -162,6 +162,21 @@ def main():
             if estados != esperado["jurados"]:
                 print("        os estados dos jurados divergem")
 
+    # T-045: the verifier catches a party who sits unimpeded, and a k that is
+    # not the level's. Each mutation of the sealed vector must fail by name.
+    import copy  # noqa: E402
+    for v in dados.get("selados", []):
+        fech = next(e for e in v["eventos"] if e["evento"] == "Fechado")
+        primeiro = next(e["jurado"] for e in v["eventos"] if e["evento"] == "Inscrito")
+        for campo, valor, nome in [("acusado", primeiro, "a parte inscrita foi impedida antes do fechamento"),
+                                   ("gravidade", fech["gravidade"] + 1, "k e o do nivel")]:
+            w = copy.deepcopy(v)
+            next(e for e in w["eventos"] if e["evento"] == "Fechado")[campo] = valor
+            if dict(verificar(w)[4]).get(nome, True):
+                falhas += 1
+                print(f"  FALHA a mutacao de {campo} passou sem '{nome}'")
+            else:
+                print(f"  ok    mutacao de {campo}: '{nome}' nao confere")
     # T-040: the recorded testnet run still checks out under today's verifier.
     registro = RAIZ / "docs" / "evidencia-testnet-registro.json"
     _, painel_tn, completo_tn, _, conf_tn = verificar(json.loads(registro.read_text()))

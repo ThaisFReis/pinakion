@@ -94,6 +94,53 @@
    "aleatoriedade": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
    "eventos": [
     {
+     "evento": "Constituido",
+     "niveis": [
+      {
+       "k": 1,
+       "rol_minimo": 1
+      },
+      {
+       "k": 2,
+       "rol_minimo": 1
+      },
+      {
+       "k": 3,
+       "rol_minimo": 1
+      },
+      {
+       "k": 4,
+       "rol_minimo": 1
+      },
+      {
+       "k": 5,
+       "rol_minimo": 1
+      },
+      {
+       "k": 6,
+       "rol_minimo": 1
+      },
+      {
+       "k": 7,
+       "rol_minimo": 1
+      },
+      {
+       "k": 8,
+       "rol_minimo": 1
+      },
+      {
+       "k": 9,
+       "rol_minimo": 1
+      },
+      {
+       "k": 10,
+       "rol_minimo": 1
+      }
+     ],
+     "afastamento": 500,
+     "espera_minima": 1000
+    },
+    {
      "evento": "Inscrito",
      "jurado": "CC3TUNG2TWNZXEBWTGLG4RIEEGBKXOHGVFIPFWLDTRQMYBMX6NGN3FTL",
      "indice": 0,
@@ -143,11 +190,14 @@
     },
     {
      "evento": "Fechado",
+     "acusado": "CD6FRVLLOLONSG6SFSJ72VGYKF7PWI5BEJC7FD6OF4VEF7EX5GSL277U",
      "raiz": "21598188271134681136783806150232432804335289379519528152638302457394893878186",
      "n": 8,
      "rodada": 1000000,
      "k": 3,
-     "revela_em": 17280
+     "revela_em": 17280,
+     "gravidade": 3,
+     "afastado_ate": 500
     },
     {
      "evento": "Selado",

@@ -30,6 +30,18 @@
 //! menores `y`; depois de `revela_em`, cada um revela `s` e o painel fica
 //! recomputável entre os que revelaram. O Fisher-Yates aberto fica só no
 //! `beacon-verifier` (DEC-016).
+//!
+//! O caso em volta do sorteio (T-044, T-045): o construtor fixa uma tabela de
+//! gravidade — para cada nível, `k` e o rol mínimo —, e o `lock()` recebe o
+//! nível e a pessoa julgada. `k` vem da tabela, não de quem fecha (INV-19);
+//! a pessoa julgada, se inscrita, é impedida no próprio fechamento e nunca
+//! senta no próprio caso (INV-18); e `suspended()` diz, a quem quiser ler,
+//! que ela está afastada até um prazo também fixado no construtor (INV-20).
+//!
+//! A revelação tardia (T-046): o construtor fixa `espera_minima`, e o
+//! `lock()` recusa um `revela_em` mais cedo que isso. Como a revelação pode
+//! vir meses depois, o `lock()` e o `finalize()` estendem o TTL de tudo o que
+//! `reveal` lê até `revela_em + janela`, no máximo o teto da rede (INV-21).
 
 use pinakion_poseidon::Sponge;
 use soroban_sdk::{
@@ -168,12 +180,30 @@ pub enum Erro {
     JaRecusado = 25,
     /// A janela de reivindicação fechou.
     JanelaFechada = 26,
+    /// O nível de gravidade não está na tabela do construtor.
+    GravidadeInvalida = 27,
+    /// Quem fecha o rol não pode ser a pessoa julgada (INV-18).
+    EscrivaoEParte = 28,
+    /// A tabela de gravidade é vazia ou tem um nível com `k = 0`.
+    TabelaInvalida = 29,
+    /// `revela_em` vem antes de `lock + espera_minima` (INV-21).
+    RevelacaoCedoDemais = 30,
+}
+
+/// Um nível da tabela de gravidade: quantos assentos e o menor rol que pode
+/// fechar com ele (INV-09, INV-19). O nível `g` é a posição `g - 1`.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Nivel {
+    pub k: u32,
+    pub rol_minimo: u32,
 }
 
 /// O que `lock()` fixa, de uma vez por todas: quando, qual rodada do beacon
 /// decide, quantos assentos, o ledger a partir do qual os jurados revelam
 /// (`revela_em`, usado a partir de T-038; Q-24), a raiz da árvore de
-/// compromissos e `n`, quantos estavam autorizados.
+/// compromissos e `n`, quantos estavam autorizados; e, desde T-045, o nível
+/// de gravidade, a pessoa julgada e o ledger em que o afastamento dela acaba.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Fechamento {
@@ -184,6 +214,20 @@ pub struct Fechamento {
     pub revela_em: u32,
     pub raiz: U256,
     pub n: u32,
+    pub gravidade: u32,
+    pub acusado: Address,
+    pub afastado_ate: u32,
+}
+
+/// O construtor publica a regra antes de qualquer caso: a tabela de
+/// gravidade e o afastamento, em ledgers. Com este evento, quem lê o ledger
+/// confere que o `k` do `Fechado` é o do nível (T-045).
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Constituido {
+    pub niveis: Vec<Nivel>,
+    pub afastamento: u32,
+    pub espera_minima: u32,
 }
 
 /// Um jurado entrou no rol, na posição `indice`, com o compromisso `c`. Com
@@ -290,15 +334,21 @@ pub struct Revelado {
     pub sem_bilhete: bool,
 }
 
-/// O rol fechou com esta raiz, `n` autorizados, esta rodada e `k` assentos.
+/// O rol fechou com esta raiz, `n` autorizados, esta rodada e `k` assentos,
+/// para julgar `acusado` no nível `gravidade`, afastado até `afastado_ate`.
+/// O nível é um teto: o painel não decide acima dele (T-044 §1).
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Fechado {
+    #[topic]
+    pub acusado: Address,
     pub raiz: U256,
     pub n: u32,
     pub rodada: u64,
     pub k: u32,
     pub revela_em: u32,
+    pub gravidade: u32,
+    pub afastado_ate: u32,
 }
 
 /// Uma prova Groth16 no formato do verificador (`contracts/groth16-verifier`):
@@ -331,7 +381,12 @@ pub enum DataKey {
     Recusou(Address),
     Revelou(Address),
     Bilhete,
-    Minimo,
+    /// A tabela de gravidade.
+    Niveis,
+    /// Quantos ledgers dura o afastamento da pessoa julgada.
+    Afastamento,
+    /// O menor intervalo, em ledgers, entre o fechamento e a revelação.
+    EsperaMinima,
     Rol,
     Fechamento,
     Painel,
@@ -353,27 +408,46 @@ pub struct Kleroterion;
 #[contractimpl]
 impl Kleroterion {
     /// `escrivao` inscreve e fecha; `bilhete` é o SAC do ativo cujo admin
-    /// este contrato passa a ser; `minimo` é o menor rol que pode fechar;
-    /// `verificador` é o contrato Groth16 que confere as provas de assento,
-    /// fixado aqui para sempre (T-037); `janela` é quantos ledgers, depois
-    /// do selo, os jurados têm para reivindicar (T-038).
+    /// este contrato passa a ser; `verificador` é o contrato Groth16 que
+    /// confere as provas de assento, fixado aqui para sempre (T-037);
+    /// `janela` é quantos ledgers, depois do selo, os jurados têm para
+    /// reivindicar (T-038). `niveis` é a tabela de gravidade — o nível `g`
+    /// senta `niveis[g-1].k` e só fecha com pelo menos `rol_minimo` inscritos
+    /// —, e `afastamento` é quantos ledgers a pessoa julgada fica afastada a
+    /// partir do fechamento (T-045). `espera_minima` é o menor intervalo, em
+    /// ledgers, entre o fechamento e `revela_em` (T-046). Os três ficam
+    /// publicados em `Constituido`.
+    #[allow(clippy::too_many_arguments)]
     pub fn __constructor(
         env: Env,
         escrivao: Address,
         bilhete: Address,
-        minimo: u32,
         verificador: Address,
         janela: u32,
+        niveis: Vec<Nivel>,
+        afastamento: u32,
+        espera_minima: u32,
     ) {
+        if niveis.is_empty() || niveis.iter().any(|n| n.k == 0) {
+            panic_with_error!(&env, Erro::TabelaInvalida);
+        }
         let s = env.storage().instance();
         s.set(&DataKey::Escrivao, &escrivao);
         s.set(&DataKey::Janela, &janela);
         s.set(&DataKey::Verificador, &verificador);
         s.set(&DataKey::Bilhete, &bilhete);
-        s.set(&DataKey::Minimo, &minimo);
+        s.set(&DataKey::Niveis, &niveis);
+        s.set(&DataKey::Afastamento, &afastamento);
+        s.set(&DataKey::EsperaMinima, &espera_minima);
         s.set(&DataKey::Autorizados, &0u32);
         let vazio: Vec<Address> = Vec::new(&env);
         env.storage().persistent().set(&DataKey::Rol, &vazio);
+        Constituido {
+            niveis,
+            afastamento,
+            espera_minima,
+        }
+        .publish(&env);
     }
 
     /// Inscreve um jurado: cria a trustline (SAC `trust`, CAP-73), autoriza e
@@ -420,44 +494,104 @@ impl Kleroterion {
         Inscrito { jurado, indice, c }.publish(&env);
     }
 
-    /// Fecha o rol: a partir daqui ninguém entra nem sai (INV-11, INV-14).
-    /// A rodada do beacon fica fixada pelo relógio do ledger, não por quem
-    /// chama (INV-06, INV-13), e `k` fica fixado aqui, antes de a rodada
-    /// existir, e a raiz da árvore com ele. Recusa abaixo do mínimo (INV-09)
-    /// e `k` fora de `1..=N`, sendo `N` os inscritos ainda autorizados.
-    pub fn lock(env: Env, k: u32, revela_em: u32) -> Fechamento {
-        Self::escrivao(&env).require_auth();
+    /// Fecha o rol para julgar `acusado` no nível `gravidade`: a partir daqui
+    /// ninguém entra nem sai (INV-11, INV-14). A rodada do beacon fica fixada
+    /// pelo relógio do ledger, não por quem chama (INV-06, INV-13); `k` vem
+    /// da tabela do construtor, não de quem chama (INV-19), e fica fixado
+    /// aqui, antes de a rodada existir, e a raiz da árvore com ele.
+    ///
+    /// Se `acusado` está inscrito e autorizado, é impedido nesta mesma
+    /// chamada, antes de a raiz ser fixada: a folha dele vira zero e ele
+    /// nunca senta no próprio caso (INV-18). Quem fecha não pode ser ele.
+    /// Recusa abaixo do rol mínimo do nível (INV-09), `k` acima de `N`, sendo
+    /// `N` os inscritos ainda autorizados, e `revela_em` antes de
+    /// `ledger + espera_minima` (INV-21). Estende o TTL da instância e do
+    /// compromisso de cada inscrito até a revelação.
+    pub fn lock(env: Env, gravidade: u32, revela_em: u32, acusado: Address) -> Fechamento {
+        let escrivao = Self::escrivao(&env);
+        escrivao.require_auth();
         if Self::closing(env.clone()).is_some() {
             panic_with_error!(&env, Erro::RolFechado);
         }
-        let minimo: u32 = env.storage().instance().get(&DataKey::Minimo).unwrap();
-        if Self::roster(env.clone()).len() < minimo {
+        if acusado == escrivao {
+            panic_with_error!(&env, Erro::EscrivaoEParte);
+        }
+        let nivel = match Self::levels(env.clone()).get(gravidade.wrapping_sub(1)) {
+            Some(n) if gravidade > 0 => n,
+            _ => panic_with_error!(&env, Erro::GravidadeInvalida),
+        };
+        if Self::roster(env.clone()).len() < nivel.rol_minimo {
             panic_with_error!(&env, Erro::RolAbaixoDoMinimo);
         }
+        if let Some(indice) = Self::indice(&env, &acusado) {
+            let sac = token::StellarAssetClient::new(&env, &Self::bilhete(&env));
+            if sac.authorized(&acusado) {
+                Self::impedir(&env, &sac, acusado.clone(), indice);
+            }
+        }
         let n: u32 = env.storage().instance().get(&DataKey::Autorizados).unwrap();
-        if k == 0 || k > n {
+        let k = nivel.k;
+        if k > n {
             panic_with_error!(&env, Erro::AssentosInvalidos);
         }
+        let afastamento: u32 = env.storage().instance().get(&DataKey::Afastamento).unwrap();
         let tempo = env.ledger().timestamp();
+        let ledger = env.ledger().sequence();
+        let espera: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::EsperaMinima)
+            .unwrap();
+        if revela_em < ledger.saturating_add(espera) {
+            panic_with_error!(&env, Erro::RevelacaoCedoDemais);
+        }
         let f = Fechamento {
-            ledger: env.ledger().sequence(),
+            ledger,
             tempo,
             rodada: Self::primeira_rodada_depois_de(tempo) + MARGEM_DE_RODADAS,
             k,
             revela_em,
             raiz: Self::root(env.clone()),
             n,
+            gravidade,
+            acusado,
+            afastado_ate: ledger.saturating_add(afastamento),
         };
         env.storage().instance().set(&DataKey::Fechamento, &f);
+        let alvo = Self::ate_a_revelacao(&env, &f);
+        env.storage().instance().extend_ttl(alvo, alvo);
+        let p = env.storage().persistent();
+        for jurado in Self::roster(env.clone()).iter() {
+            p.extend_ttl(&DataKey::Compromisso(jurado), alvo, alvo);
+        }
         Fechado {
+            acusado: f.acusado.clone(),
             raiz: f.raiz.clone(),
             n: f.n,
             rodada: f.rodada,
             k: f.k,
             revela_em: f.revela_em,
+            gravidade: f.gravidade,
+            afastado_ate: f.afastado_ate,
         }
         .publish(&env);
         f
+    }
+
+    /// A pessoa julgada está afastada? Verdadeiro só para ela, do fechamento
+    /// até `afastado_ate`, exclusive; falso para todo o resto, e nada o
+    /// prorroga (INV-20). É uma regra publicada: tirar os poderes dela é de
+    /// quem lê isto — um contrato da governança, um bot do projeto.
+    pub fn suspended(env: Env, endereco: Address) -> bool {
+        match Self::closing(env.clone()) {
+            Some(f) => f.acusado == endereco && env.ledger().sequence() < f.afastado_ate,
+            None => false,
+        }
+    }
+
+    /// A tabela de gravidade fixada no construtor.
+    pub fn levels(env: Env) -> Vec<Nivel> {
+        env.storage().instance().get(&DataKey::Niveis).unwrap()
     }
 
     /// Impedimento ou recusa (art. 463): tira a autorização do bilhete. O
@@ -470,11 +604,7 @@ impl Kleroterion {
         if Self::closing(env.clone()).is_some() {
             panic_with_error!(&env, Erro::RolFechado);
         }
-        let indice: u32 = match env
-            .storage()
-            .persistent()
-            .get(&DataKey::Indice(jurado.clone()))
-        {
+        let indice = match Self::indice(&env, &jurado) {
             Some(i) => i,
             None => panic_with_error!(&env, Erro::JuradoDesconhecido),
         };
@@ -482,12 +612,24 @@ impl Kleroterion {
         if !sac.authorized(&jurado) {
             panic_with_error!(&env, Erro::JaImpedido);
         }
+        Self::impedir(&env, &sac, jurado, indice);
+    }
+
+    /// Desautoriza o bilhete, zera a folha, desconta de `N` e publica
+    /// `Impedido`. Usado por `impede` e pelo `lock()` com a pessoa julgada.
+    fn impedir(env: &Env, sac: &token::StellarAssetClient, jurado: Address, indice: u32) {
         sac.set_authorized(&jurado, &false);
-        Self::por_folha(&env, indice, U256::from_u32(&env, 0));
+        Self::por_folha(env, indice, U256::from_u32(env, 0));
         let i = env.storage().instance();
         let autorizados: u32 = i.get(&DataKey::Autorizados).unwrap();
         i.set(&DataKey::Autorizados, &(autorizados - 1));
-        Impedido { jurado, indice }.publish(&env);
+        Impedido { jurado, indice }.publish(env);
+    }
+
+    fn indice(env: &Env, jurado: &Address) -> Option<u32> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Indice(jurado.clone()))
     }
 
     /// O compromisso de um jurado, se inscrito.
@@ -674,6 +816,11 @@ impl Kleroterion {
             ledger: env.ledger().sequence(),
         };
         env.storage().persistent().set(&DataKey::Painel, &fim);
+        let alvo = Self::ate_a_revelacao(&env, &Self::closing(env.clone()).unwrap());
+        env.storage().instance().extend_ttl(alvo, alvo);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Painel, alvo, alvo);
         Finalizado {
             painel: fim.painel.clone(),
             completo: fim.completo,
@@ -718,6 +865,18 @@ impl Kleroterion {
         }
         .publish(&env);
         r
+    }
+
+    /// Quantos ledgers, a partir de agora, o que `reveal` lê precisa viver:
+    /// até `revela_em + janela`, e nunca além do teto da rede (INV-21). Se a
+    /// revelação passar do teto, alguém precisa estender de novo no caminho
+    /// — qualquer conta pode, `ExtendFootprintTTLOp` não tem controle de acesso.
+    fn ate_a_revelacao(env: &Env, f: &Fechamento) -> u32 {
+        let janela: u32 = env.storage().instance().get(&DataKey::Janela).unwrap();
+        f.revela_em
+            .saturating_add(janela)
+            .saturating_sub(env.ledger().sequence())
+            .min(env.storage().max_ttl())
     }
 
     /// O selo, se há e o painel ainda não saiu.

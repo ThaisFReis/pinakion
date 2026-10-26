@@ -3,8 +3,11 @@
 
 The scenario is contracts/kleroterion's `fluxo_completo_n8_k3`, on the
 jurors of tests/fluxo-n8.json:
-- eight enrol (main accounts are fixed C-strkeys) and the roll locks with k = 3
-  on round 1000000;
+- the constructor publishes the test severity table (level g seats k = g, from
+  1 to 10, roster floor 1), the suspension window (T-045) and the reveal
+  floor (T-046);
+- eight enrol (main accounts are fixed C-strkeys) and the roll locks at level 3,
+  so k = 3, on round 1000000, against a party who is not on the roll;
 - seal;
 - jurors 1, 2, 3, 5, 6, 7 claim, in that order; 0 is below T and does not
   claim; 4 is above T and is refused, which leaves no event;
@@ -37,6 +40,11 @@ OURO = RAIZ / "tests" / "vetores-de-ouro.json"
 
 ALEATORIEDADE = "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3"
 RODADA, REVELA_EM, LEDGER_DO_SELO, JANELA = 1000000, 17280, 1000, 100
+# T-045: the tests' severity table and suspension window, and the ledger the
+# lock runs at in the test host (the default, 0).
+NIVEIS = [{"k": g, "rol_minimo": 1} for g in range(1, 11)]
+AFASTAMENTO, LEDGER_DO_FECHAMENTO = 500, 0
+ESPERA_MINIMA = 1000  # T-046
 
 
 def strkey(versao, pk):
@@ -55,6 +63,11 @@ def principal(i):
     return strkey(2 << 3, hashlib.sha256(f"pinakion:fluxo:principal:{i}".encode()).digest())
 
 
+def acusado():
+    # The party judged: not enrolled, so nothing in the roll changes (T-045).
+    return strkey(2 << 3, hashlib.sha256(b"pinakion:fluxo:acusado").digest())
+
+
 def main():
     f = json.loads(FLUXO.read_text())
     js = f["jurados"]
@@ -63,8 +76,12 @@ def main():
     assert seed == int(ALEATORIEDADE, 16) >> 8
     y = {j["indice"]: int(j["y"]) for j in js}
 
-    eventos = [{"evento": "Inscrito", "jurado": principal(j["indice"]), "indice": j["indice"], "c": j["c"]} for j in js]
-    eventos.append({"evento": "Fechado", "raiz": f["raiz"], "n": n, "rodada": RODADA, "k": k, "revela_em": REVELA_EM})
+    eventos = [{"evento": "Constituido", "niveis": NIVEIS, "afastamento": AFASTAMENTO,
+                "espera_minima": ESPERA_MINIMA}]
+    eventos += [{"evento": "Inscrito", "jurado": principal(j["indice"]), "indice": j["indice"], "c": j["c"]} for j in js]
+    gravidade = next(g for g, nv in enumerate(NIVEIS, 1) if nv["k"] == k)
+    eventos.append({"evento": "Fechado", "acusado": acusado(), "raiz": f["raiz"], "n": n, "rodada": RODADA, "k": k,
+                    "revela_em": REVELA_EM, "gravidade": gravidade, "afastado_ate": LEDGER_DO_FECHAMENTO + AFASTAMENTO})
     eventos.append({"evento": "Selado", "seed": str(seed), "limiar": str(limiar), "prazo": LEDGER_DO_SELO + JANELA})
     quem, recusa = [1, 2, 3, 5, 6, 7], 6
     eventos += [{"evento": "Reivindicado", "y": str(y[i])} for i in quem]

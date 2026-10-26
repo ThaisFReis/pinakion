@@ -27,7 +27,7 @@ RPC = {"testnet": "https://soroban-testnet.stellar.org"}
 HORIZON = {"testnet": "https://horizon-testnet.stellar.org"}
 # Some public endpoints refuse urllib's default User-Agent with a 403.
 UA = {"User-Agent": "pinakion-registro/1.0"}
-NOMES = {"Inscrito", "Impedido", "Fechado", "Selado", "Ampliado", "Reivindicado",
+NOMES = {"Constituido", "Inscrito", "Impedido", "Fechado", "Selado", "Ampliado", "Reivindicado",
          "Recusado", "Finalizado", "Revelado"}
 
 

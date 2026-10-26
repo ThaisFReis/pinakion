@@ -160,6 +160,33 @@ export function verificarSelado(registro, P, raiz) {
   const k = fechado.k;
   confere("N e quem estava autorizado", fechado.n === ordem.length - impedidos.size);
 
+  // T-045: the severity table and the party, when the record carries them.
+  const constituido = um("Constituido");
+  if (constituido) {
+    const { niveis } = constituido;
+    const g = fechado.gravidade;
+    const noQuadro = Number.isInteger(g) && g >= 1 && g <= niveis.length;
+    confere("o nivel do fechamento esta na tabela", noQuadro);
+    if (noQuadro) {
+      confere("k e o do nivel", k === niveis[g - 1].k);
+      confere("o rol chega ao minimo do nivel", ordem.length >= niveis[g - 1].rol_minimo);
+    }
+    if ("ledger" in fechado) {
+      confere("o afastamento e o do construtor", fechado.afastado_ate === fechado.ledger + constituido.afastamento);
+      if ("espera_minima" in constituido) {
+        confere("a revelacao respeita a espera minima", fechado.revela_em >= fechado.ledger + constituido.espera_minima);
+      }
+    }
+  }
+  const parte = fechado.acusado;
+  if (parte !== undefined && jurados.has(parte)) {
+    const antes = eventos.slice(0, eventos.indexOf(fechado));
+    confere(
+      "a parte inscrita foi impedida antes do fechamento",
+      antes.some((e) => e.evento === "Impedido" && e.jurado === parte),
+    );
+  }
+
   const seed = BigInt("0x" + registro.aleatoriedade) >> 8n;
   let limiar = 2n * BigInt(k) >= n ? P.R : (P.R * 2n * BigInt(k)) / n;
   const selado = um("Selado");
@@ -205,6 +232,9 @@ export function verificarSelado(registro, P, raiz) {
   }
   for (const [quem, e] of revelados) {
     confere(`Revelado de ${quem}: sentado confere`, e.sentado === painel.includes(BigInt(e.y)));
+  }
+  if (parte !== undefined) {
+    confere("a parte nao senta no proprio caso", !(revelados.has(parte) && revelados.get(parte).sentado));
   }
 
   const estados = new Map();

@@ -163,7 +163,7 @@ O bilhete da pessoa julgada fica desautorizado naquele contrato. É, literalment
 
 O contrato não tira credenciais do GitHub nem de nenhum outro sistema. O que ele pode fazer é **publicar uma regra que outros leem**:
 
-- **Uma consulta nova:** `afastado(endereco) -> bool`. Ela é verdadeira só para a pessoa julgada, do `lock` até `lock + afastamento`. O `afastamento` é um prazo em ledgers fixado no construtor, antes do caso.
+- **Uma consulta nova:** `afastado(endereco) -> bool` (no código, desde T-045, `suspended(endereco)`, em inglês como as outras chamadas públicas). Ela é verdadeira só para a pessoa julgada, do `lock` até `lock + afastamento`. O `afastamento` é um prazo em ledgers fixado no construtor, antes do caso.
 - **O prazo vence sozinho.** Ninguém prorroga.
 - **Quem lê:** um contrato da governança (um multisig, um contrato de papéis) pode consultar `afastado` e suspender o que é dele. Um bot do projeto pode ler o evento e tirar permissões fora da cadeia.
 - **O Pinakion não vê o veredito,** então o afastamento termina no prazo. Encerrá-lo antes, depois do veredito, é poder de quem chama o módulo.
@@ -222,8 +222,8 @@ Isso dá cerca de **7 dias** e **180 dias**. É uma estimativa: ledgers multipli
 O que T-046 precisa fazer:
 
 - **Estender os TTLs.** O `lock` estende o TTL da instância e do código, e o `finalize` o dos `y` e do painel, até `revela_em + janela`. O teto é `env.storage().max_ttl()`, que existe no soroban-sdk 29.0.1 (`src/storage.rs:153`, conferido hoje).
-- **Revelação além de ~180 dias** não cabe numa extensão só. Alguém precisa estender de novo no caminho. A extensão de TTL é uma operação que qualquer conta pode pagar, sem permissão do contrato. `[VERIFY: ExtendFootprintTTLOp não exige autorização do dono da entrada]`.
-- **Entradas arquivadas podem ser restauradas.** `[VERIFY: restauração automática no protocolo atual, e o custo]`. Restaurar não apaga nada, mas custa, e a página de bilhetes precisa saber lidar com isso.
+- **Revelação além de ~180 dias** não cabe numa extensão só. Alguém precisa estender de novo no caminho. A extensão de TTL é uma operação que qualquer conta pode pagar, sem permissão do contrato. Conferido em 26/10: a documentação da Stellar diz que `ExtendFootprintTTLOp` não tem controle de acesso (*Storage strategies in production contracts*)..
+- **Entradas arquivadas podem ser restauradas.** Conferido em 26/10: desde o protocolo 23 (CAP-66), uma invocação comum restaura antes de rodar as entradas arquivadas que a simulação põe na lista de restauração, com aluguel e taxas normais (*State Archival*, developers.stellar.org); o host 29.0.1 faz o mesmo em `storage.rs:800`. O custo na rede não foi medido.. Restaurar não apaga nada, mas custa, e a página de bilhetes precisa saber lidar com isso.
 
 ### O que a revelação tardia compra, e o que não compra
 
@@ -267,5 +267,5 @@ A INV-19 tira do escrivão a escolha de `k`, que hoje é dele. A INV-18 muda a a
 - **O afastamento só tira poder de quem lê.** Fora do Pinakion, nada acontece sem a governança ligar `afastado` às permissões reais.
 - **A denúncia como arma fica auditável, não impedida.**
 - **Ainda sem resposta:** o conflito de quem denunciou (Q-27) e "o painel não pode ser do corpo a que a pessoa pertence" (`desenho-sorteio-e-sigilo.md` §1). O estudo não resolve nenhum dos dois.
-- **A revelação tardia adia a retaliação, não a impede.** Depende de TTL, e dois fatos dela estão marcados `[VERIFY]`.
+- **A revelação tardia adia a retaliação, não a impede.** Depende de TTL; desde T-046 o contrato estende o que `reveal` lê até a revelação, até o teto da rede (~180 dias no testnet).
 - **Nada aqui foi construído, testado no contrato ou rodado no testnet.**

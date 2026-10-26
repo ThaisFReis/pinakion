@@ -151,7 +151,16 @@
       ["Semente (aleatoriedade >> 8)", selado.seed],
       ["Limiar T = ⌊r·2k/N⌋", selado.limiar],
       ["Painel (y, em ordem)", final ? final.painel.join(", ") : "ainda não saiu"],
+      ["Selado até o ledger", `${fechado.revela_em}: antes dele, nenhum jurado pode revelar`],
     ];
+    // T-045: contracts from T-045 on also name the level and the party judged.
+    if (fechado.gravidade !== undefined) {
+      fatos.push(
+        ["Nível de gravidade", `${fechado.gravidade}: o painel decide até este nível, não acima`],
+        ["Pessoa julgada", conta(fechado.acusado)],
+        ["Afastada até o ledger", String(fechado.afastado_ate)],
+      );
+    }
     for (const [k, v] of fatos) $("fatos").append(el("dt", {}, k), el("dd", {}, v));
 
     const inscricao = new Map(), saida = new Map(), yDe = new Map();

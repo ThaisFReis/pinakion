@@ -357,6 +357,9 @@
                 },
                 {
                   "u32": 17280
+                },
+                {
+                  "address": "CD6FRVLLOLONSG6SFSJ72VGYKF7PWI5BEJC7FD6OF4VEF7EX5GSL277U"
                 }
               ]
             }
@@ -645,7 +648,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -672,7 +675,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -699,7 +702,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -726,7 +729,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -753,7 +756,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -780,7 +783,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -807,7 +810,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -1762,6 +1765,18 @@
                       "key": {
                         "vec": [
                           {
+                            "symbol": "Afastamento"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 500
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
                             "symbol": "Autorizados"
                           }
                         ]
@@ -1798,12 +1813,48 @@
                       "key": {
                         "vec": [
                           {
+                            "symbol": "EsperaMinima"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u32": 1000
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
                             "symbol": "Fechamento"
                           }
                         ]
                       },
                       "val": {
                         "map": [
+                          {
+                            "key": {
+                              "symbol": "acusado"
+                            },
+                            "val": {
+                              "address": "CD6FRVLLOLONSG6SFSJ72VGYKF7PWI5BEJC7FD6OF4VEF7EX5GSL277U"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "afastado_ate"
+                            },
+                            "val": {
+                              "u32": 500
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "gravidade"
+                            },
+                            "val": {
+                              "u32": 7
+                            }
+                          },
                           {
                             "key": {
                               "symbol": "k"
@@ -1879,12 +1930,213 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "Minimo"
+                            "symbol": "Niveis"
                           }
                         ]
                       },
                       "val": {
-                        "u32": 7
+                        "vec": [
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "k"
+                                },
+                                "val": {
+                                  "u32": 1
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "rol_minimo"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "k"
+                                },
+                                "val": {
+                                  "u32": 2
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "rol_minimo"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "k"
+                                },
+                                "val": {
+                                  "u32": 3
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "rol_minimo"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "k"
+                                },
+                                "val": {
+                                  "u32": 4
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "rol_minimo"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "k"
+                                },
+                                "val": {
+                                  "u32": 5
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "rol_minimo"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "k"
+                                },
+                                "val": {
+                                  "u32": 6
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "rol_minimo"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "k"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "rol_minimo"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "k"
+                                },
+                                "val": {
+                                  "u32": 8
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "rol_minimo"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "k"
+                                },
+                                "val": {
+                                  "u32": 9
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "rol_minimo"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "k"
+                                },
+                                "val": {
+                                  "u32": 10
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "rol_minimo"
+                                },
+                                "val": {
+                                  "u32": 7
+                                }
+                              }
+                            ]
+                          }
+                        ]
                       }
                     },
                     {
@@ -1906,7 +2158,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -2527,7 +2779,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 17380
       },
       {
         "entry": {
@@ -2556,10 +2808,29 @@
             "topics": [
               {
                 "symbol": "fechado"
+              },
+              {
+                "address": "CD6FRVLLOLONSG6SFSJ72VGYKF7PWI5BEJC7FD6OF4VEF7EX5GSL277U"
               }
             ],
             "data": {
               "map": [
+                {
+                  "key": {
+                    "symbol": "afastado_ate"
+                  },
+                  "val": {
+                    "u32": 500
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "gravidade"
+                  },
+                  "val": {
+                    "u32": 7
+                  }
+                },
                 {
                   "key": {
                     "symbol": "k"

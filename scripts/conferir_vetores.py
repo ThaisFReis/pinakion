@@ -180,6 +180,17 @@ def main():
     else:
         falhas += 1
         print("  FALHA docs/evidencia-testnet-aptos.txt divergiu de scripts/exportar_tessera.py")
+    # T-044: every table of the panel-size study is what the model prints today.
+    saida = subprocess.run([sys.executable, str(RAIZ / "scripts" / "tamanho_do_painel.py")],
+                           capture_output=True, text=True).stdout
+    estudo = (RAIZ / "docs" / "desenho-gravidade-afastamento-revelacao.md").read_text()
+    blocos = [b.strip() for b in saida.split("\n\n") if b.strip()]
+    fora = [b.splitlines()[0] for b in blocos if b not in estudo]
+    if fora or not blocos:
+        falhas += 1
+        print(f"  FALHA o estudo de gravidade divergiu de scripts/tamanho_do_painel.py: {fora}")
+    else:
+        print(f"  ok    o estudo de gravidade: {len(blocos)} tabelas iguais ao modelo")
 
     if falhas:
         print(f"\n{falhas} falha(s).")

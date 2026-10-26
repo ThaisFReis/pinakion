@@ -94,6 +94,10 @@ Every external fact this project relies on, and every piece of code copied in. A
 | 2026-10-26 | Tessera's voter-list input | `tessera abrir --aptos` = comma list or file path; file: one entry per line, `#` starts a comment; entry = 56-char G-address or a local identity name (`resolver`); leaf `H(0x00 ‖ addr_xdr ‖ peso)` in list order | `ThaisFReis/tessera` `39ec925abeb2e219b61ef9bca8129c98d402f33c`, MIT | `cli/src/comandos.rs` (`lista`, `resolver`, `folhas_de`), read via the GitHub API; answers Q-25 |
 | 2026-10-26 | Soroban RPC `getEvents` returns each event's `txHash` and the same event `id` as `stellar events` | — | testnet RPC | observed (`scripts/registro.py`) |
 | 2026-10-26 | `soroban-testnet.stellar.org` and Horizon answered urllib's default User-Agent with HTTP 403 | worked with a custom User-Agent and with curl | — | observed |
+| 2026-10-26 | Contributor Covenant enforcement levels | four: Correction, Warning (with a period of no interaction with the people involved), Temporary Ban, Permanent Ban; leaders must respect the reporter's privacy; no interim measures mentioned | 2.1 | https://www.contributor-covenant.org/version/2/1/code_of_conduct/ |
+| 2026-10-26 | Testnet state archival and ledger close | `min_persistent_ttl` 120,960 ledgers; `max_entry_ttl` 3,110,400; `ledger_target_close_time_milliseconds` 5,000 | testnet, read today | `stellar network settings --network testnet` (CLI 28.1.0) |
+| 2026-10-26 | `Storage::max_ttl()` | ledgers until `max_live_until_ledger`, the ceiling for any `extend_ttl` | soroban-sdk 29.0.1 | `~/.cargo/registry/src/*/soroban-sdk-29.0.1/src/storage.rs:153` |
+| 2026-10-26 | `kleroterion` never extends a TTL | no `extend_ttl` call in the contract | this repo at `08cacaf` | `grep extend_ttl contracts/kleroterion/src/lib.rs` |
 
 ## Conflicting sources
 

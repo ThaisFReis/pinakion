@@ -163,7 +163,7 @@ O bilhete da pessoa julgada fica desautorizado naquele contrato. É, literalment
 
 O contrato não tira credenciais do GitHub nem de nenhum outro sistema. O que ele pode fazer é **publicar uma regra que outros leem**:
 
-- **Uma consulta nova:** `afastado(endereco) -> bool`. Ela é verdadeira só para a pessoa julgada, do `lock` até `lock + afastamento`. O `afastamento` é um prazo em ledgers fixado no construtor, antes do caso.
+- **Uma consulta nova:** `afastado(endereco) -> bool` (no código, desde T-045, `suspended(endereco)`, em inglês como as outras chamadas públicas). Ela é verdadeira só para a pessoa julgada, do `lock` até `lock + afastamento`. O `afastamento` é um prazo em ledgers fixado no construtor, antes do caso.
 - **O prazo vence sozinho.** Ninguém prorroga.
 - **Quem lê:** um contrato da governança (um multisig, um contrato de papéis) pode consultar `afastado` e suspender o que é dele. Um bot do projeto pode ler o evento e tirar permissões fora da cadeia.
 - **O Pinakion não vê o veredito,** então o afastamento termina no prazo. Encerrá-lo antes, depois do veredito, é poder de quem chama o módulo.

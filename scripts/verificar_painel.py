@@ -22,7 +22,13 @@ From those alone it recomputes, without trusting the contract:
 - every recusal and every reveal: Poseidon(s) = c of that juror, and
   y = Poseidon(seed, s);
 - the order (ascending y, recused y removed), the panel (its first k) and
-  whether it is complete, against `Finalizado`.
+  whether it is complete, against `Finalizado`;
+- since T-045, when the record has `Constituido`: the level in `Fechado` is in
+  the table, k is that level's, the roll reaches its floor, the suspension
+  ends `afastamento` ledgers after the lock; and when `Fechado` names the
+  party (`acusado`): an enrolled party was impeded before the lock and never
+  sits. Records of the contract before T-045 carry neither and are checked as
+  they were.
 
 It then says, for each enrolled juror, one of: sentou · revelou, nao sentou ·
 sorteado e ausente (below T, never claimed) · nao revelou · recusado ·
@@ -85,6 +91,23 @@ def verificar(registro):
     n, k = fechado["n"], fechado["k"]
     confere("N e quem estava autorizado", n == len(ordem) - len(impedidos))
 
+    constituido = um("Constituido")
+    if constituido:
+        niveis, g = constituido["niveis"], fechado.get("gravidade")
+        no_quadro = isinstance(g, int) and 1 <= g <= len(niveis)
+        confere("o nivel do fechamento esta na tabela", no_quadro)
+        if no_quadro:
+            confere("k e o do nivel", k == niveis[g - 1]["k"])
+            confere("o rol chega ao minimo do nivel", len(ordem) >= niveis[g - 1]["rol_minimo"])
+        if "ledger" in fechado:
+            confere("o afastamento e o do construtor",
+                    fechado["afastado_ate"] == fechado["ledger"] + constituido["afastamento"])
+    parte = fechado.get("acusado")
+    if parte in jurados:
+        antes = eventos[:eventos.index(fechado)]
+        confere("a parte inscrita foi impedida antes do fechamento",
+                any(e["evento"] == "Impedido" and e["jurado"] == parte for e in antes))
+
     aleatoriedade = registro.get("aleatoriedade") or aleatoriedade_da_rodada(fechado["rodada"])
     seed = int(aleatoriedade, 16) >> 8
     limiar = R if 2 * k >= n else R * 2 * k // n
@@ -125,6 +148,8 @@ def verificar(registro):
         confere("completo se e so se chegou a k", final["completo"] == (len(meu_painel) == k))
     for quem, e in revelados.items():
         confere(f"Revelado de {quem}: sentado confere", e["sentado"] == (int(e["y"]) in meu_painel))
+    if parte:
+        confere("a parte nao senta no proprio caso", not (parte in revelados and revelados[parte]["sentado"]))
 
     estados = {}
     for quem in ordem:

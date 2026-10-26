@@ -55,7 +55,7 @@ python3 scripts/registro.py CCRBKLS64WDUSKQSQF4ON4GJF4Q5KPEAF54TQD4RIWDAJ5TOERKU
 - `kleroterion` enrols a juror by creating the trustline itself (SAC `trust`, Protocol 26) and records the juror's commitment `c = Poseidon(s)`. Only the juror knows `s`.
 - The contract keeps the Poseidon Merkle tree of the commitments.
 - The issuer's master weight is 0, so nobody else can ever issue or authorize a ticket.
-- `lock(k, reveal_after)` freezes the roster, the tree's root, `k` and the drand round, all from the ledger clock.
+- `lock(gravidade, reveal_after, acusado)` freezes the roster, the tree's root, `k` and the drand round, all from the ledger clock. Since T-045, `k` comes from a severity table fixed at construction, the person judged is impeded in the same call if enrolled, and `suspended(acusado)` is true for a window also fixed at construction. That version passes its tests and has not run on testnet; the 2026-10-26 run used `lock(k, reveal_after)`.
 
 **2. The entropy arrives afterwards, and it is verified on-chain.** `seal` takes the signature of that [drand](https://drand.love) quicknet round, verifies it on-chain (BLS12-381, CAP-59) and fixes the seed and a threshold `T`. Nobody, including us, knew the value when the roster closed.
 
@@ -88,7 +88,7 @@ Full records: [`docs/evidencia-testnet-bilhete.md`](docs/evidencia-testnet-bilhe
 ## What is not
 
 - **The case lifecycle is designed and not built.** That covers roster renewal, contestation windows and the quorum arithmetic. The roster cycle — enrol → impede → lock → seal → claim → recuse → finalize → reveal — is built, passes its unit tests and ran once on testnet.
-- **Nothing yet stops the person judged from sitting on their own case.** The clerk must impede them before `lock`; if that is skipped and they are drawn, their seat stays sealed until the reveal. Severity-sized panels, interim suspension and a floor on the reveal are studied in [`docs/desenho-gravidade-afastamento-revelacao.md`](docs/desenho-gravidade-afastamento-revelacao.md) and not built (§11 Q-26).
+- **The person judged is kept off their own panel only in the code, not yet on testnet.** Since T-045 `lock` impedes them if enrolled, and refuses a clerk who is the party. The 2026-10-26 testnet run predates it. `suspended()` only publishes the window: removing real permissions is the host governance's job. The reveal floor (T-046) is not built. See [`docs/desenho-gravidade-afastamento-revelacao.md`](docs/desenho-gravidade-afastamento-revelacao.md).
 - **The testnet run was one machine playing all 20 jurors and every seat account,** with short windows: 60 ledgers to claim, and a reveal ledger minutes away rather than "after the verdict" (§11 Q-24).
 - **Nothing has been audited. Nothing has run on mainnet.**
 - **The drand signature is verified on-chain at `seal`,** not again by the off-chain checker, which takes the randomness from drand's API.

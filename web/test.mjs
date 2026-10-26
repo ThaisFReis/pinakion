@@ -95,6 +95,26 @@ for (const v of selados) {
   }
 }
 
+// T-045: a party who sits unimpeded, and a k that is not the level's, fail by name.
+for (const v of selados) {
+  const fech = v.eventos.find((e) => e.evento === "Fechado");
+  const primeiro = v.eventos.find((e) => e.evento === "Inscrito").jurado;
+  for (const [campo, valor, nome] of [
+    ["acusado", primeiro, "a parte inscrita foi impedida antes do fechamento"],
+    ["gravidade", fech.gravidade + 1, "k e o do nivel"],
+  ]) {
+    const w = structuredClone(v);
+    w.eventos.find((e) => e.evento === "Fechado")[campo] = valor;
+    const r = verificarSelado(w, { R: criarPoseidon(await ler("poseidon-bn254.json")).R, hash1, hash2 }, raiz);
+    const achou = r.conferencias.find(([n]) => n === nome);
+    if (achou && !achou[1]) console.log(`  ok    mutacao de ${campo}: '${nome}' nao confere`);
+    else {
+      falhas++;
+      console.log(`  FALHA a mutacao de ${campo} passou sem '${nome}'`);
+    }
+  }
+}
+
 if (falhas) {
   console.log(`\n${falhas} falha(s).`);
   process.exit(1);

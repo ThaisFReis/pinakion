@@ -124,7 +124,7 @@ These are specific reasons, each one measured or read from source. "Because bloc
 - **Losing `s` loses the seat.** Nothing recovers a secret.
 - **The panel is recomputable only among the jurors who revealed.** A juror who never reveals stays unaccounted for, by name, on the ledger.
 - **The seal ends at the ledger.** Deliberation off-chain — a chat, a call — breaks it the moment the jurors meet.
-- **Nothing yet stops the person judged from sitting on their own case.** The clerk must impede them before `lock`; if that is skipped and they are drawn, their seat is as sealed as anyone's until the reveal. Designed, not built: `docs/desenho-gravidade-afastamento-revelacao.md` (T-045).
+- **The person judged is kept off their own panel in the code, not yet on testnet.** Since T-045 `lock` names them and impedes them if enrolled; the 2026-10-26 run predates that, and there the clerk had to do it by hand. The interim suspension only publishes a window (`suspended`); the host governance removes the real powers, or nothing happens.
 - **Nothing has been audited, nothing has run on mainnet, and the run was one machine playing every juror.**
 - Below a roster of about sixteen the draw guarantees little (`docs/limite-inferior-do-rol.md`).
 

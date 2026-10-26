@@ -1,0 +1,11 @@
+{
+ "_": "The documents of the fictional demo case (T-049). Each one's SHA-256 is a Registrado event of the processo contract; web/processo.html and scripts/verificar_processo.py hash them and match. 05 and 06 are written by scripts/sequencia_processo.sh with the run's numbers.",
+ "documentos": [
+  {"arquivo": "01-denuncia.md", "titulo": "Denúncia"},
+  {"arquivo": "02-prova.md", "titulo": "Prova"},
+  {"arquivo": "03-defesa.md", "titulo": "Defesa"},
+  {"arquivo": "04-ata-jurado.md", "titulo": "Ata de deliberação"},
+  {"arquivo": "05-ata-sessao.md", "titulo": "Ata da sessão"},
+  {"arquivo": "06-ata-decisao.md", "titulo": "Ata da decisão"}
+ ]
+}

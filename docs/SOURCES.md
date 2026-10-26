@@ -101,6 +101,11 @@ Every external fact this project relies on, and every piece of code copied in. A
 | 2026-10-26 | Who may extend a TTL | anyone: `ExtendFootprintTTLOp` has no access control | current docs | https://developers.stellar.org/docs/build/guides/storage/storage-strategies#the-three-storage-tiers |
 | 2026-10-26 | Restoring archived contract data | since Protocol 23 (CAP-66), archived persistent or instance entries in the transaction's restore list (filled by simulation) are restored before the host function runs; normal rent and fees apply | Protocol 23+ | https://developers.stellar.org/docs/learn/fundamentals/contract-development/storage/state-archival#contract-data-automatic-restoration ; soroban-env-host 29.0.1 `src/storage.rs:800` |
 | 2026-10-26 | Test-host TTL defaults | `min_persistent_entry_ttl` 4,096, `max_entry_ttl` 6,312,000 | soroban-sdk 29.0.1 | `src/testutils.rs:303` |
+| 2026-10-26 | Tessera's proposal id | `SHA-256("TESSERA-V1-PROPOSTA" ‖ name)` | Tessera `356c22f` | `cli/src/comandos.rs` `id32` |
+| 2026-10-26 | Tessera's voter leaf and tree | leaf `SHA-256(0x00 ‖ Address::to_xdr ‖ weight_be32)`; node `SHA-256(0x01 ‖ l ‖ r)`; padded to a power of two with `SHA-256(0x02 ‖ "TESSERA-V1-MERKLE-VAZIO")` | Tessera `356c22f` | `core/src/merkle.rs`, `cli/src/chave.rs` `xdr_de_endereco`; reproduced in Rust, Python and JS against the root `52c7847c…` its CLI wrote on testnet |
+| 2026-10-26 | Tessera's privacy floor | no score below 5 confidential votes (`Sigilo mínimo ... 5 votos confidenciais`) | Tessera `356c22f` | `cli/src/comandos.rs:374`, observed when opening a vote |
+| 2026-10-26 | Tessera CLI ↔ contract mismatch | the CLI's `abrir` sends `fim_tempo`; the contract at the same commit takes `rodada_abertura`; fixed client-side in `scripts/tessera-cli.patch` | Tessera `356c22f` | observed: *unexpected argument '--fim_tempo'* |
+| 2026-10-26 | Tessera deployment used by the case | `CDWBWAHUZ3MC3BJXJIW5O74MNUXH76VCGBIVFQU3XJJFGML3VKFIXQT7`, built from `contrato/` at `356c22f`, unchanged; smoke vote of 5 tallied 4 to 1 and passed `tessera verificar` | testnet | this session's deploy |
 
 ## Conflicting sources
 
@@ -132,6 +137,9 @@ Every external fact this project relies on, and every piece of code copied in. A
 
 | Date | Our path | Origin (URL + commit) | License | Task |
 |---|---|---|---|---|
+| 2026-10-26 | `contracts/processo/src/lib.rs` (`Pergunta`, `Proposta`, mirrored for a client) | https://github.com/ThaisFReis/tessera `contrato/src/tipos.rs` at `356c22f` | MIT (same author) | T-048 |
+| 2026-10-26 | `contracts/processo/src/lib.rs`, `scripts/verificar_processo.py`, `web/processo.mjs` (the voter-root rule, reimplemented) | https://github.com/ThaisFReis/tessera `core/src/merkle.rs` at `356c22f` | MIT (same author) | T-048, T-050 |
+| 2026-10-26 | `scripts/tessera-cli.patch` (a one-line change to Tessera's CLI, applied outside this repo) | https://github.com/ThaisFReis/tessera `cli/src/comandos.rs` at `356c22f` | MIT (same author) | T-049 |
 | 2026-10-25 | `CLAUDE.md` | provided by the human as a file to adapt; origin not stated | **unknown — see §11 Q-01** | T-000 |
 | 2026-10-25 | `contracts/poseidon/src/params.rs` | `stellar/rs-soroban-poseidon` v28.0.0 (crates.io), `src/poseidon/params.rs` — BN254 MDS and round constants for t = 2, 3 only | **Apache-2.0**, Copyright 2026 Stellar Development Foundation; licence kept in `contracts/poseidon/LICENSE-APACHE`, header states the change | T-034 |
 | 2026-10-25 | `contracts/poseidon/src/lib.rs` | same crate, `src/poseidon/sponge.rs` — adapted: BN254 and t ∈ {2, 3} only, no `Field` trait | **Apache-2.0**, as above | T-034 |

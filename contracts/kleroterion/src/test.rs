@@ -1390,6 +1390,50 @@ fn afastado_so_para_o_acusado_e_so_no_prazo() {
     assert!(!m.c.suspended(&m.acusado), "o prazo vence sozinho");
 }
 
+// ---- quem sentou, para o processo (T-047) -------------------------------
+
+/// `seated` é falso antes do painel, verdadeiro depois para quem sentou, e
+/// falso para quem se recusou ou nunca foi assento.
+#[test]
+fn seated_so_depois_do_painel_e_so_para_quem_sentou() {
+    let f = fluxo();
+    f.selar();
+    for i in [1, 2, 3, 5, 6, 7] {
+        f.reivindicar(i);
+    }
+    let assento = |i: usize| f.js[i].assento.clone();
+    assert!(!f.m.c.seated(&assento(1)), "antes do painel, ninguem");
+    f.m.c.recuse(&f.js[6].principal, &f.js[6].s);
+    f.passar_o_prazo();
+    let fim = f.m.c.finalize().unwrap();
+    for i in [1usize, 2, 3, 5, 7] {
+        assert_eq!(
+            f.m.c.seated(&assento(i)),
+            fim.painel.contains(&f.js[i].y),
+            "jurado {}",
+            i
+        );
+    }
+    assert!(!f.m.c.seated(&assento(6)), "quem se recusou nao sentou");
+    assert!(
+        !f.m.c.seated(&f.js[0].principal),
+        "conta principal nao e assento"
+    );
+}
+
+/// Uma conta de assento reivindica um assento só.
+#[test]
+fn a_mesma_conta_de_assento_nao_reivindica_duas_vezes() {
+    let f = fluxo();
+    f.selar();
+    f.reivindicar(1);
+    let j = &f.js[2];
+    assert_eq!(
+        f.m.c.try_claim(&f.js[1].assento, &j.prova, &j.y),
+        Err(Ok(Erro::AssentoRepetido.into()))
+    );
+}
+
 // ---- a revelação tardia (T-046) -----------------------------------------
 
 /// INV-21: o `lock` recusa `revela_em` antes de `ledger + espera_minima`, e
@@ -1679,10 +1723,10 @@ fn custo_medido_de_enroll_impede_lock() {
 /// reivindicação (a prova e a inserção), uma recusa, o `finalize` e um
 /// `reveal`. Mudou, fica vermelho (G2); G7 confere docs/SPEC.md.
 const CUSTO_SEAL: (u64, u64) = (27_026_910, 300_613);
-const CUSTO_CLAIM: (u64, u64) = (29_605_336, 435_085);
-const CUSTO_RECUSE: (u64, u64) = (2_917_882, 361_562);
-const CUSTO_FINALIZE: (u64, u64) = (351_771, 181_966);
-const CUSTO_REVEAL: (u64, u64) = (2_967_446, 405_531);
+const CUSTO_CLAIM: (u64, u64) = (29_684_570, 465_593);
+const CUSTO_RECUSE: (u64, u64) = (2_926_704, 364_418);
+const CUSTO_FINALIZE: (u64, u64) = (351_363, 183_190);
+const CUSTO_REVEAL: (u64, u64) = (2_979_856, 408_795);
 
 #[test]
 fn custo_medido_do_fluxo_selado() {

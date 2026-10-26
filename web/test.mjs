@@ -115,6 +115,32 @@ for (const v of selados) {
   }
 }
 
+// T-050: the recorded case, with the same checks as scripts/verificar_processo.py.
+{
+  const { verificarProcesso, sha256, hex } = await import("./processo.mjs");
+  const caso = JSON.parse(await readFile(join(raiz_, "docs", "evidencia-processo-registro.json"), "utf8"));
+  const indice = JSON.parse(await readFile(join(raiz_, "docs", "caso-demo", "indice.json"), "utf8"));
+  const docs = {};
+  for (const d of indice.documentos) docs[hex(await sha256(await readFile(join(raiz_, "docs", "caso-demo", d.arquivo))))] = d.arquivo;
+  const P = { R: criarPoseidon(await ler("poseidon-bn254.json")).R, hash1, hash2 };
+  const r = await verificarProcesso(caso, { P, raiz, docs });
+  const ruins = r.conferencias.filter(([, ok]) => !ok).map(([n]) => n);
+  if (!ruins.length && Object.values(r.fases).every(Boolean)) console.log(`  ok    o processo registrado: ${r.conferencias.length} conferencias, ${Object.keys(r.fases).length} fases`);
+  else { falhas++; console.log(`  FALHA o processo registrado: ${ruins.join("; ") || JSON.stringify(r.fases)}`); }
+  const mutacoes = [
+    ["aptos", (w) => { w.tessera.aptos = w.tessera.aptos.slice(0, -1); }, "a lista de votantes do Tessera e a dos presentes, na ordem"],
+    ["placar", (w) => { w.eventos.find((e) => e.evento === "Decidido").sim += 1; }, "o placar e o que o Tessera publicou"],
+    ["parte", (w) => { w.eventos.find((e) => e.evento === "Compareceu").assento = w.eventos.find((e) => e.evento === "CasoAberto").acusado; }, "a parte nunca compareceu como jurada"],
+  ];
+  for (const [nome, f, conferencia] of mutacoes) {
+    const w = structuredClone(caso);
+    f(w);
+    const achou = (await verificarProcesso(w, { P, raiz, docs })).conferencias.find(([n]) => n === conferencia);
+    if (achou && !achou[1]) console.log(`  ok    mutacao do processo '${nome}': '${conferencia}' nao confere`);
+    else { falhas++; console.log(`  FALHA a mutacao '${nome}' passou sem '${conferencia}'`); }
+  }
+}
+
 if (falhas) {
   console.log(`\n${falhas} falha(s).`);
   process.exit(1);

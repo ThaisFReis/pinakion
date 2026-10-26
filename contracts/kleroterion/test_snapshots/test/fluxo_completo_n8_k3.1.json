@@ -2947,6 +2947,168 @@
               "key": {
                 "vec": [
                   {
+                    "symbol": "YDe"
+                  },
+                  {
+                    "address": "GBWMCWMLKFFHPTJZ4VX5IXXDIA57KYZZ6AMHH3QXYM65FIWFIYZIBG6U"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u256": "13809457904818644983242339024970411805517462546039890548274624694838089397398"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "YDe"
+                  },
+                  {
+                    "address": "GCN5VAVGSCDDQBJEPK6UEI2D5FUQ475C2BYIU7PVYW4ONJZ3EJ4SWEGI"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u256": "14683318254533340383414487946417943098704536063807388755418469270960987508673"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "YDe"
+                  },
+                  {
+                    "address": "GCV7S5RYZ4YIGJYOQ3N3MGUXSNSG44ERWVNXFEY5P67LM3R32RYVDDHP"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u256": "1626201726522907126292687427820694008225114677165435696094600414931996917765"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "YDe"
+                  },
+                  {
+                    "address": "GC63SXX3453ZMK2JIKMF2CH4UOVFOO4JEGPUXYEADOKAGKZIV5QDWXCN"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u256": "5266842730541764359988610649897054132990383154780408871997948445256283428772"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "YDe"
+                  },
+                  {
+                    "address": "GDCP2UJWOULNDGTTEKZZBJCFP6QC55EEXBZPTVKMEPK6RPXLU2OTXK4V"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u256": "5461697157099906755839815424609557793074928368328660863635543894531834527493"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "YDe"
+                  },
+                  {
+                    "address": "GDVGS2C5M25R5CBTKDDSLVMZCT7SJJEO6VWKQMEPG6FBFP2PMJWGQYTA"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u256": "1144207446566526776770826545975467157688411476832538228767523135865875356778"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 5095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
                     "symbol": "YUsado"
                   },
                   {

@@ -21,7 +21,7 @@
       <nav class="nav" aria-label="Navegação principal">
         <a href="#principio">A garantia</a>
         <a href="#testnet">Na testnet</a>
-        <a href="./bilhetes.html">O sorteio selado <span aria-hidden="true">↗</span></a>
+        <a href="./processo.html">O processo <span aria-hidden="true">↗</span></a>
         <button class="theme" id="tema" aria-label="Alternar tema" title="Alternar tema">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg>
         </button>
@@ -34,7 +34,7 @@
           <h1 id="titulo">Ninguém escolhe<br>quem te julga.<br><span>Ninguém sabe quem.</span></h1>
           <p class="intro">Pinakion sorteia um painel a partir de um rol fechado antes do caso. Cada jurado prova o próprio assento sem dizer quem é. Depois do veredito, qualquer pessoa recalcula o painel a partir do ledger, entre quem revelou.</p>
           <div class="hero-actions">
-            <a class="button" href="./bilhetes.html">Conferir o painel selado <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg></a>
+            <a class="button" href="./processo.html">Ver um caso, do rol ao veredito <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg></a>
             <a class="quiet-link" href="#principio">Ler a garantia</a>
           </div>
         </div>
@@ -68,26 +68,26 @@
           <li><span class="ordinal">02</span><h3>Ninguém sabe quem até julgar</h3><p>Cada jurado guarda um segredo. Quem cai abaixo do limiar prova o assento em conhecimento zero, de uma conta nova. O ledger vê um número, nunca um nome.</p></li>
           <li><span class="ordinal">03</span><h3>Todos conferem depois</h3><p>Depois do veredito, cada jurado revela o segredo. Qualquer pessoa recalcula o painel a partir dos eventos e do drand, entre quem revelou. Quem não revelou aparece como em silêncio.</p></li>
         </ol>
-        <div class="limit"><h3>Antes de confiar</h3><p>O setup do circuito foi feito por uma só parte: quem o rodou poderia forjar assentos. Para o nome não aparecer, a conta de assento precisa ser financiada sem rastro até o jurado, e falta um relayer para isso. Quem perde o segredo perde o assento. Uma deliberação fora da cadeia quebra o selo quando os jurados se encontram. O fechamento que impede a própria pessoa julgada está no código e nos testes, mas ainda não rodou na testnet. É só testnet, e nada foi auditado.</p></div>
-        <p class="status-note"><strong>Em desenvolvimento.</strong> O ciclo de casos, a renovação do rol e as janelas de contestação estão desenhados e não implementados.</p>
+        <div class="limit"><h3>Antes de confiar</h3><p>O setup do circuito foi feito por uma só parte: quem o rodou poderia forjar assentos. Para o nome não aparecer, a conta de assento precisa ser financiada sem rastro até o jurado, e falta um relayer para isso. Quem perde o segredo perde o assento. Uma deliberação fora da cadeia quebra o selo quando os jurados se encontram. A votação depende do Tessera e do seu piso de sigilo: abaixo de cinco votos não há placar. É só testnet, e nada foi auditado.</p></div>
+        <p class="status-note"><strong>Em desenvolvimento.</strong> O caso, do rol ao veredito, está construído e rodou na testnet. A renovação do rol, as janelas de contestação, o novo sorteio depois de um adiamento e os autos sigilosos estão desenhados e não implementados.</p>
       </section>
 
       <section class="section" id="testnet" aria-labelledby="testnet-titulo">
         <div class="section-heading">
           <p class="eyebrow">02 / Na testnet, 26 out 2026</p>
           <div class="section-intro">
-            <h2 id="testnet-titulo">Um sorteio selado,<br>do rol à revelação.</h2>
-            <p>Uma única máquina fez o papel de todos os jurados. Cada hash está registrado.</p>
+            <h2 id="testnet-titulo">Um caso inteiro,<br>da denúncia ao veredito.</h2>
+            <p>Um caso fictício de código de conduta, com transações reais. A pessoa julgada estava no rol e foi impedida no próprio fechamento. A votação é secreta e roda no <a href="https://github.com/ThaisFReis/tessera">Tessera</a>, o módulo de voto anterior da mesma autora, usado como é. Uma única máquina fez o papel de todas as pessoas.</p>
           </div>
         </div>
         <ol class="principles">
-          <li><span class="ordinal">20</span><h3>Inscritos</h3><p>Cada um com um bilhete e um compromisso. Um foi impedido antes do fechamento, e o rol fechou com 19.</p></li>
-          <li><span class="ordinal">6</span><h3>Assentos provados</h3><p>Seis provas, de seis contas novas. Uma reivindicação repetida foi recusada, e um jurado se recusou às claras.</p></li>
-          <li><span class="ordinal">3</span><h3>No painel</h3><p>O painel saiu completo e 18 jurados revelaram. A recomputação a partir do ledger confere: 77 conferências, nenhuma falha.</p></li>
+          <li><span class="ordinal">40 → 7</span><h3>Sorteio selado</h3><p>Quarenta pessoas no rol, sete assentos no nível 3. Cada assento provado em conhecimento zero, de uma conta nova.</p></li>
+          <li><span class="ordinal">6 / 5</span><h3>Quórum e autos</h3><p>Seis jurados compareceram pelas contas de assento, sem dizer quem eram. Denúncia, prova, defesa e atas entraram nos autos pelo hash.</p></li>
+          <li><span class="ordinal">5 · 1</span><h3>Veredito</h3><p>O contrato só aceitou a votação porque os votantes do Tessera eram exatamente os presentes. Procedente, com 4 votos exigidos de 7.</p></li>
         </ol>
         <div class="hero-actions">
-          <a class="button" href="./bilhetes.html">Ver pessoa por pessoa <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg></a>
-          <a class="quiet-link" href="https://github.com/ThaisFReis/pinakion/blob/main/docs/evidencia-testnet-bilhete.md">Cada hash e cada custo</a>
+          <a class="button" href="./processo.html">Ver o processo, fase por fase <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg></a>
+          <a class="quiet-link" href="./bilhetes.html">O primeiro sorteio selado, pessoa por pessoa</a>
         </div>
       </section>
     </main>
